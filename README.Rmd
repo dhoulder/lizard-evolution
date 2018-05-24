@@ -1,0 +1,67 @@
+
+# DynamicRangeEvolutionAndDiversification (DREaD)
+#### Alexander Skeels & Marcel Cardillo
+
+
+
+## Load scripts and packages
+
+
+```{r eval=FALSE}
+# set to directory containing source scripts
+setwd()
+
+scripts <- c("rangeDispersal.R", "nicheEvolution.R","speciateAllopatric.R","speciateSympatric.R",
+             "speciateParapatric.R","speciateDispersal.R","seedSpecies.R","environmentalChange.R",
+             "nicheRecenter.R","DREaD.R","generateSummaryStatistics.R", "helperFunctions.R")
+
+lapply(scripts, source)
+
+required.packages <- (c("raster","gstat","ape","phytools","geiger","phyloclim","ggplot2","gridExtra","moments",
+                        "apTreeshape","parallel", "doSNOW", "rgeos", "data.table", "fossil", "ENMTools"))
+
+lapply(required.packages, require, character.only=T)
+
+```
+
+## Run Simulation
+
+```{r eval=F}
+
+#sample parameters
+tips <- runif(1, 5, 100)
+D <- runif(1, 1, 10)
+ENVa <- runif(1, 0.25, 2)
+ENVf <- runif(1, 0.25, 2)
+NEp <- runif(1, 0.005, 2)
+NEb <- runif(1, 0.0025, 1)
+PS <- runif(1, 0.25, 1)
+m <- runif(1, 50, 250)
+
+# Run model
+simulation.1 <- DREaD(totaltips=tips, dispersal=D, amp=ENVa, freq=ENVf,
+                             niche.ev.rate = NEp, breadth.ev.rate=NEb,
+                             phylo.sig=PS, Me=m,  enviro.hetero =T, geo.mode = "dispersal",
+                             enviro.mode = "sine")
+
+```
+
+```{r echo=FALSE}
+load("D:/Dropbox/Dropbox/PhD/Project #1 RangeSim Speciation Mode/Writing Paper/PLOS BIOLOGY SUBMISSION/PLOS Resubmission Final/S5_Appendix/simulation_for_markdown.rda")
+```
+
+## Results
+
+```{r eval = T}
+
+# model parameters
+print(simulation.1$params)
+
+# measured summary statistics
+print(simulation.1$summaryStats$analysis[1:30])
+
+# Age-Range-Correlation
+print(simulation.1$ARC$reps$rep.1)
+
+```
+
