@@ -49,7 +49,7 @@ DREaD <- function (totaltips, dispersal, amp, freq, slope, niche.ev.rate, breadt
   # set maximum runtime
   maxtime = 200
   # Keep track of number of Mass Extinctions
-  Extinction <- 1
+  extinction <- 1
   # range size at which speciation probability peaks
   B <- 5000
   # dispersaion of speciation rate around the peak
