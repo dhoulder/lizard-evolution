@@ -5,10 +5,10 @@ scripts <- c("rangeDispersal.R", "nicheEvolution.R","speciateAllopatric.R","spec
 
 lapply(scripts, source)
 
-required.packages <- (c("raster","gstat","ape","phytools","geiger","phyloclim","ggplot2","gridExtra","moments",
-                        "apTreeshape","parallel", "doSNOW", "rgeos", "data.table", "fossil", "ENMTools"))
+#required.packages <- (c("raster","gstat","ape","phytools","geiger","phyloclim","ggplot2","gridExtra","moments",
+#                        "apTreeshape","parallel", "doSNOW", "rgeos", "data.table", "fossil", "ENMTools"))
 
-lapply(required.packages, require, character.only=T)
+#lapply(required.packages, require, character.only=T)
 
 
 #sample parameters
@@ -22,7 +22,7 @@ PS <- runif(1, 0.25, 1)
 m <- runif(1, 50, 250)
 
 # Run model
-simulation.1 <- DREaD(totaltips=tips, dispersal=D, amp=ENVa, freq=ENVf,
+simulation.1 <- DREaD_ds(totaltips=tips, dispersal=D, amp=ENVa, freq=ENVf,
                       niche.ev.rate = NEp, breadth.ev.rate=NEb,
                       phylo.sig=PS, Me=m,  enviro.hetero =T, geo.mode = "dispersal",
                       enviro.mode = "sine")
