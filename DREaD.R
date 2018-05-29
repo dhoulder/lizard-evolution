@@ -23,9 +23,18 @@
 # lambda = speciation rates for each speciation mode lambda1 = predominate mode, lambda2 = non-predominate modes, lambda3= mixed speciation
 
 
-DREaD <- function (totaltips, dispersal, amp, freq, slope, niche.ev.rate, breadth.ev.rate, phylo.sig, Me,  enviro.hetero, geo.mode, enviro.mode,
-                          plot = FALSE, stepsize = 0.1, generateSummaryStatistics=TRUE,
-                          lambda1 =0.04,lambda2 =0.0005,lambda3 =0.010375) {
+DREaD <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phylo.sig, Me,  enviro.hetero, geo.mode,
+                    enviro.mode,
+                    amp=NA, 
+                    freq=NA, 
+                    slope=NA,
+                    plot = FALSE,
+                    stepsize = 0.1,
+                    generateSummaryStatistics=TRUE,
+                    lambda1 =0.04,
+                    lambda2 =0.0005,
+                    lambda3 =0.010375) {
+  
   ##### required libraries
   require(raster)
   require(gstat)
@@ -61,6 +70,15 @@ DREaD <- function (totaltips, dispersal, amp, freq, slope, niche.ev.rate, breadt
   if (geo.mode == "sympatric") {allo.rate = lambda2; sym.rate = lambda1; para.rate = lambda2; disp.rate = lambda2}
   if (geo.mode == "dispersal") {allo.rate = lambda2; sym.rate = lambda2; para.rate = lambda2; disp.rate = lambda1}
 
+  ####################### CHECK INPUT ARGUMENTS - just checking some at this point ########
+  
+  # slope parameter required only for linear climate models, amp and freq only for sine cliamte models
+  if (enviro.mode == "linear") {
+    if (is.na(slope)) {stop("When enviro.mode is 'linear', A value must be provided for slope.")}
+  } else if (enviro.mode == "sine") {
+    if (is.na(amp) | is.na(freq)) {stop("When enviro.mode is 'sine', values must be provided for amp and freq.")}
+  }
+  
   ########################### 1. Generate background environment ##########################
 
   env <- generateEnv(original = T)
