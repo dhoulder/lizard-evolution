@@ -3,8 +3,11 @@
 ######### rescaleEnviron #########
 # Function rescales the environmental layer between a new range allowing for consistency across simulated environments
 rescaleEnviro <- function(env,  new.min = 0, new.max = 1) {
+  env.min <- min(env, na.rm = T)
+  env.max <- max(env, na.rm = T)
   new.min + (env - env.min) * ((new.max - new.min) / (env.max - env.min))
 }
+
 ######### replaceNonNAValues #########
 # function replaces values in raster (x) that are not NA with new values (tr)
 replaceNonNAValues <- function(x, tr) {
@@ -96,7 +99,7 @@ generateEnv <- function(grid.size=100, psill=0.005, range=15, rescale.max=25, re
   if(original==TRUE){ g.dummy <- gstat(formula=z~1, locations=~x+y, dummy=T, beta=1, model=vgm(psill=10,model="Exp", range=50), nmax=30)}
   yy <- predict(g.dummy, newdata=xy, nsim=1)
   env<-rasterFromXYZ(yy)  
-browser()
+
   env@data@values <- rescaleEnviro(env@data@values, new.min=0, new.max=25)
   env@data@max <- max(env@data@values)
   env@data@min <- min(env@data@values)

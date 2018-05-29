@@ -56,15 +56,16 @@ library(dplyr)
 
 DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phylo.sig, Me,  enviro.hetero, geo.mode,
                       enviro.mode,
-                      amp=NA, 
-                      freq=NA, 
-                      slope=NA,
+                      amp = NA, 
+                      freq = NA, 
+                      slope = NA,
                       plot = FALSE,
                       stepsize = 0.1,
-                      generateSummaryStatistics=TRUE,
-                      lambda1 =0.04,
-                      lambda2 =0.0005,
-                      lambda3 =0.010375) {
+                      generateSummaryStatistics = TRUE,
+                      lambda1 = 0.04,
+                      lambda2 = 0.0005,
+                      lambda3 = 0.010375,
+                      genomeDimensions = 3) {
   
   ##### required libraries
   require(raster)
@@ -112,26 +113,27 @@ DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phyl
   }
   
   ########################### 1. Generate background environment ##########################
-browser()
+
   env <- generateEnv(original = T)
   starting.env <- env
 
   ###########################  2. Seed initial species  ###################################
 
   initial.species <- seedSpecies(env, dispersal = dispersal)
+  initial.species.ras <- initial.species[[1]]
   # generate edgetable
   # edgetable is a matrix that stores information on each species' phylogeny, niche position, niche breadth, speciation modes, range size
   # each row is a species
 
   edgetable <- makeEdgeTable(10000)
 
-  edgetable[1,5] <- sum(initial.species[[1]]@data@values)
-  edgetable[1,5] <- sum(initial.species[[1]]@data@values)
+  edgetable[1,5] <- sum(initial.species.ras@data@values)
+  edgetable[1,5] <- sum(initial.species.ras@data@values)
   edgetable[1,7] <- initial.species[[2]]
   edgetable[1,8] <- initial.species[[3]]
 
-  presence.cells <- which(initial.presence[] ==1)
-  coords <- rowColFromCell(initial.presence, presence.cells)
+  presence.cells <- which(initial.species.ras[] == 1)
+  coords <- rowColFromCell(initial.species.ras, presence.cells)
   rownum <- 1
   
   for (cell in presence.cells) {
