@@ -76,14 +76,14 @@ DREaD_ds <- function (total.time,
   ##### required libraries
   require(raster)
   require(gstat)
-  require(ape)
-  require(phytools)
+  #require(ape)
+  #require(phytools)
   #require(geiger)
   #require(moments)
-  require(phyloclim)
+  #require(phyloclim)
   require(data.table)
   #require(fossil)
-  require(apTreeshape)
+  #require(apTreeshape)
   # require(ENMTools)
   
   # extinction rate constant
@@ -157,9 +157,11 @@ DREaD_ds <- function (total.time,
     )
     new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
     
-    demetable[i, ] <- new.row
+    for (j in 1:ncol(demetable)) {
+      demetable[i, j] <- new.row[j]
+    }
   }
-  
+browser()  
   demetable.used.rows <- i
   
   # species rasters is a list that hangs onto each species geographic range in the form of a raster
@@ -211,15 +213,20 @@ DREaD_ds <- function (total.time,
     for (i in species.tips) {
 browser()
       #skips rows that have speciated (i.e., is an ancestral branch not an extant lineage)
+        # this section should not be needed if internal branches are correctly coded when speciation
+        # occurs
       extant.species <- which(!is.na(edgetable[,10]))
       if (length(extant.species) > 1) {
-        if (edgetable[i, 2] %in% edgetable[extant.species, 1] ) { next }
+        if (edgetable[i, 2] %in% edgetable[extant.species, 1] ) {
+          edgetable[i, 10] <- 2 #set this species as an internal branch
+          next
+        }
       }
 
-      # select species rater for current iteration and niche values
-      current.species <- species.rasters[[i]]
-      position <- as.numeric(edgetable[i, 7])
-      breadth <- as.numeric(edgetable[i, 8])
+      # # select species raster for current iteration and niche values
+      # current.species <- species.rasters[[i]]
+      # position <- as.numeric(edgetable[i, 7])
+      # breadth <- as.numeric(edgetable[i, 8])
 
   ############################# 4. Dispersal ###########################
 

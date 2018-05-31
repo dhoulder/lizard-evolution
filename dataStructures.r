@@ -32,7 +32,7 @@ makeEdgeTable <- function(rowcount=10000,
                     "niche.position",
                     "niche.breadth",
                     "birth.mode",
-                    "extant")             # 1=extant species, 0=extinct
+                    "extant")             # 1=extant species tip, 2=internal branch, 0=extinct
   colnames(edgetable) <- column.names
 
   if (dynamicSpeciation) {
@@ -94,6 +94,7 @@ makeDemeTable <- function(genomeDimensions=3, rowcount=10000, columnInfo=FALSE) 
                     gene.position.columns=gene.position.columns)
     return(columns)
   } else {
+    demetable <- as.data.table(demetable)
     return(demetable)
   }
 }
