@@ -35,7 +35,6 @@ library(dplyr)
 
 ############# Arguments ###############
 
-# totaltips = clade size to generate
 # dispersal = dispersal kernal parameter
 # enviro.mode = environmental change mode - character "sine" or "linear"
 # amp = amplitude of environmental change sine wave
@@ -54,7 +53,14 @@ library(dplyr)
 # lambda = speciation rates for each speciation mode lambda1 = predominate mode, lambda2 = non-predominate modes, lambda3= mixed speciation
 
 
-DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phylo.sig, Me,  enviro.hetero, geo.mode,
+DREaD_ds <- function (total.time,
+                      dispersal,
+                      niche.ev.rate,
+                      breadth.ev.rate,
+                      phylo.sig,
+                      Me,  
+                      enviro.hetero,
+                      geo.mode,
                       enviro.mode,
                       amp = NA, 
                       freq = NA, 
@@ -85,11 +91,10 @@ DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phyl
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/100), 100), ncol=100, nrow=100, byrow=F)
   # vector of parameters
-  params<-data.frame(totaltips=totaltips, dispersal=dispersal, amp=amp,
+  params<-data.frame(total.time=total.time, dispersal=dispersal, amp=amp,
                     freq=freq, niche.ev.rate=niche.ev.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig, Me=Me,
                     geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
-  # set maximum runtime
-  maxtime = 200
+
   # Keep track of number of Mass Extinctions
   extinction <- 1
   # range size at which speciation probability peaks
@@ -121,9 +126,9 @@ DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phyl
 
   initial.species <- seedSpecies(env, dispersal = dispersal)
   initial.species.ras <- initial.species[[1]]
-  # generate edgetable
-  # edgetable is a matrix that stores information on each species' phylogeny, niche position, niche breadth, speciation modes, range size
-  # each row is a species
+  # generate edgetable  -  edgetable is a matrix that stores information on each species' 
+  # phylogeny, niche position, niche breadth, speciation modes, range size each row is a
+  # species
 
   edgetable <- makeEdgeTable(10000)
 
@@ -135,71 +140,80 @@ DREaD_ds <- function (totaltips, dispersal, niche.ev.rate, breadth.ev.rate, phyl
   presence.cells <- which(initial.species.ras[] == 1)
   coords <- rowColFromCell(initial.species.ras, presence.cells)
   rownum <- 1
-  
-  for (cell in presence.cells) {
-    new.row <-  c(cell,                # cellID
-                  1,                   # speciesID
-                  coords[rownum, 2],   # x
-                  coords[rownum, 1],   # y
-                  1,                   # amount - need to sort out values!
-                  initial.position,    # niche1.position
-                  initial.breadth,     # niche1.breadth
-                  0,                   # niche2.position - need to sort out values if using
-                  0                    # niche2.breadth  - need to sort out values if using
+
+  demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
+
+  for (i in 1:length(presence.cells)) {
+    cell <- presence.cells[i]  
+    new.row <-  c(cell,                  # cellID
+                  1,                     # speciesID
+                  coords[i, 2],     # x
+                  coords[i, 1],     # y
+                  1,                     # amount - need to sort out values!
+                  initial.species[[2]],  # niche1.position
+                  initial.species[[3]],  # niche1.breadth
+                  0,                     # niche2.position - need to sort out values if using
+                  0                      # niche2.breadth  - need to sort out values if using
     )
-    new.row <- c(new.row, rep(0, genome.dimensions)) # add the gene.pos columns
+    new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
     
-    demestable[rownum, ] <- new.row
-    rownum <- rownum + 1
+    demetable[i, ] <- new.row
   }
-  browser()
+  
+  demetable.used.rows <- i
   
   # species rasters is a list that hangs onto each species geographic range in the form of a raster
   species.rasters <- vector('list', 10000)
   species.rasters[[1]] <- initial.species[[1]]
+  
   time <- 1
   stepsize <- stepsize
   tips <- 1
+  
   extinct <- vector("logical", 10000)
   extinct.number <- 0
 
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
 
-  while((tips - extinct.number) < totaltips) {
+  while(time < total.time) {
 
   ############################# 3. Environmental change ###########################
 
     # time changes
     time <- round(time + stepsize, 3)
-    # if simulation runs too long restart
-    if(time >= maxtime){
-      initial.species <- seedSpecies(env)
-      edgetable <- matrix(ncol=10, nrow=10000)
-      edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
-      edgetable[1,5] <- sum(initial.species[[1]]@data@values)
-      edgetable[1,7] <- initial.species[[2]]
-      edgetable[1,8] <- initial.species[[3]]
-      species.rasters <- vector('list', 10000)
-      species.rasters[[1]] <- initial.species[[1]]
-      time <- 1
-      stepsize <- stepsize
-      tips <- 1
-      extinct.number=0
-      extinct <- vector("logical", 10000)
-    }
+    # # if simulation runs too long restart
+    # if(time >= maxtime){
+    #   initial.species <- seedSpecies(env)
+    #   edgetable <- matrix(ncol=10, nrow=10000)
+    #   edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
+    #   edgetable[1,5] <- sum(initial.species[[1]]@data@values)
+    #   edgetable[1,7] <- initial.species[[2]]
+    #   edgetable[1,8] <- initial.species[[3]]
+    #   species.rasters <- vector('list', 10000)
+    #   species.rasters[[1]] <- initial.species[[1]]
+    #   time <- 1
+    #   stepsize <- stepsize
+    #   tips <- 1
+    #   extinct.number=0
+    #   extinct <- vector("logical", 10000)
+    # }
 
     # environment changes
     env <- enviroChange(start.env=starting.env, env=env, time=time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
     # species.tips is the row index of non-extinct lineages (rows in the edgetable)
-    if(any(extinct==TRUE)){ species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)] } else { species.tips <- seq_along(which(!is.na(edgetable[,10]))) }
+    if(any(extinct==TRUE)){
+      species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
+    } else {
+      species.tips <- seq_along(which(edgetable[,10]==1))
+    }
 
     # iterate through extant species
     for (i in species.tips) {
-
+browser()
       #skips rows that have speciated (i.e., is an ancestral branch not an extant lineage)
-      not.na.rows <- which(!is.na(edgetable[,10]))
-      if (length(not.na.rows) > 1) {
-        if (edgetable[i, 2] %in% edgetable[not.na.rows, 1] ) { next }
+      extant.species <- which(!is.na(edgetable[,10]))
+      if (length(extant.species) > 1) {
+        if (edgetable[i, 2] %in% edgetable[extant.species, 1] ) { next }
       }
 
       # select species rater for current iteration and niche values

@@ -49,12 +49,12 @@ makeEdgeTable <- function(rowcount=10000,
 }
 
 
-makeDemeTable <- function(genomeDimensions=3, columnInfo=FALSE) {
+makeDemeTable <- function(genomeDimensions=3, rowcount=10000, columnInfo=FALSE) {
 
   # this function creates and returns an empty demes matrix
   # it is placed in a separate function for clarity and flexibility
 
-  #demesTable is the matrix that stores data about the location and
+  #demetable is the matrix that stores data about the location and
   #characteristics of each population or deme, and their changes over time as
   #the simulation progresses. it is linked to EdgeTable by the speciesID, and
   #to the region raster by cellID
@@ -62,7 +62,7 @@ makeDemeTable <- function(genomeDimensions=3, columnInfo=FALSE) {
   #in the future this function may include arguments for
   # a) number of environmental dimensions
 
-  demestable <- data.frame(cellID=0,
+  demetable <- data.frame(cellID=0,
                            speciesID=0,
                            x=0.0,
                            y=0.0,
@@ -78,20 +78,23 @@ makeDemeTable <- function(genomeDimensions=3, columnInfo=FALSE) {
     for (i in 3:genomeDimensions) {
       genecol.df <- data.frame(gene.pos=0.0)
       names(genecol.df) <- paste("gene.pos", i, sep="")
-      demestable <- cbind(demestable, genecol.df)
+      demetable <- cbind(demetable, genecol.df)
     }
   }
+
+  # add empty rows
+  demetable[2:rowcount, ] <- demetable[1, ]
 
   # returns vectors of column numbers for niche and genetic parameters for easy
   # reference to the columns
   if (columnInfo) {
     niche.position.columns <- 6:9
-    gene.position.columns  <- 10:ncol(demestable)
+    gene.position.columns  <- 10:ncol(demetable)
     columns <- list(niche.position.columns=niche.position.columns,
                     gene.position.columns=gene.position.columns)
     return(columns)
   } else {
-    return(demestable)
+    return(demetable)
   }
 }
 
