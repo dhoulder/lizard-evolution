@@ -170,7 +170,7 @@ DREaD_ds <- function (total.time,
       demetable[i, j] <- new.row[j]
     }
   }
-browser()  
+
   demetable.used.rows <- i
   
   # species rasters is a list that hangs onto each species geographic range in the form of a raster
@@ -220,7 +220,7 @@ browser()
 
     # iterate through extant species
     for (i in species.tips) {
-browser()
+
       #skips rows that have speciated (i.e., is an ancestral branch not an extant lineage)
         # this section shouldn't be needed if internal branches are correctly coded when speciation occurs
       extant.species <- which(!is.na(edgetable[,10]))
@@ -234,11 +234,9 @@ browser()
       # # select species current iteration
       current.speciesID <- edgetable[i, 11]
 
-
   ############################# 4. Dispersal ###########################
-
-      demetable.species <- demetable[demetable$speciesID==current.speciesID]
-      
+      demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
+browser()
       # disperse species' range
       current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)
 
