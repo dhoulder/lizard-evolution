@@ -19,6 +19,7 @@ NEp             <- runif(1, 0.005, 2)
 NEb             <- runif(1, 0.0025, 1)
 PS              <- runif(1, 0.25, 1)
 m               <- runif(1, 50, 250)
+niche.blocksize <- 0.1
 
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,

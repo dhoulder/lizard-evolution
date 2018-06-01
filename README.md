@@ -1,7 +1,7 @@
 ### This version forked by Dan Rosauer to modify and prototype an alternative macroevolutionary simulation
 
-Don't expect this code to work properly for some time
------------------------------------------------------
+_Don't expect this code to work properly for some time_ - use [Alex Skeels version](https://github.com/alexskeels/DynamicRangeEvolutionAndDiversification)
+
 
 
 DynamicRangeEvolutionAndDiversification (DREaD)

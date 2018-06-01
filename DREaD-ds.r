@@ -1,40 +1,10 @@
-library(dplyr)
-
-#  SOME QUICK NOTES AND EDITS TO CONSIDER MODIFYING ROLLING STONE
-#  TO SIMULATE EVOLUTION WITHIN SPECIES USING DEMES AS THE BASIC UNITS
-
-# RollingStone has three basic data structures
-# an environment raster
-# a species raster stack
-# an edge table which stores species / branches with their niche and their phylogenetic parent
-
-# The intraspecific model would instead have
-# an environment raster (initially same, but allow > 1 environmental dimension)
-# a demes table which stores for each deme:
-# location  as a cell index number (or numbers if it can occupy multiple cells)
-# niche value (eg mean and breadth) for each environmental dimension
-# genetic position in multiple dimensions - probably 3
-# abundance and/or suitability in the cell
-# species membership - to streamline gene flow calculations and generate species phylogeny
-
-# a species table, updated at each timestep from the demes table, storing for each species (and branch above species level):
-# its parent branch/edge
-# status - a) current species, b) speciated (internal branch) or c) extinct
-# timestep when it originated
-
-# if helpful, the species table could also store or point to the cells / demes which comprise it, and record the overall niche limits of the species.  These would both be a form of indexing, with the authoritative values at the level of the deme
-
-# a raster stack of distributions of current species would be an option - but again, it is a result not a primary authority for ranges.
-
-
-
-
 ######### Dynamic Range Evolution and Diversification model (DREaD) #########
 
 # main simulator function of geographic diversification model
 
 ############# Arguments ###############
 
+# totaltips = clade size to generate
 # dispersal = dispersal kernal parameter
 # enviro.mode = environmental change mode - character "sine" or "linear"
 # amp = amplitude of environmental change sine wave
@@ -52,61 +22,37 @@ library(dplyr)
 # generateSummaryStatistics = logical. whether to generate the 32 summary statistics
 # lambda = speciation rates for each speciation mode lambda1 = predominate mode, lambda2 = non-predominate modes, lambda3= mixed speciation
 
-# Arguments specific to the dynamic speciation model
 
-# total.time = the amount of time to elapse while running the model.  This replaces the number of tips to determine how long the model runs
-# niche.blocksize = the similarity of niches, that are treated as the same for calculating dispersal and 'abundance'
-  # a larger number should lead to faster running, but could miss effects of small niche differences
-  # each niche axis is scaled from 0 to 25
-
-DREaD_ds <- function (total.time,
-                      dispersal,
-                      niche.ev.rate,
-                      breadth.ev.rate,
-                      phylo.sig,
-                      Me,  
-                      enviro.hetero,
-                      geo.mode,
-                      enviro.mode,
-                      amp = NA, 
-                      freq = NA, 
-                      slope = NA,
-                      plot = FALSE,
-                      stepsize = 0.1,
-                      generateSummaryStatistics = TRUE,
-                      lambda1 = 0.04,
-                      lambda2 = 0.0005,
-                      lambda3 = 0.010375,
-                      genomeDimensions = 3,
-                      niche.blocksize = 0.1) {
-  
+DREaD-ds <- function (totaltips, dispersal, amp, freq, slope, niche.ev.rate, breadth.ev.rate, phylo.sig, Me,  enviro.hetero, geo.mode, enviro.mode,
+                          plot = FALSE, stepsize = 0.1, generateSummaryStatistics=TRUE,
+                          lambda1 =0.04,lambda2 =0.0005,lambda3 =0.010375, genome.dimensions=3) {
   ##### required libraries
   require(raster)
   require(gstat)
-  #require(ape)
-  #require(phytools)
-  #require(geiger)
-  #require(moments)
-  #require(phyloclim)
+  require(ape)
+  require(phytools)
+  require(geiger)
+  require(moments)
+  require(phyloclim)
   require(data.table)
-  #require(fossil)
-  #require(apTreeshape)
+  require(fossil)
+  require(apTreeshape)
   # require(ENMTools)
-  
   # extinction rate constant
   ext.rate = 0.02
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/100), 100), ncol=100, nrow=100, byrow=F)
   # vector of parameters
-  params<-data.frame(total.time=total.time, dispersal=dispersal, amp=amp,
+  params<-data.frame(totaltips=totaltips, dispersal=dispersal, amp=amp,
                     freq=freq, niche.ev.rate=niche.ev.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig, Me=Me,
                     geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
-
+  # set maximum runtime
+  maxtime = 200
   # Keep track of number of Mass Extinctions
   extinction <- 1
   # range size at which speciation probability peaks
   B <- 5000
-  # dispersaion of speciation rate around the peak
+  # dispersion of speciation rate around the peak
   C <- 1750
   # set rate of each geographic mode of speciation
   if (geo.mode == "mixed") {allo.rate = lambda3; sym.rate = lambda3; para.rate = lambda3; disp.rate = lambda3}
@@ -115,15 +61,6 @@ DREaD_ds <- function (total.time,
   if (geo.mode == "sympatric") {allo.rate = lambda2; sym.rate = lambda1; para.rate = lambda2; disp.rate = lambda2}
   if (geo.mode == "dispersal") {allo.rate = lambda2; sym.rate = lambda2; para.rate = lambda2; disp.rate = lambda1}
 
-  ####################### CHECK INPUT ARGUMENTS - just checking some at this point ########
-  
-  # slope parameter required only for linear climate models, amp and freq only for sine cliamte models
-  if (enviro.mode == "linear") {
-    if (is.na(slope)) {stop("When enviro.mode is 'linear', A value must be provided for slope.")}
-  } else if (enviro.mode == "sine") {
-    if (is.na(amp) | is.na(freq)) {stop("When enviro.mode is 'sine', values must be provided for amp and freq.")}
-  }
-  
   ########################### 1. Generate background environment ##########################
 
   env <- generateEnv(original = T)
@@ -132,113 +69,71 @@ DREaD_ds <- function (total.time,
   ###########################  2. Seed initial species  ###################################
 
   initial.species <- seedSpecies(env, dispersal = dispersal)
-  initial.species.ras <- initial.species[[1]]
-  # generate edgetable  -  edgetable is a matrix that stores information on each species' 
-  # phylogeny, niche position, niche breadth, speciation modes, range size each row is a
-  # species
+  # generate edgetable
+  # edgetable is a matrix that stores information on each species' phylogeny, niche position, niche breadth, speciation modes, range size
+  # each row is a species
 
-  edgetable <- makeEdgeTable(10000, dynamicSpeciation=TRUE)
+  edgetable <- makeEdgeTable(10000)
 
-  edgetable[1,5]  <- sum(initial.species.ras@data@values)
-  edgetable[1,5]  <- sum(initial.species.ras@data@values)
-  edgetable[1,7]  <- initial.species[[2]]
-  edgetable[1,8]  <- initial.species[[3]]
-  edgetable[1,11] <- 1
-  
+  edgetable[1,5] <- sum(initial.species[[1]]@data@values)
+  edgetable[1,7] <- initial.species[[2]]
+  edgetable[1,8] <- initial.species[[3]]
 
-  presence.cells <- which(initial.species.ras[] == 1)
-  coords <- rowColFromCell(initial.species.ras, presence.cells)
-  rownum <- 1
-
-  demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
-
-  for (i in 1:length(presence.cells)) {
-    cell <- presence.cells[i]  
-    new.row <-  c(cell,                  # cellID
-                  1,                     # speciesID
-                  coords[i, 2],     # x
-                  coords[i, 1],     # y
-                  1,                     # amount - need to sort out values!
-                  initial.species[[2]],  # niche1.position
-                  initial.species[[3]],  # niche1.breadth
-                  0,                     # niche2.position - need to sort out values if using
-                  0                      # niche2.breadth  - need to sort out values if using
-    )
-    new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
-    
-    for (j in 1:ncol(demetable)) {
-      demetable[i, j] <- new.row[j]
-    }
-  }
-browser()  
-  demetable.used.rows <- i
-  
   # species rasters is a list that hangs onto each species geographic range in the form of a raster
   species.rasters <- vector('list', 10000)
   species.rasters[[1]] <- initial.species[[1]]
-  
   time <- 1
   stepsize <- stepsize
   tips <- 1
-  
   extinct <- vector("logical", 10000)
   extinct.number <- 0
 
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
 
-  while(time < total.time) {
+  while((tips - extinct.number) < totaltips) {
 
   ############################# 3. Environmental change ###########################
 
     # time changes
     time <- round(time + stepsize, 3)
-    # # if simulation runs too long restart
-    # if(time >= maxtime){
-    #   initial.species <- seedSpecies(env)
-    #   edgetable <- matrix(ncol=10, nrow=10000)
-    #   edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
-    #   edgetable[1,5] <- sum(initial.species[[1]]@data@values)
-    #   edgetable[1,7] <- initial.species[[2]]
-    #   edgetable[1,8] <- initial.species[[3]]
-    #   species.rasters <- vector('list', 10000)
-    #   species.rasters[[1]] <- initial.species[[1]]
-    #   time <- 1
-    #   stepsize <- stepsize
-    #   tips <- 1
-    #   extinct.number=0
-    #   extinct <- vector("logical", 10000)
-    # }
+    # if simulation runs too long restart
+    if(time >= maxtime){
+      initial.species <- seedSpecies(env)
+      edgetable <- matrix(ncol=10, nrow=10000)
+      edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
+      edgetable[1,5] <- sum(initial.species[[1]]@data@values)
+      edgetable[1,7] <- initial.species[[2]]
+      edgetable[1,8] <- initial.species[[3]]
+      species.rasters <- vector('list', 10000)
+      species.rasters[[1]] <- initial.species[[1]]
+      time <- 1
+      stepsize <- stepsize
+      tips <- 1
+      extinct.number=0
+      extinct <- vector("logical", 10000)
+    }
 
     # environment changes
     env <- enviroChange(start.env=starting.env, env=env, time=time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
     # species.tips is the row index of non-extinct lineages (rows in the edgetable)
-    if(any(extinct==TRUE)){
-      species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
-    } else {
-      species.tips <- seq_along(which(edgetable[,10]==1))
-    }
+    if(any(extinct==TRUE)){ species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)] } else { species.tips <- seq_along(which(!is.na(edgetable[,10]))) }
 
     # iterate through extant species
     for (i in species.tips) {
-browser()
+
       #skips rows that have speciated (i.e., is an ancestral branch not an extant lineage)
-        # this section shouldn't be needed if internal branches are correctly coded when speciation occurs
-      extant.species <- which(!is.na(edgetable[,10]))
-      if (length(extant.species) > 1) {
-        if (edgetable[i, 2] %in% edgetable[extant.species, 1] ) {
-          edgetable[i, 10] <- 2 #set this species as an internal branch
-          next
-        }
+      not.na.rows <- which(!is.na(edgetable[,10]))
+      if (length(not.na.rows) > 1) {
+        if (edgetable[i, 2] %in% edgetable[not.na.rows, 1] ) { next }
       }
 
-      # # select species current iteration
-      current.speciesID <- edgetable[i, 11]
-
+      # select species rater for current iteration and niche values
+      current.species <- species.rasters[[i]]
+      position <- as.numeric(edgetable[i, 7])
+      breadth <- as.numeric(edgetable[i, 8])
 
   ############################# 4. Dispersal ###########################
 
-      demetable.species <- demetable[demetable$speciesID==current.speciesID]
-      
       # disperse species' range
       current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)
 
@@ -491,3 +386,5 @@ browser()
 # 5) the Age-Range_correlation object crated by ENMTools, 6) a list of summary statistics (see generateSummaryStatistics function for details), 7) number of extinct lineages, 8) total area occupied by clade
   return(results)
 }
+
+
