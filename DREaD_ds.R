@@ -236,9 +236,13 @@ DREaD_ds <- function (total.time,
 
   ############################# 4. Dispersal ###########################
       demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
-browser()
+      
+browser()      
+      # run the deme dispersal function
+      demetable.species <- disperse_ds(demetable.species, env=env, dispersal.range=2)
+      
       # disperse species' range
-      current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)
+      #current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)
 
       # species can become extinct if no habitat within dispersal range (driven extinct by environmental change)
       # if goes extinct record the extinction and move onto next iteration

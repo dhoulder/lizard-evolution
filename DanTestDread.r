@@ -1,5 +1,5 @@
 
-scripts <- c("rangeDispersal.R", "nicheEvolution.R","speciateAllopatric.R","speciateSympatric.R",
+scripts <- c("disperse_evolve_compete_ds.r", "nicheEvolution.R","speciateAllopatric.R","speciateSympatric.R",
              "speciateParapatric.R","speciateDispersal.R","seedSpecies.R","environmentalChange.R",
              "nicheRecenter.R","DREaD_ds.R","generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r")
 
