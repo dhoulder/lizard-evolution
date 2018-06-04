@@ -1,3 +1,4 @@
+
 library(dplyr)
 
 #  SOME QUICK NOTES AND EDITS TO CONSIDER MODIFYING ROLLING STONE
@@ -78,7 +79,8 @@ DREaD_ds <- function (total.time,
                       lambda2 = 0.0005,
                       lambda3 = 0.010375,
                       genomeDimensions = 3,
-                      niche.blocksize = 0.1) {
+                      niche.blocksize = 0.1,
+                      suitability.mode="block") {
   
   ##### required libraries
   require(raster)
@@ -128,6 +130,11 @@ DREaD_ds <- function (total.time,
 
   env <- generateEnv(original = T)
   starting.env <- env
+
+  # use the background environment to define all cells in the model
+  all.coords <- rowColFromCell(env, 1:ncell(env))
+  all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
+  names(all.coords)[1] <- "cellNum"
 
   ###########################  2. Seed initial species  ###################################
 
@@ -237,9 +244,15 @@ DREaD_ds <- function (total.time,
   ############################# 4. Dispersal ###########################
       demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
       
+      env.table <- as.data.table(cbind(all.coords, env[]))
+      names(env.table)[4] <- "env1"
+      
+      #TEMPTEMPTEMP
+      plot(env)
+      
 browser()      
       # run the deme dispersal function
-      demetable.species <- disperse_ds(demetable.species, env=env, dispersal.range=2)
+      demetable.species <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
       
       # disperse species' range
       #current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)

@@ -1,3 +1,5 @@
+rm(list=ls())
+gc()
 
 scripts <- c("disperse_evolve_compete_ds.r", "nicheEvolution.R","speciateAllopatric.R","speciateSympatric.R",
              "speciateParapatric.R","speciateDispersal.R","seedSpecies.R","environmentalChange.R",
@@ -11,17 +13,18 @@ lapply(scripts, source)
 
 
 #sample parameters
-total.time      <- 100
-D               <- runif(1, 1, 10)
-ENVa            <- runif(1, 0.25, 2)
-ENVf            <- runif(1, 0.25, 2)
-NEp             <- runif(1, 0.005, 2)
-NEb             <- runif(1, 0.0025, 1)
-PS              <- runif(1, 0.25, 1)
-m               <- runif(1, 50, 250)
-niche.blocksize <- 0.1
+total.time        <- 100
+D                <- runif(1, 1, 10)
+ENVa              <- runif(1, 0.25, 2)
+ENVf              <- runif(1, 0.25, 2)
+NEp               <- runif(1, 0.005, 2)
+NEb               <- runif(1, 0.0025, 1)
+PS                <- runif(1, 0.25, 1)
+m                 <- runif(1, 50, 250)
+niche.blocksize   <- 0.1
+suitability.mode  <- "sine"
 
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
                   niche.ev.rate=NEp, breadth.ev.rate=NEb, phylo.sig=PS, Me=m,
-                  enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine")
+                  enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine", suitability.mode=suitability.mode)

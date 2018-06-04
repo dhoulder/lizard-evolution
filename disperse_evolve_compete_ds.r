@@ -12,7 +12,11 @@
 # breadth = niche breadth of species
 # species.ras is the current species range in raster format (presence/absence)
 
-disperse_ds <- function (demetable.species, env, dispersal.range){
+disperse_ds <- function (demetable.species, 
+                         env, 
+                         env.table, 
+                         dispersal.range,
+                         suitability.mode="block"){
   
   # group demes by similarity of the niche - so for very similar niches the environment is calculated just once
   
@@ -29,31 +33,86 @@ disperse_ds <- function (demetable.species, env, dispersal.range){
   # loop through the niche groups
   for (k in 1:nrow(niche.groups)) {
     niche <- niche.groups[k, ]
+    niche.values    <- niche * niche.blocksize  # turns the rounded niche group into niche values
+    
     demetable.nichegroup <- demetable.species[niche1.breadth.group == niche$niche1.breadth.group & 
                                     niche1.position.group== niche$niche1.position.group &
                                     niche2.breadth.group == niche$niche2.breadth.group &
-                                    niche2.position.group== niche$niche2.position.group, 1:9]
+                                    niche2.position.group== niche$niche2.position.group, 1:12]
     
     # filter env cells to those within the spatial limits (for the niche group) 
     bounds        <- as.list(demetable.species[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
-    niche.extent  <- extent(bounds[[1]], bounds[[2]], bounds[[3]], bounds[[4]])
-    
-    env.dispersal <- crop(env, niche.extent)
-    
+    bounds[bounds <0] <- 0
+    #niche.extent  <- extent(bounds[[1]], bounds[[2]], bounds[[3]], bounds[[4]])
+
+    env.table.dispersal <- env.table[col >= bounds$xmin & 
+                                      col <= bounds$xmax &
+                                      row >= bounds$ymin &
+                                      row <= bounds$ymax, ]
+    #env.dispersal <- crop(env, niche.extent)
+browser()     
     # filter env cells to those within the niche limits
-    niche.values    <- niche * niche.blocksize  # turns the rounded niche group into niche values
     niche1.min <- niche.values$niche1.position.group - niche.values$niche1.breadth /2
     niche1.max <- niche.values$niche1.position.group + niche.values$niche1.breadth /2    
-    niche2.min <- niche.values$niche2.position.group - niche.values$niche2.breadth /2
-    niche2.max <- niche.values$niche2.position.group + niche.values$niche2.breadth /2    
+    #niche2.min <- niche.values$niche2.position.group - niche.values$niche2.breadth /2
+    #niche2.max <- niche.values$niche2.position.group + niche.values$niche2.breadth /2    
     
-    env.dispersal[env.dispersal[] < niche1.min | env.dispersal[] > niche1.max] <- NA
+    env.table.dispersal <- env.table.dispersal[env1 >= niche1.min & env1 <= niche1.max, ]
+    # dispersal.cells <- which(!is.na(env.dispersal[]))
     
     #apply niche suitability function to env.dispersal to give suitability for 0 to 1
+    env.table.dispersal <- niche_suitability(env=env.table.dispersal, suitability.mode = suitability.mode, niche1.breadth = niche.values$niche1.breadth, niche1.position = niche.values$niche1.position)
     
-    dispersal.cells <- which(!is.na(env.dispersal[]))
-    suitability <- niche_suitability(env, suitability.mode = "sine", niche1.breadth = niche.values$niche1.breadth, niche1.position = niche.values$niche1.position)
+    demetable.nichegroup.new <- demetable.nichegroup[0, ]
+    row.pointer <- 0
+
+#TEMPTEMPTEMP
+    points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
+    points(demetable.species$x, demetable.species$y, col="red", pch=20, cex=0.6)
+
+    
+    # loop through each deme for the niche group
+    for (d in 1:nrow(demetable.nichegroup)) {
+browser() 
+      deme <-  demetable.nichegroup[d,]
+      #TEMPTEMPTEMP
+      points(deme$x, deme$y, col="black", pch=20, cex=1.5)
       
+      # find the cells in dispersal distance
+      deme.dest <- env.table.dispersal[col >= deme$x-dispersal.range & col <= deme$x+dispersal.range, ]
+      deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
+      new.count <- nrow(deme.dest)
+      
+      new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
+      new.rows    <- (row.pointer+1):(row.pointer+new.count)
+      
+      if (new.amount > 0) {
+        # create dispersed demes
+        demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
+                                          list(cellID=deme.dest$cellNum,
+                                               x=deme.dest$col,
+                                               y=deme.dest$row,
+                                               amount=deme$amount * deme.dest$suitability), fill=T)
+        demetable.nichegroup.new$speciesID[new.rows] <- deme$speciesID
+        demetable.nichegroup.new$niche1.position[new.rows] <- deme$niche1.position
+        demetable.nichegroup.new$niche1.breadth[new.rows]  <- deme$niche1.breadth
+        demetable.nichegroup.new$niche2.position[new.rows] <- deme$niche2.position
+        demetable.nichegroup.new$niche2.breadth[new.rows]  <- deme$niche2.breadth
+        demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
+        demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
+        demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
+        
+        # apply distance function
+        demetable.nichegroup.new$amount <- distance.function(deme, demetable.nichegroup.new[new.rows])
+      }
+
+      row.pointer <- row.pointer + new.count
+      
+      #TEMPTEMPTEMP
+      points(deme$x, deme$y, col="white", pch=20, cex=1.5)
+      
+      print(deme)
+    }
   }
   
   print(demetable.nichegroup)
@@ -94,28 +153,59 @@ niche_suitability <- function(env,
                               niche1.breadth, 
                               niche2.position=0, 
                               niche2.breadth=0) {
-  # convert environment raster to a suitability raster
+  # convert environment to suitability
+
+  env.class <- class(env)  # allow env to be either a raster, or a data.table, and handle accordingly
 
   niche1.min <- niche1.position - (niche1.breadth /2)
   niche1.max <- niche1.position + (niche1.breadth /2)
   niche2.min <- niche2.position - (niche2.breadth /2)
   niche2.max <- niche2.position + (niche2.breadth /2)
-  suitability <- env
 
   if (suitability.mode=="block") {
-    
-    suitability[suitability < niche1.min | suitability > niche1.max] <- 0
-    suitability[suitability > 0] <- 1
+    # block suitability is 1 within the suitable range, zero elsewhere
+    if (any(env.class=="data.table")) {
+      env$suitability <- env$env1
+      env[env1 < niche1.min | env1 > niche1.max, "suitability"] <- 0
+      env[env1 > 0, "suitability"] <- 1
+    } else if (env.class=="raster") {
+      suitability[suitability < niche1.min | suitability > niche1.max] <- 0
+      suitability[suitability > 0] <- 1
+    }
     
   } else if (suitability.mode=="sine") {
+    # sine suitability is 1 for the central niche position, declining to 0 at
+    # the niche limits according to a sine curve
     
     # transform suitability to range from 0 (for minimum to pi for maximum)
-    suitability <- suitability - niche1.min
-    suitability[suitability < 0] <- 0
-    suitability <- suitability * (pi / niche1.breadth)
-    suitability[suitability > pi] <- 0
-    suitability <- sin(suitability)
+    if (any(env.class=="data.table")) {
+      env$suitability <- env$env1
+      env$suitability <- env[, suitability - niche1.min]
+      if (min(env$suitability) < 0) {
+        env[suitability < 0, suitability] <- 0
+      } 
+      env$suitability <- env$suitability * (pi / niche1.breadth)
+      if (max(env$suitability) > pi) {
+        env[suitability > pi, suitability] <- 0
+      }
+      env$suitability <- sin(env$suitability)
+    } else if (env.class=="raster") {
+      suitability <- suitability - niche1.min
+      suitability[suitability < 0] <- 0
+      suitability <- suitability * (pi / niche1.breadth)
+      suitability[suitability > pi] <- 0
+      suitability <- sin(suitability)
+    }
+
   }
   
-  return(suitability)
+  if (any(env.class=="data.table")) {
+    return(env)
+    } else {
+    return(suitability)
+  }
+}
+
+distance.function <- function() {
+  return(1)
 }
