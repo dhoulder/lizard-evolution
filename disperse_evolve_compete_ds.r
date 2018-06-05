@@ -73,7 +73,7 @@ browser()
     
     # loop through each deme for the niche group
     for (d in 1:nrow(demetable.nichegroup)) {
-browser() 
+
       deme <-  demetable.nichegroup[d,]
       #TEMPTEMPTEMP
       points(deme$x, deme$y, col="black", pch=20, cex=1.5)
@@ -86,7 +86,7 @@ browser()
       new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
       new.rows    <- (row.pointer+1):(row.pointer+new.count)
       
-      if (new.amount > 0) {
+      if (length(new.amount) > 0) {
         # create dispersed demes
         demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
                                           list(cellID=deme.dest$cellNum,
@@ -101,9 +101,16 @@ browser()
         demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
         demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
         demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
-        
+browser()         
         # apply distance function
-        demetable.nichegroup.new$amount <- distance.function(deme, demetable.nichegroup.new[new.rows])
+        weights <- distance.weights(source = deme[1, c("x", "y")], 
+                                    destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
+                                    dispersal.range = dispersal.range,
+                                    distance.type = "euclidean", 
+                                    distance.decay = "linear")
+        
+        demetable.nichegroup.new$amount[new.rows] <- demetable.nichegroup.new$amount[new.rows] * weights 
+
       }
 
       row.pointer <- row.pointer + new.count
@@ -206,6 +213,50 @@ niche_suitability <- function(env,
   }
 }
 
-distance.function <- function() {
-  return(1)
+distances <- function(source, destinations, distance.type="euclidean") {
+  # calculates a vector of distances based on:
+  #   a single source location; and 
+  #   one or more destination locations, provided as a two column data type 
+  
+  # for a single distance type this function is not needed, but useful to allow easy
+  # switching between distance types - for example euclidean or cost based
+
+  if (distance.type=="euclidean" | substr(distance.type, 1, 3) == "euc") {
+    distances <- raster::pointDistance(source, destinations, lonlat = FALSE)
+  }
+  
+  return(distances)
+}
+
+reduce.to.max     <- function(x, dispersal.range) {return(min(x, dispersal.range))}
+set.to.zero  <- function(x, threshold) {
+  if (x < threshold) {x <- 0}
+  return(x)
+}
+
+distance.weights  <- function(source,
+                              destinations, 
+                              dispersal.range, 
+                              distance.type="euclidean", 
+                              distance.decay="linear") {
+  # calculates a weighting (0 to 1) which adjusts, by distance, the amount of a
+  # deme arriving in a cell
+  
+  # calculation is based on:
+  #   a single source location; and 
+  #   one or more destination locations, provided as a two column data type
+  #   a parameter for the type of distance measure - at present only euclidean diatnce is available
+  #   a distance decay function which defines how amount relates to distance
+  
+  distances <- distances(source, destinations, distance.type)
+  
+  if (distance.decay=="linear") {
+    min.weight <- 0.2  # this means that at the maximum distance, the weight is 0.2, rather than declining to 0
+    
+    #distances         <- sapply(distances, FUN=reduce.to.max, dispersal.range)
+    distance.weights  <- (dispersal.range - (distances * (1-min.weight))) / dispersal.range
+    distance.weights  <- sapply(distance.weights, FUN=set.to.zero, threshold=min.weight)
+  }
+
+  return(distance.weights)
 }
