@@ -162,28 +162,31 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
       # now loop through each of the source demes and combine them with the primary deme, as determined above
       demetable.cell$gene.flow <- is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)
       demetable.cell <- demetable.cell[gene.flow==TRUE,]
-      demetable.species.new <- demetable.cell[, list(amount=mean(amount),
-                                niche1.position=weighted.mean(niche1.position, amount), 
-                                niche1.breadth  =weighted.mean(niche1.breadth, amount),
-                                niche2.position =weighted.mean(niche2.position, amount), 
-                                niche2.breadth  =weighted.mean(niche2.breadth, amount),
-                                gene.pos1       =weighted.mean(gene.pos1, amount),
-                                gene.pos2       =weighted.mean(gene.pos1, amount)), 
-                                by=list(cellID, speciesID, x, y) ]
-      if (genomeDimensions > 2) {
-        for (g in 3:genomeDimensions) {
-          column.name <- paste("gene.pos", g, sep="")
-         
-          demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
+      
+      if (nrow(demetable.cell) > 0) { # make sure that there are still demes with gene flow - better check why not - should be gene flow to self
+        demetable.species.new <- demetable.cell[, list(amount=mean(amount),
+                                  niche1.position=weighted.mean(niche1.position, amount), 
+                                  niche1.breadth  =weighted.mean(niche1.breadth, amount),
+                                  niche2.position =weighted.mean(niche2.position, amount), 
+                                  niche2.breadth  =weighted.mean(niche2.breadth, amount),
+                                  gene.pos1       =weighted.mean(gene.pos1, amount),
+                                  gene.pos2       =weighted.mean(gene.pos1, amount)), 
+                                  by=list(cellID, speciesID, x, y) ]
+        if (genomeDimensions > 2) {
+          for (g in 3:genomeDimensions) {
+            column.name <- paste("gene.pos", g, sep="")
+     
+            #cat("\nDebugging:", weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])  ,"\n")
+            demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
+          }
         }
+        
+        demetable.species <- rbindlist(list(demetable.species, demetable.species.new))
       }
-      
-      demetable.species <- rbindlist(list(demetable.species, demetable.species.new))
-      
     }
-browser() 
+
   }
-  
+browser()   
   return(1)
 }
 
