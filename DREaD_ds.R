@@ -251,11 +251,11 @@ DREaD_ds <- function (total.time,
       #TEMPTEMPTEMP
       plot(env)
       
-browser()      
+     
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
-      
-      demetable.species <- combine.demes(demetable.species.overlap, speciation.gene.distance)
+browser()       
+      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance)
       
       # disperse species' range
       #current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)

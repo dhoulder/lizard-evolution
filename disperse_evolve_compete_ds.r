@@ -134,18 +134,18 @@ disperse_ds <- function (demetable.species,
 
 }
 
-combine.demes <- function (demetable.species.overlap, speciation.gene.distance){
+combine.demes <- function (demetable.species.overlap, genomeDimensions, speciation.gene.distance){
   # determine what happens to populations which are in the same cell
   
-  demetable.species <- demetable.species.overlap[0, ]
-  
+  demetable.species <- demetable.species.overlap[0, -"originCell"]
+
   deme.cells <- unique(demetable.species.overlap$cellID)
   for (cell in deme.cells) {
     demetable.cell <- demetable.species.overlap[cellID==cell, ]
     deme.count     <- demetable.species.overlap[cellID==cell, .N]
    
     if (deme.count==1) {
-      demetable.species <- rbind(demetable.species, demetable.cell)
+      demetable.species <- rbindlist(list(demetable.species, demetable.cell[, -"originCell"]))
     } else {
       
       cat("For species", demetable.species.overlap[1, speciesID], "in cell", cell, "there are", deme.count, "origin demes to combine\n")
@@ -161,10 +161,27 @@ combine.demes <- function (demetable.species.overlap, speciation.gene.distance){
        
       # now loop through each of the source demes and combine them with the primary deme, as determined above
       demetable.cell$gene.flow <- is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)
-    
+      demetable.cell <- demetable.cell[gene.flow==TRUE,]
+      demetable.species.new <- demetable.cell[, list(amount=mean(amount),
+                                niche1.position=weighted.mean(niche1.position, amount), 
+                                niche1.breadth  =weighted.mean(niche1.breadth, amount),
+                                niche2.position =weighted.mean(niche2.position, amount), 
+                                niche2.breadth  =weighted.mean(niche2.breadth, amount),
+                                gene.pos1       =weighted.mean(gene.pos1, amount),
+                                gene.pos2       =weighted.mean(gene.pos1, amount)), 
+                                by=list(cellID, speciesID, x, y) ]
+      if (genomeDimensions > 2) {
+        for (g in 3:genomeDimensions) {
+          column.name <- paste("gene.pos", g, sep="")
+         
+          demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
+        }
+      }
+      
+      demetable.species <- rbindlist(list(demetable.species, demetable.species.new))
+      
     }
-    
-
+browser() 
   }
   
   return(1)
@@ -312,12 +329,21 @@ is.geneflow <- function(demetable.cell, deme.primary, dimensions=3, speciation.g
   # other origin demes and applies a distance function to determine if there is
   # gene flow.  The result is returned as TRUE or FALSE for each origin deme.
 
-  first.gene.col.idx  <- which(names(demetable.cell)=="gene.pos1")
-  gene.cols           <- first.gene.col.idx:(first.gene.col.idx + dimensions - 1)
-  source.coords       <- demetable.cell[deme.primary, gene.cols, with=FALSE]
-  destination.coords  <- demetable.cell[, gene.cols, with=FALSE]
-browser()  
-  g.distances         <- gene.distances(source.coords, destination.coords, dimensions)
-  probs               <- prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance)
-  cat("\nUp to here!\n")
+  first.gene.col.idx    <- which(names(demetable.cell)=="gene.pos1")
+  gene.cols             <- first.gene.col.idx:(first.gene.col.idx + dimensions - 1)
+  source.coords         <- demetable.cell[deme.primary, gene.cols, with=FALSE]
+  destination.coords    <- demetable.cell[, gene.cols, with=FALSE]
+  g.distances           <- gene.distances(source.coords, destination.coords, dimensions)
+  demetable.cell$probs  <- prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance)
+  demetable.cell[probs>1, "probs"] <- 1
+
+  # determine geneflow using the probablities
+  origin.deme.count     <- nrow(demetable.cell)
+  for (k in 1:origin.deme.count) {
+    demetable.cell$geneflow[k] <- sample(x=c(1,0), size=1, replace=TRUE, prob=c(demetable.cell$probs[k],
+                                                                                demetable.cell$probs[k]))
+  }
+  demetable.cell$geneflow <- demetable.cell$geneflow == 1
+  return(demetable.cell$geneflow)
+
 }
