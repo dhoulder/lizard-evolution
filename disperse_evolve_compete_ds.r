@@ -50,7 +50,7 @@ disperse_ds <- function (demetable.species,
                                       row >= bounds$ymin &
                                       row <= bounds$ymax, ]
     #env.dispersal <- crop(env, niche.extent)
-browser()     
+   
     # filter env cells to those within the niche limits
     niche1.min <- niche.values$niche1.position.group - niche.values$niche1.breadth /2
     niche1.max <- niche.values$niche1.position.group + niche.values$niche1.breadth /2    
@@ -75,9 +75,7 @@ browser()
     for (d in 1:nrow(demetable.nichegroup)) {
 
       deme <-  demetable.nichegroup[d,]
-      #TEMPTEMPTEMP
-      points(deme$x, deme$y, col="black", pch=20, cex=1.5)
-      
+
       # find the cells in dispersal distance
       deme.dest <- env.table.dispersal[col >= deme$x-dispersal.range & col <= deme$x+dispersal.range, ]
       deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
@@ -101,7 +99,8 @@ browser()
         demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
         demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
         demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
-browser()         
+        demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
+      
         # apply distance function
         weights <- distance.weights(source = deme[1, c("x", "y")], 
                                     destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
@@ -114,44 +113,61 @@ browser()
       }
 
       row.pointer <- row.pointer + new.count
-      
-      #TEMPTEMPTEMP
-      points(deme$x, deme$y, col="white", pch=20, cex=1.5)
-      
-      print(deme)
+
+    }
+
+    demetable.nichegroup.new <- demetable.nichegroup.new[amount > 0, ]
+    
+    # combine the niche group demetable rows
+    if (exists("demetable.species.new")) {
+      demetable.species.new <- rbind(demetable.species.new, demetable.nichegroup.new)
+    } else {
+      demetable.species.new <- demetable.nichegroup.new
     }
   }
-  
-  print(demetable.nichegroup)
-  
-  # loop through each of the grouped niches for the species
-  
-    # apply its niche function to env
 
-    # loop through each deme for the niche group
+  #TEMPTEMPTEMP
+  newdemes <- unique(demetable.species.new[, c("x","y")])
+  points(newdemes$x, newdemes$y, col="white", pch=20, cex=1.5)
   
-      # apply dispersal based on the niche, and add new demes to a temporary demetable which is just for this species, with co-occurrence
-  
-      # record an initial amount/influence based on proximity and niche fit
-  
-  # now resolve all of the co-occurences based on
-    # prior occupation
-    # amount
-    # genetic distance
-  
-    # to call an occurence of
-      # a) combining with gene flow -> new single occurrence
-      # b) competitive exclusion
-      # c) co-occurrence ??
-  
-  # return modified edgetable
-  
+  return(demetable.species.new)
+
 }
 
-co_occur_ds <- function (demetable_sp){
+combine.demes <- function (demetable.species.overlap, speciation.gene.distance){
   # determine what happens to populations which are in the same cell
   
+  demetable.species <- demetable.species.overlap[0, ]
   
+  deme.cells <- unique(demetable.species.overlap$cellID)
+  for (cell in deme.cells) {
+    demetable.cell <- demetable.species.overlap[cellID==cell, ]
+    deme.count     <- demetable.species.overlap[cellID==cell, .N]
+   
+    if (deme.count==1) {
+      demetable.species <- rbind(demetable.species, demetable.cell)
+    } else {
+      
+      cat("For species", demetable.species.overlap[1, speciesID], "in cell", cell, "there are", deme.count, "origin demes to combine\n")
+      
+      # determine the primary deme, which the others may join with
+      # if the current cell is one of the sources, it's the primary cell
+      deme.primary <- which(demetable.cell$originCell==cell)
+      
+      if (length(deme.primary) == 0) {
+        # otherwise pick a cell at random, wit probability weighted by amount
+        deme.primary <- sample(x=deme.count, size=1, prob=demetable.cell$amount, replace = T)
+      }
+       
+      # now loop through each of the source demes and combine them with the primary deme, as determined above
+      demetable.cell$gene.flow <- is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)
+    
+    }
+    
+
+  }
+  
+  return(1)
 }
 
 niche_suitability <- function(env,
@@ -203,7 +219,6 @@ niche_suitability <- function(env,
       suitability[suitability > pi] <- 0
       suitability <- sin(suitability)
     }
-
   }
   
   if (any(env.class=="data.table")) {
@@ -259,4 +274,50 @@ distance.weights  <- function(source,
   }
 
   return(distance.weights)
+}
+
+gene.distances <- function(source, destinations, dimensions=3) {
+  # calculates a vector of distances based on:
+  #   a single source location; and 
+  #   one or more destination locations, provided as an n column data, where
+  #   n is the number of dimensions
+
+  d <- vector(mode="numeric", length=nrow(destinations))
+  
+  for (i in 1:dimensions) {
+    source.coord <- as.numeric(source[1, j=i, with=FALSE])
+    d <- d + (destinations[, j=i, with=FALSE] - source.coord) ^ 2
+  }
+  distances <- sqrt(d)
+
+  return(distances)
+}
+
+prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
+  A <- 14
+  B <- 0.5
+  
+  # first a fairly standard logistic function
+  logistic_result <- (1 / (1 + exp(((gene.dist / zero_flow_dist) - B) * A)))
+  
+  # then expand on the y axis (while remaining centred at 0.5)
+  # so that the values of 0 and 1 are actually reached
+  rescale_y <- (1 / (1 - (2 * threshold))) 
+  prob <-  (logistic_result * rescale_y) - threshold
+  return(prob)
+}
+
+is.geneflow <- function(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance) {
+  # this function measures the genetic distance between the primary deme and the
+  # other origin demes and applies a distance function to determine if there is
+  # gene flow.  The result is returned as TRUE or FALSE for each origin deme.
+
+  first.gene.col.idx  <- which(names(demetable.cell)=="gene.pos1")
+  gene.cols           <- first.gene.col.idx:(first.gene.col.idx + dimensions - 1)
+  source.coords       <- demetable.cell[deme.primary, gene.cols, with=FALSE]
+  destination.coords  <- demetable.cell[, gene.cols, with=FALSE]
+browser()  
+  g.distances         <- gene.distances(source.coords, destination.coords, dimensions)
+  probs               <- prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance)
+  cat("\nUp to here!\n")
 }

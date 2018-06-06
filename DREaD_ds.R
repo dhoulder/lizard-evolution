@@ -80,7 +80,8 @@ DREaD_ds <- function (total.time,
                       lambda3 = 0.010375,
                       genomeDimensions = 3,
                       niche.blocksize = 0.1,
-                      suitability.mode="block") {
+                      suitability.mode="block", 
+                      speciation.gene.distance) {
   
   ##### required libraries
   require(raster)
@@ -252,7 +253,9 @@ DREaD_ds <- function (total.time,
       
 browser()      
       # run the deme dispersal function
-      demetable.species <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
+      demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
+      
+      demetable.species <- combine.demes(demetable.species.overlap, speciation.gene.distance)
       
       # disperse species' range
       #current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)

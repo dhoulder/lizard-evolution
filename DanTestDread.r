@@ -23,8 +23,10 @@ PS                <- runif(1, 0.25, 1)
 m                 <- runif(1, 50, 250)
 niche.blocksize   <- 0.1
 suitability.mode  <- "sine"
+speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
                   niche.ev.rate=NEp, breadth.ev.rate=NEb, phylo.sig=PS, Me=m,
-                  enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine", suitability.mode=suitability.mode)
+                  enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine", suitability.mode=suitability.mode,
+                  speciation.gene.distance=speciation.gene.distance)
