@@ -187,7 +187,7 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
 
   }
 browser()   
-  return(1)
+  return(demetable.species)
 }
 
 niche_suitability <- function(env,
