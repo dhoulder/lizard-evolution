@@ -25,6 +25,8 @@ niche.blocksize   <- 0.1
 suitability.mode  <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 
+windows(10,10)
+
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
                   niche.ev.rate=NEp, breadth.ev.rate=NEb, phylo.sig=PS, Me=m,

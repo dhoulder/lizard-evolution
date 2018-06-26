@@ -39,7 +39,7 @@ disperse_ds <- function (demetable.species,
                                     niche1.position.group== niche$niche1.position.group &
                                     niche2.breadth.group == niche$niche2.breadth.group &
                                     niche2.position.group== niche$niche2.position.group, 1:12]
-browser()    
+   
     # filter env cells to those within the spatial limits (for the niche group) 
     bounds        <- as.list(demetable.species[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
     bounds[bounds <0] <- 0
@@ -57,7 +57,7 @@ browser()
     #niche2.min <- niche.values$niche2.position.group - niche.values$niche2.breadth /2
     #niche2.max <- niche.values$niche2.position.group + niche.values$niche2.breadth /2    
     
-    env.table.dispersal <- env.table.dispersal[env1 >= niche1.min & env1 <= niche1.max, ]
+    env.table.dispersal <- env.table.dispersal[env1 >= niche1.min & env1 <= niche1.max, ]  # need to add 2nd niche dimension
     # dispersal.cells <- which(!is.na(env.dispersal[]))
     
     #apply niche suitability function to env.dispersal to give suitability for 0 to 1
@@ -75,11 +75,14 @@ browser()
     for (d in 1:nrow(demetable.nichegroup)) {
 
       deme <-  demetable.nichegroup[d,]
+      
+      # remove once dispersal is working correctly
+      points(deme$x, deme$y, col="black", pch=0)
 
       # find the cells in dispersal distance
       deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range 
                                        & col <= deme$x+dispersal.range
-                                       & row >= deme$x-dispersal.range
+                                       & row >= deme$y-dispersal.range
                                        & row <= deme$y+dispersal.range), ]
       #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
       new.count <- nrow(deme.dest)
@@ -111,7 +114,9 @@ browser()
                                     distance.type = "euclidean", 
                                     distance.decay = "linear")
         
-        demetable.nichegroup.new$amount[new.rows] <- demetable.nichegroup.new$amount[new.rows] * weights 
+        demetable.nichegroup.new$amount[new.rows] <- demetable.nichegroup.new$amount[new.rows] * weights
+        new.count <- length(which(demetable.nichegroup.new$amount[new.rows] > 0))
+        demetable.nichegroup.new <- demetable.nichegroup.new[demetable.nichegroup.new$amount > 0, ]
 
       }
 
@@ -291,8 +296,8 @@ distance.weights  <- function(source,
   if (distance.decay=="linear") {
     min.weight <- 0.2  # this means that at the maximum distance, the weight is 0.2, rather than declining to 0
     
-    #distances         <- sapply(distances, FUN=reduce.to.max, dispersal.range)
-    distance.weights  <- (dispersal.range - (distances * (1-min.weight))) / dispersal.range
+    distance.weights  <- round((dispersal.range - (distances * (1-min.weight))) / dispersal.range, 5)  
+    # rounding is to prevent unintended results due to numerical precision issues
     distance.weights  <- sapply(distance.weights, FUN=set.to.zero, threshold=min.weight)
   }
 
