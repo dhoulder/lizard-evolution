@@ -39,7 +39,7 @@ disperse_ds <- function (demetable.species,
                                     niche1.position.group== niche$niche1.position.group &
                                     niche2.breadth.group == niche$niche2.breadth.group &
                                     niche2.position.group== niche$niche2.position.group, 1:12]
-    
+browser()    
     # filter env cells to those within the spatial limits (for the niche group) 
     bounds        <- as.list(demetable.species[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
     bounds[bounds <0] <- 0
@@ -77,8 +77,11 @@ disperse_ds <- function (demetable.species,
       deme <-  demetable.nichegroup[d,]
 
       # find the cells in dispersal distance
-      deme.dest <- env.table.dispersal[col >= deme$x-dispersal.range & col <= deme$x+dispersal.range, ]
-      deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
+      deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range 
+                                       & col <= deme$x+dispersal.range
+                                       & row >= deme$x-dispersal.range
+                                       & row <= deme$y+dispersal.range), ]
+      #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
       new.count <- nrow(deme.dest)
       
       new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
@@ -100,7 +103,7 @@ disperse_ds <- function (demetable.species,
         demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
         demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
         demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
-      
+browser()      
         # apply distance function
         weights <- distance.weights(source = deme[1, c("x", "y")], 
                                     destinations = demetable.nichegroup.new[new.rows, c("x", "y")],

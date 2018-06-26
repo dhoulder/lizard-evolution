@@ -128,7 +128,6 @@ DREaD_ds <- function (total.time,
   }
   
   ########################### 1. Generate background environment ##########################
-
   env <- generateEnv(original = T)
   starting.env <- env
 
@@ -250,193 +249,179 @@ DREaD_ds <- function (total.time,
       
       #TEMPTEMPTEMP
       plot(env)
-      
+browser()      
      
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
 browser()       
       demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance)
       
-      # disperse species' range
-      #current.species <- disperseRange(position, breadth, current.species,env, starting.env, dispersal)
-
-      # species can become extinct if no habitat within dispersal range (driven extinct by environmental change)
-      # if goes extinct record the extinction and move onto next iteration
-      # otherwise keep new species range
-      if (class(current.species) == "character") {
-        extinct[i] <- TRUE
-        edgetable[i, 10] <- "extinct"
-        next
-      } else {
-        species.rasters[[i]] <- current.species
-      }
-
-  ###########################  5. Event selection ######################
-
-        #range size of current species
-        area <- sum(current.species@data@values, na.rm=T)
-        edgetable[i, 5] <- area
-        # extinction probability
-        prob.ext <- -log(area / Me)/(1 / ext.rate)^2
-        if (prob.ext <= 0) prob.ext <- 0
-        # can only speciate allopatrically and sympatrically is range size > 1 (geometric constraint)
-        if(area > 1) {
-        # allopatric speciation probability
-        prob.allo <- allo.rate*exp(-((area-B)^2)/(2*C^2))
-        if (prob.allo <= 0) prob.allo <- 0
-        # sympatric speciation probability
-        prob.sym <- sym.rate*exp(-((area-B)^2)/(2*C^2))
-        if (prob.sym <= 0) prob.sym <- 0
-        } else {prob.sym <- 0;  prob.allo <- 0}
-        # parapatric speciation probability
-        prob.para <- para.rate*exp(-((area-B)^2)/(2*C^2))
-        if (prob.para <= 0) prob.para <- 0
-        # dispersal speciation probability
-        prob.disp <- disp.rate*exp(-((area-B)^2)/(2*C^2))
-        if (prob.disp <= 0) prob.disp <- 0
-        # no-event probability (1 - the probability of other events)
-        prob.no.event <- 1 - (prob.ext + prob.allo + prob.sym + prob.disp + prob.para)
-        # select event
-        event <- sample(c(1,2,3,4,5,6), 1, prob =c(prob.allo, prob.sym, prob.para, prob.disp, prob.no.event, prob.ext))
-
-  ######################### 6. Events ################################
-        #specify which is the next empty row in the edgetable
-        next.free.edgetable <- max(which(!is.na(edgetable[,10])), na.rm=T)+1
-        # Allopatric speciation
-        if(event == 1) {
-          edgetable[i, 4] <- "allopatric"
-          # is species range fragmented of a single contiguous area
-          clumped <- clump(current.species)
-          # if only a single contiguous range exists, split it via bisection
-          if (clumped@data@max == 1) {
-            allopatric.speciation <- speciateAllopatric(position, breadth, current.species, env, phylo.sig)
-            # add new species ranges to the species.rasters list
-            species.rasters <- replace(species.rasters, next.free.edgetable, allopatric.speciation$species.rasters[[1]])
-            species.rasters <- replace(species.rasters, next.free.edgetable+1, allopatric.speciation$species.rasters[[2]])
-            # add information on two new daughter species to the edgetable keeping track of their parent species, niche position, niche breadth, range size, and speciation mode
-            newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                        sum(allopatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, allopatric.speciation$pos[[1]],
-                        allopatric.speciation$breadth[[1]], "allopatric", "X")
-
-            newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
-                        sum(allopatric.speciation$species.rasters[[2]]@data@values, na.rm=T), time, allopatric.speciation$pos[[2]],
-                        allopatric.speciation$breadth[[2]], "allopatric", "X")
-            edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-          }
-          # if species' range is divided in two these two range fragements will become the new daughter species
-          if (clumped@data@max == 2) {
-            sp1 <- clumped
-            sp1[sp1 == 2] <- NA
-            sp2 <- clumped
-            sp2[sp2 == 1] <- NA
-            recenteredsp1 <- nicheRecenter(position, breadth, sp1, env, phylo.sig)
-            recenteredsp2 <- nicheRecenter(position, breadth, sp2, env, phylo.sig)
-            species.rasters <- replace(species.rasters, next.free.edgetable, recenteredsp1[[3]])
-            species.rasters <- replace(species.rasters, next.free.edgetable+1, recenteredsp2[[3]])
-            newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                        sum(recenteredsp1[[3]]@data@values, na.rm=T), time, recenteredsp1[[1]],
-                        recenteredsp1[[2]], "allopatric", "X")
-            newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
-                        sum(recenteredsp2[[3]]@data@values, na.rm=T), time, recenteredsp2[[1]],
-                        recenteredsp2[[2]], "allopatric", "X")
-            edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-          }
-          # if the species' range is fragmented into more than two fragments  the two daughter species range are determined by a spatial clustering (k-means) algorithm
-          if (clumped@data@max >= 3) {
-            ras.values <- clumped@data@values
-            ras.coords <- coordinates(current.species)
-            ras.df <- data.frame(values=ras.values, x=ras.coords[,1], y=ras.coords[,2], cluster=NA)
-            NAs <- which(is.na(ras.df[,1]))
-            ras.df[NAs,1:3]<-NA
-            k.ras <- kmeans(na.omit(ras.df[,1:3]), 2)
-            ras.df$cluster[which(!is.na(ras.df$values))] <- k.ras$cluster
-            k.ras.clusters <- current.species
-            k.ras.clusters@data@values <- ras.df$cluster
-            sp1 <- k.ras.clusters
-            sp2 <- k.ras.clusters
-            sp1[sp1 == 2] <- NA
-            sp2[sp2 == 1] <- NA
-            both.ras<-sp1+sp2
-            while(any(!is.na(both.ras@data@values) == TRUE)) {
-              sp1 <- sp1 - (both.ras/2)
-              sp2 <- sp2 - (both.ras/2)
-              both.ras<-sp1+sp2
-            }
-            recenteredsp1 <- nicheRecenter(position, breadth, sp1, env, phylo.sig)
-            recenteredsp2 <- nicheRecenter(position, breadth, sp2, env, phylo.sig)
-            species.rasters <- replace(species.rasters, next.free.edgetable, recenteredsp1[[3]])
-            species.rasters <- replace(species.rasters, next.free.edgetable+1, recenteredsp2[[3]])
-            newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                        sum(recenteredsp1[[3]]@data@values, na.rm=T), time, recenteredsp1[[1]],
-                        recenteredsp1[[2]], "allopatric", "X")
-            newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
-                        sum(recenteredsp2[[3]]@data@values, na.rm=T), time, recenteredsp2[[1]],
-                        recenteredsp2[[2]], "allopatric", "X")
-            edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-          }
-        }
-        # Sympatric speciation
-        if(event == 2) {
-          edgetable[i, 4] <- "sympatric"
-          sympatric.speciation <- speciateSympatric(position, breadth, species.rasters[[i]], env, phylo.sig)
-          species.rasters <- replace(species.rasters, next.free.edgetable, species.rasters[[i]])
-          species.rasters <- replace(species.rasters, next.free.edgetable+1, sympatric.speciation$species.rasters[[1]])
-          newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                      sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
-                      breadth, "sympatric", "X")
-          newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
-                      sum(sympatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, sympatric.speciation$pos[[1]],
-                      sympatric.speciation$breadth[[1]], "sympatric", "X")
-          edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-        }
-
-        # Parapatric Speciation
-        if(event == 3) {
-          edgetable[i, 4] <- "parapatric"
-          position <- as.numeric(edgetable[i,7])
-          breadth <- as.numeric(edgetable[i,8])
-          parapatric.speciation <- speciateParapatric(position, breadth, species.rasters[[i]], env, phylo.sig, dispersal = dispersal)
-          species.rasters <- replace(species.rasters, next.free.edgetable,species.rasters[[i]])
-          species.rasters <- replace(species.rasters, next.free.edgetable+1,parapatric.speciation$species.rasters[[1]])
-          newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                      sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
-                      breadth, "parapatric", "X")
-          newbr2 <- c(edgetable[i, 2], next.free.edgetable + 1, stepsize, NA,
-                      sum(parapatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, parapatric.speciation$pos[[1]],
-                      parapatric.speciation$breadth[[1]], "parapatric", "X")
-          edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-        }
-        # Dispersal speciation
-        if(event == 4) {
-          edgetable[i, 4] <- "dispersal"
-          position <- as.numeric(edgetable[i,7])
-          breadth <- as.numeric(edgetable[i,8])
-          dispersal.speciation <- speciateDispersal(position, breadth, species.rasters[[i]], env, phylo.sig, dispersal)
-          species.rasters <- replace(species.rasters, next.free.edgetable, species.rasters[[i]])
-          species.rasters <- replace(species.rasters, next.free.edgetable+1, dispersal.speciation$species.rasters[[1]])
-          newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
-                      sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
-                      breadth, "dispersal", "X")
-          newbr2 <- c(edgetable[i, 2], next.free.edgetable +1, stepsize, NA,
-                      sum(dispersal.speciation$species.rasters[[1]]@data@values, na.rm=T), time, dispersal.speciation$pos[[1]],
-                      dispersal.speciation$breadth[[1]], "dispersal", "X")
-          edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
-        }
-        # No-Event (niche evolution)
-        if(event == 5) {
-          edgetable[i,3] <- as.numeric(edgetable[i,3]) + stepsize
-          # we evolve the niche at each timestep
-          niche <- nicheEvolution(position, breadth, pos.ev.rate = niche.ev.rate, breadth.ev.rate=breadth.ev.rate, species.raster =current.species, env=env)
-          edgetable[i,7] <- niche[[2]]
-          edgetable[i,8] <- niche[[3]]
-          species.rasters[[i]] <- niche[[1]]
-          edgetable[i, 5] <- sum(species.rasters[[i]]@data@values, na.rm=T)
-        }
-        # Extinction
-        if (event == 6) {
-          extinct[i] <- TRUE
-          edgetable[i, 10] <- "extinct"
-        }
+  # ###########################  5. Event selection ######################
+  # 
+  #       #range size of current species
+  #       area <- sum(current.species@data@values, na.rm=T)
+  #       edgetable[i, 5] <- area
+  #       # extinction probability
+  #       prob.ext <- -log(area / Me)/(1 / ext.rate)^2
+  #       if (prob.ext <= 0) prob.ext <- 0
+  #       # can only speciate allopatrically and sympatrically is range size > 1 (geometric constraint)
+  #       if(area > 1) {
+  #       # allopatric speciation probability
+  #       prob.allo <- allo.rate*exp(-((area-B)^2)/(2*C^2))
+  #       if (prob.allo <= 0) prob.allo <- 0
+  #       # sympatric speciation probability
+  #       prob.sym <- sym.rate*exp(-((area-B)^2)/(2*C^2))
+  #       if (prob.sym <= 0) prob.sym <- 0
+  #       } else {prob.sym <- 0;  prob.allo <- 0}
+  #       # parapatric speciation probability
+  #       prob.para <- para.rate*exp(-((area-B)^2)/(2*C^2))
+  #       if (prob.para <= 0) prob.para <- 0
+  #       # dispersal speciation probability
+  #       prob.disp <- disp.rate*exp(-((area-B)^2)/(2*C^2))
+  #       if (prob.disp <= 0) prob.disp <- 0
+  #       # no-event probability (1 - the probability of other events)
+  #       prob.no.event <- 1 - (prob.ext + prob.allo + prob.sym + prob.disp + prob.para)
+  #       # select event
+  #       event <- sample(c(1,2,3,4,5,6), 1, prob =c(prob.allo, prob.sym, prob.para, prob.disp, prob.no.event, prob.ext))
+  # 
+  # ######################### 6. Events ################################
+  #       #specify which is the next empty row in the edgetable
+  #       next.free.edgetable <- max(which(!is.na(edgetable[,10])), na.rm=T)+1
+  #       # Allopatric speciation
+  #       if(event == 1) {
+  #         edgetable[i, 4] <- "allopatric"
+  #         # is species range fragmented of a single contiguous area
+  #         clumped <- clump(current.species)
+  #         # if only a single contiguous range exists, split it via bisection
+  #         if (clumped@data@max == 1) {
+  #           allopatric.speciation <- speciateAllopatric(position, breadth, current.species, env, phylo.sig)
+  #           # add new species ranges to the species.rasters list
+  #           species.rasters <- replace(species.rasters, next.free.edgetable, allopatric.speciation$species.rasters[[1]])
+  #           species.rasters <- replace(species.rasters, next.free.edgetable+1, allopatric.speciation$species.rasters[[2]])
+  #           # add information on two new daughter species to the edgetable keeping track of their parent species, niche position, niche breadth, range size, and speciation mode
+  #           newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                       sum(allopatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, allopatric.speciation$pos[[1]],
+  #                       allopatric.speciation$breadth[[1]], "allopatric", "X")
+  # 
+  #           newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
+  #                       sum(allopatric.speciation$species.rasters[[2]]@data@values, na.rm=T), time, allopatric.speciation$pos[[2]],
+  #                       allopatric.speciation$breadth[[2]], "allopatric", "X")
+  #           edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #         }
+  #         # if species' range is divided in two these two range fragements will become the new daughter species
+  #         if (clumped@data@max == 2) {
+  #           sp1 <- clumped
+  #           sp1[sp1 == 2] <- NA
+  #           sp2 <- clumped
+  #           sp2[sp2 == 1] <- NA
+  #           recenteredsp1 <- nicheRecenter(position, breadth, sp1, env, phylo.sig)
+  #           recenteredsp2 <- nicheRecenter(position, breadth, sp2, env, phylo.sig)
+  #           species.rasters <- replace(species.rasters, next.free.edgetable, recenteredsp1[[3]])
+  #           species.rasters <- replace(species.rasters, next.free.edgetable+1, recenteredsp2[[3]])
+  #           newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                       sum(recenteredsp1[[3]]@data@values, na.rm=T), time, recenteredsp1[[1]],
+  #                       recenteredsp1[[2]], "allopatric", "X")
+  #           newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
+  #                       sum(recenteredsp2[[3]]@data@values, na.rm=T), time, recenteredsp2[[1]],
+  #                       recenteredsp2[[2]], "allopatric", "X")
+  #           edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #         }
+  #         # if the species' range is fragmented into more than two fragments  the two daughter species range are determined by a spatial clustering (k-means) algorithm
+  #         if (clumped@data@max >= 3) {
+  #           ras.values <- clumped@data@values
+  #           ras.coords <- coordinates(current.species)
+  #           ras.df <- data.frame(values=ras.values, x=ras.coords[,1], y=ras.coords[,2], cluster=NA)
+  #           NAs <- which(is.na(ras.df[,1]))
+  #           ras.df[NAs,1:3]<-NA
+  #           k.ras <- kmeans(na.omit(ras.df[,1:3]), 2)
+  #           ras.df$cluster[which(!is.na(ras.df$values))] <- k.ras$cluster
+  #           k.ras.clusters <- current.species
+  #           k.ras.clusters@data@values <- ras.df$cluster
+  #           sp1 <- k.ras.clusters
+  #           sp2 <- k.ras.clusters
+  #           sp1[sp1 == 2] <- NA
+  #           sp2[sp2 == 1] <- NA
+  #           both.ras<-sp1+sp2
+  #           while(any(!is.na(both.ras@data@values) == TRUE)) {
+  #             sp1 <- sp1 - (both.ras/2)
+  #             sp2 <- sp2 - (both.ras/2)
+  #             both.ras<-sp1+sp2
+  #           }
+  #           recenteredsp1 <- nicheRecenter(position, breadth, sp1, env, phylo.sig)
+  #           recenteredsp2 <- nicheRecenter(position, breadth, sp2, env, phylo.sig)
+  #           species.rasters <- replace(species.rasters, next.free.edgetable, recenteredsp1[[3]])
+  #           species.rasters <- replace(species.rasters, next.free.edgetable+1, recenteredsp2[[3]])
+  #           newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                       sum(recenteredsp1[[3]]@data@values, na.rm=T), time, recenteredsp1[[1]],
+  #                       recenteredsp1[[2]], "allopatric", "X")
+  #           newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
+  #                       sum(recenteredsp2[[3]]@data@values, na.rm=T), time, recenteredsp2[[1]],
+  #                       recenteredsp2[[2]], "allopatric", "X")
+  #           edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #         }
+  #       }
+  #       # Sympatric speciation
+  #       if(event == 2) {
+  #         edgetable[i, 4] <- "sympatric"
+  #         sympatric.speciation <- speciateSympatric(position, breadth, species.rasters[[i]], env, phylo.sig)
+  #         species.rasters <- replace(species.rasters, next.free.edgetable, species.rasters[[i]])
+  #         species.rasters <- replace(species.rasters, next.free.edgetable+1, sympatric.speciation$species.rasters[[1]])
+  #         newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                     sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
+  #                     breadth, "sympatric", "X")
+  #         newbr2 <- c(edgetable[i, 2], next.free.edgetable+1, stepsize, NA,
+  #                     sum(sympatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, sympatric.speciation$pos[[1]],
+  #                     sympatric.speciation$breadth[[1]], "sympatric", "X")
+  #         edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #       }
+  # 
+  #       # Parapatric Speciation
+  #       if(event == 3) {
+  #         edgetable[i, 4] <- "parapatric"
+  #         position <- as.numeric(edgetable[i,7])
+  #         breadth <- as.numeric(edgetable[i,8])
+  #         parapatric.speciation <- speciateParapatric(position, breadth, species.rasters[[i]], env, phylo.sig, dispersal = dispersal)
+  #         species.rasters <- replace(species.rasters, next.free.edgetable,species.rasters[[i]])
+  #         species.rasters <- replace(species.rasters, next.free.edgetable+1,parapatric.speciation$species.rasters[[1]])
+  #         newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                     sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
+  #                     breadth, "parapatric", "X")
+  #         newbr2 <- c(edgetable[i, 2], next.free.edgetable + 1, stepsize, NA,
+  #                     sum(parapatric.speciation$species.rasters[[1]]@data@values, na.rm=T), time, parapatric.speciation$pos[[1]],
+  #                     parapatric.speciation$breadth[[1]], "parapatric", "X")
+  #         edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #       }
+  #       # Dispersal speciation
+  #       if(event == 4) {
+  #         edgetable[i, 4] <- "dispersal"
+  #         position <- as.numeric(edgetable[i,7])
+  #         breadth <- as.numeric(edgetable[i,8])
+  #         dispersal.speciation <- speciateDispersal(position, breadth, species.rasters[[i]], env, phylo.sig, dispersal)
+  #         species.rasters <- replace(species.rasters, next.free.edgetable, species.rasters[[i]])
+  #         species.rasters <- replace(species.rasters, next.free.edgetable+1, dispersal.speciation$species.rasters[[1]])
+  #         newbr1 <- c(edgetable[i, 2], next.free.edgetable, stepsize, NA,
+  #                     sum(species.rasters[[i]]@data@values, na.rm=T), time, position,
+  #                     breadth, "dispersal", "X")
+  #         newbr2 <- c(edgetable[i, 2], next.free.edgetable +1, stepsize, NA,
+  #                     sum(dispersal.speciation$species.rasters[[1]]@data@values, na.rm=T), time, dispersal.speciation$pos[[1]],
+  #                     dispersal.speciation$breadth[[1]], "dispersal", "X")
+  #         edgetable[c(next.free.edgetable,next.free.edgetable+1),] <- rbind(newbr1, newbr2)
+  #       }
+  #       # No-Event (niche evolution)
+  #       if(event == 5) {
+  #         edgetable[i,3] <- as.numeric(edgetable[i,3]) + stepsize
+  #         # we evolve the niche at each timestep
+  #         niche <- nicheEvolution(position, breadth, pos.ev.rate = niche.ev.rate, breadth.ev.rate=breadth.ev.rate, species.raster =current.species, env=env)
+  #         edgetable[i,7] <- niche[[2]]
+  #         edgetable[i,8] <- niche[[3]]
+  #         species.rasters[[i]] <- niche[[1]]
+  #         edgetable[i, 5] <- sum(species.rasters[[i]]@data@values, na.rm=T)
+  #       }
+  #       # Extinction
+  #       if (event == 6) {
+  #         extinct[i] <- TRUE
+  #         edgetable[i, 10] <- "extinct"
+  #       }
       }#end of for loop
 
     # if all species are extinct reset to the starting values of the simulation
