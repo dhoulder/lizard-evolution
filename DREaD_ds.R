@@ -237,9 +237,6 @@ DREaD_ds <- function (total.time,
       
       env.table <- as.data.table(cbind(all.coords, env[]))
       names(env.table)[4] <- "env1"
-      
-      #TEMPTEMPTEMP
-      plot(env, main=paste("Time:", time))
 
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
@@ -247,7 +244,7 @@ DREaD_ds <- function (total.time,
 
 
   ############################  5. Evolution ######################
-browser()
+
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
       
@@ -257,6 +254,15 @@ browser()
       # update this species in demetable
       demetable <- demetable[demetable$speciesID != current.speciesID, ]
       demetable <- rbind(demetable, demetable.species)    
+
+      #TEMPTEMPTEMP
+      plot(env, main=paste("Time:", time))
+      
+      #points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
+      
+      these.colours <- colours[round(demetable.species$niche1.position*10)]
+      points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
+      
       
     } #end of looping through species
 

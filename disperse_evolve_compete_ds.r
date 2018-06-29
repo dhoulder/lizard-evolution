@@ -29,7 +29,7 @@ disperse_ds <- function (demetable.species,
   # create groupos of demes with similar environemnt to calculate dispersal
   niche.groups <- demetable.species[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, .N), by=list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group)]
   niche.groups <- niche.groups[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, N)]
-  
+#browser()  
   # loop through the niche groups
   for (k in 1:nrow(niche.groups)) {
     niche <- niche.groups[k, ]
@@ -70,10 +70,6 @@ disperse_ds <- function (demetable.species,
     demetable.nichegroup.new <- demetable.nichegroup[0, ]
     row.pointer <- 0
 
-#TEMPTEMPTEMP
-    points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
-    points(demetable.species$x, demetable.species$y, col="red", pch=20, cex=0.6)
-
     # loop through each deme for the niche group
     for (d in 1:nrow(demetable.nichegroup)) {
 
@@ -108,8 +104,9 @@ disperse_ds <- function (demetable.species,
         demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
         demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
         demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
+        
         demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
-   
+
         # apply distance function
         weights <- distance.weights(source = deme[1, c("x", "y")], 
                                     destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
@@ -128,9 +125,17 @@ disperse_ds <- function (demetable.species,
     }
 
     demetable.nichegroup.new <- demetable.nichegroup.new[amount > 0, ]
+
+# TEMP PLOTTING 
+#points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
+these.colours <- colours[round(demetable.species$niche1.position*10)]
+points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
     
     # combine the niche group demetable rows
     if (exists("demetable.species.new")) {
+cat(nrow(demetable.nichegroup.new), "\t")
+if (nrow(demetable.nichegroup.new) == 0) {browser()}      
+      
       demetable.species.new <- rbind(demetable.species.new, demetable.nichegroup.new)
     } else {
       demetable.species.new <- demetable.nichegroup.new
@@ -138,7 +143,7 @@ disperse_ds <- function (demetable.species,
   }
 
   #TEMPTEMPTEMP
-  newdemes <- unique(demetable.species.new[, c("x","y")])
+  #newdemes <- unique(demetable.species.new[, c("x","y")])
   #points(newdemes$x, newdemes$y, col="white", pch=1)
   
   return(demetable.species.new)
@@ -198,7 +203,6 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
     }
 
   }
-#browser()   
   return(demetable.species)
 }
 
@@ -397,7 +401,6 @@ niche.evolution <- function(demetable.species,
                             niche.evolution.rate) {
   
   # this function adjusts the niche limits of each deme towards the local environment
-browser()  
   for (d in 1:nrow(demetable.species)) {
     deme <- demetable.species[d]
     

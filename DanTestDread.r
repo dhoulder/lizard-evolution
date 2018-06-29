@@ -24,10 +24,14 @@ m                     <- runif(1, 50, 250)
 niche.blocksize       <- 0.1
 suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
-niche.evolution.rate  <- 0.05  # this (so far) is just the proportion of the gap between the min (or max)
+niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap between the min (or max)
                           # and the local environment is reduced each timestep
 
 windows(13,11)
+
+# TEMP FOR PLOTTING NICHE DIFFERENTIATION
+my.colours <- colorRampPalette(colors = c("red", "yellow", "blue"))
+colours    <- my.colours(250)
 
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
