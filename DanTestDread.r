@@ -27,7 +27,7 @@ speciation.gene.distance <- 10  # this parameter will need to be set with the dr
 niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap between the min (or max)
                           # and the local environment is reduced each timestep
 
-windows(13,11)
+windows(15,11)
 
 # TEMP FOR PLOTTING NICHE DIFFERENTIATION
 my.colours <- colorRampPalette(colors = c("red", "yellow", "blue"))

@@ -108,6 +108,9 @@ DREaD_ds <- function (total.time,
 
   # Keep track of number of Mass Extinctions
   extinction <- 1
+  
+  # define the minimum occurrence amount (between 0 and 1).  Values below this will be treated as 0
+  minimum.amount <- 0.001
 
   ####################### CHECK INPUT ARGUMENTS - just checking some at this point ########
   
@@ -126,6 +129,9 @@ DREaD_ds <- function (total.time,
   all.coords <- rowColFromCell(env, 1:ncell(env))
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
   names(all.coords)[1] <- "cellNum"
+
+# TEMP
+plot(env)
 
   ###########################  2. Seed initial species  ###################################
 
@@ -240,7 +246,13 @@ DREaD_ds <- function (total.time,
 
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
-      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, verbose=FALSE)
+      
+      # check for extinction here
+      if (nrow(demetable.species.overlap) == 0) {
+        edgetable <- extinction(edgetable, current.speciesID)
+      }
+      
+      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, verbose=FALSE)
 
 
   ############################  5. Evolution ######################
@@ -261,7 +273,8 @@ DREaD_ds <- function (total.time,
       #points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
       
       these.colours <- colours[round(demetable.species$niche1.position*10)]
-      points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
+      these.sizes   <- sqrt(demetable.species$amount) * 2
+      points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
       
       
     } #end of looping through species

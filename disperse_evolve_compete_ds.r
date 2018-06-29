@@ -29,7 +29,7 @@ disperse_ds <- function (demetable.species,
   # create groupos of demes with similar environemnt to calculate dispersal
   niche.groups <- demetable.species[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, .N), by=list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group)]
   niche.groups <- niche.groups[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, N)]
-#browser()  
+
   # loop through the niche groups
   for (k in 1:nrow(niche.groups)) {
     niche <- niche.groups[k, ]
@@ -41,7 +41,7 @@ disperse_ds <- function (demetable.species,
                                     niche2.position.group== niche$niche2.position.group, 1:12]
    
     # filter env cells to those within the spatial limits (for the niche group) 
-    bounds        <- as.list(demetable.species[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
+    bounds        <- as.list(demetable.nichegroup[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
     bounds[bounds <0] <- 0
     #niche.extent  <- extent(bounds[[1]], bounds[[2]], bounds[[3]], bounds[[4]])
 
@@ -65,7 +65,13 @@ disperse_ds <- function (demetable.species,
  
     #remove dispersal destinations which are within the bounding rectangle, but too far away
     include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")], env.table.dispersal[, c("col", "row")], dispersal.range)
-    env.table.dispersal <-env.table.dispersal[include.in.dispersal] 
+    env.table.dispersal <-env.table.dispersal[include.in.dispersal]
+    
+    # skip to the next nichegroup if this one has nothing to disperse to
+    if (nrow(env.table.dispersal) == 0) {
+      browser()
+      next
+    }
     
     demetable.nichegroup.new <- demetable.nichegroup[0, ]
     row.pointer <- 0
@@ -126,16 +132,9 @@ disperse_ds <- function (demetable.species,
 
     demetable.nichegroup.new <- demetable.nichegroup.new[amount > 0, ]
 
-# TEMP PLOTTING 
-#points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
-these.colours <- colours[round(demetable.species$niche1.position*10)]
-points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
-    
     # combine the niche group demetable rows
     if (exists("demetable.species.new")) {
-cat(nrow(demetable.nichegroup.new), "\t")
-if (nrow(demetable.nichegroup.new) == 0) {browser()}      
-      
+
       demetable.species.new <- rbind(demetable.species.new, demetable.nichegroup.new)
     } else {
       demetable.species.new <- demetable.nichegroup.new
@@ -150,7 +149,7 @@ if (nrow(demetable.nichegroup.new) == 0) {browser()}
 
 }
 
-combine.demes <- function (demetable.species.overlap, genomeDimensions, speciation.gene.distance, verbose=FALSE) {
+combine.demes <- function (demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, verbose=FALSE) {
   # determine what happens to populations which are in the same cell
   
   demetable.species <- demetable.species.overlap[0, -"originCell"]
@@ -203,6 +202,10 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
     }
 
   }
+
+  # remove occurrences below the amount threshold, after combinations are complete
+  demetable.species <- subset(demetable.species, amount >= minimum.amount)
+  
   return(demetable.species)
 }
 
@@ -376,24 +379,31 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
   #   to return a subset which is close enough, as an index vector
   # dispersal.range is the maximum dispersal distance
   
-  dispersal.destinations <- cbind(1:nrow(dispersal.destinations), dispersal.destinations, include=0)
-  names(dispersal.destinations)[1:3] <- c("rownum", "x", "y")
-  
-  on.origin <- dispersal.destinations[dispersal.origins, on=c(x="x", y="y"), nomatch=0][, 1]
-  dispersal.destinations$include[on.origin$rownum] <- 1
-  
-  not.on.origin <- which(dispersal.destinations$include==0)
-  
-  for (destination.index in not.on.origin) {
-    xy <- dispersal.destinations[destination.index, 2:3]
-    dist.from.dest <- pointDistance(xy, dispersal.origins, lonlat = FALSE)
-    if(min(dist.from.dest) <= dispersal.range) {
-      dispersal.destinations[destination.index, 4] <- 1
-    }
-  }
-  
-  return(which(dispersal.destinations$include==1))
+  # check for valid rows
+  if (nrow(dispersal.destinations) > 0 & nrow(dispersal.origins) > 0) {
+
+    dispersal.destinations <- cbind(1:nrow(dispersal.destinations), dispersal.destinations, include=0)
+    names(dispersal.destinations)[1:3] <- c("rownum", "x", "y")
     
+    on.origin <- dispersal.destinations[dispersal.origins, on=c(x="x", y="y"), nomatch=0][, 1]
+    dispersal.destinations$include[on.origin$rownum] <- 1
+    
+    not.on.origin <- which(dispersal.destinations$include==0)
+    
+    for (destination.index in not.on.origin) {
+      xy <- dispersal.destinations[destination.index, 2:3]
+      dist.from.dest <- pointDistance(xy, dispersal.origins, lonlat = FALSE)
+      if(min(dist.from.dest) <= dispersal.range) {
+        dispersal.destinations[destination.index, 4] <- 1
+      }
+    }
+
+  } else {
+    cat("\nFunction close_enough() requires at least one dispersal.destinations row and one dispersal.origins row.\n")
+  }
+
+  return(which(dispersal.destinations$include==1))
+
 }
 
 niche.evolution <- function(demetable.species,
@@ -418,4 +428,12 @@ niche.evolution <- function(demetable.species,
   
   return(demetable.species)
   
+}
+
+exctinction <- function(edgetable, speciesID) {
+  # this function takes the steps required when a species is found to have no demes
+  # initially it makes the most minimal changes, but more could be done here
+  
+  cat("\nSpecies", speciesID, "has become extinct at time", time, "\n")
+  browser()
 }
