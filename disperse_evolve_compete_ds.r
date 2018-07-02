@@ -189,7 +189,6 @@ combine.demes <- function (demetable.species.overlap,
           for (g in 3:genomeDimensions) {
             column.name <- paste("gene.pos", g, sep="")
      
-            #cat("\nDebugging:", weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])  ,"\n")
             demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
           }
         }
@@ -392,6 +391,7 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
 
   } else {
     cat("\nFunction close_enough() requires at least one dispersal.destinations row and one dispersal.origins row.\n")
+browser()
   }
 
   return(which(dispersal.destinations$include==1))
@@ -423,7 +423,7 @@ cat("\t", niche1.max.new - niche1.min.new)
   
 }
 
-exctinction <- function(edgetable, speciesID) {
+extinction <- function(edgetable, speciesID) {
   # this function takes the steps required when a species is found to have no demes
   # initially it makes the most minimal changes, but more could be done here
   

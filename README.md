@@ -3,8 +3,6 @@
 _Don't expect this code to work properly for some time_ - use [Alex Skeels version](https://github.com/alexskeels/DynamicRangeEvolutionAndDiversification)
 
 
-=======
->>>>>>> master
 
 DynamicRangeEvolutionAndDiversification (DREaD)
 ===============================================

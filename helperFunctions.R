@@ -5,8 +5,6 @@
 rescaleEnviro <- function(env,  new.min = 0, new.max = 1) {
   env.min <- min(env, na.rm = T)
   env.max <- max(env, na.rm = T)
-=======
->>>>>>> master
   new.min + (env - env.min) * ((new.max - new.min) / (env.max - env.min))
 }
 
