@@ -67,96 +67,94 @@ disperse_ds <- function (demetable.species,
     include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")], env.table.dispersal[, c("col", "row")], dispersal.range)
     env.table.dispersal <-env.table.dispersal[include.in.dispersal]
     
-    # skip to the next nichegroup if this one has nothing to disperse to
-    if (nrow(env.table.dispersal) == 0) {
-      browser()
-      next
-    }
-    
-    demetable.nichegroup.new <- demetable.nichegroup[0, ]
-    row.pointer <- 0
+    # process this nichegroup only if there are cells to disperse to
+    if (nrow(env.table.dispersal) > 0) {
 
-    # loop through each deme for the niche group
-    for (d in 1:nrow(demetable.nichegroup)) {
-
-      deme <-  demetable.nichegroup[d,]
-      
-      # remove once dispersal is working correctly
-      #points(deme$x, deme$y, col="black", pch=0)
-
-      # find the cells in dispersal distance
-      deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range 
-                                       & col <= deme$x+dispersal.range
-                                       & row >= deme$y-dispersal.range
-                                       & row <= deme$y+dispersal.range), ]
-      #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
-      new.count <- nrow(deme.dest)
-      
-      new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
-      new.rows    <- (row.pointer+1):(row.pointer+new.count)
-      
-      if (length(new.amount) > 0) {
-        # create dispersed demes
-        demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
-                                          list(cellID=deme.dest$cellNum,
-                                               x=deme.dest$col,
-                                               y=deme.dest$row,
-                                               amount=deme$amount * deme.dest$suitability), fill=T)
-        demetable.nichegroup.new$speciesID[new.rows] <- deme$speciesID
-        demetable.nichegroup.new$niche1.position[new.rows] <- deme$niche1.position
-        demetable.nichegroup.new$niche1.breadth[new.rows]  <- deme$niche1.breadth
-        demetable.nichegroup.new$niche2.position[new.rows] <- deme$niche2.position
-        demetable.nichegroup.new$niche2.breadth[new.rows]  <- deme$niche2.breadth
-        demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
-        demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
-        demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
+      demetable.nichegroup.new <- demetable.nichegroup[0, ]
+      row.pointer <- 0
+  
+      # loop through each deme for the niche group
+      for (d in 1:nrow(demetable.nichegroup)) {
+  
+        deme <-  demetable.nichegroup[d,]
         
-        demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
-
-        # apply distance function
-        weights <- distance.weights(source = deme[1, c("x", "y")], 
-                                    destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
-                                    dispersal.range = dispersal.range,
-                                    distance.type = "euclidean", 
-                                    distance.decay = "linear")
+        # remove once dispersal is working correctly
+        #points(deme$x, deme$y, col="black", pch=0)
+  
+        # find the cells in dispersal distance
+        deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range 
+                                         & col <= deme$x+dispersal.range
+                                         & row >= deme$y-dispersal.range
+                                         & row <= deme$y+dispersal.range), ]
+        #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
+        new.count <- nrow(deme.dest)
         
-        demetable.nichegroup.new$amount[new.rows] <- demetable.nichegroup.new$amount[new.rows] * weights
-        new.count <- length(which(demetable.nichegroup.new$amount[new.rows] > 0))
-        demetable.nichegroup.new <- demetable.nichegroup.new[demetable.nichegroup.new$amount > 0, ]
-
+        new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
+        new.rows    <- (row.pointer+1):(row.pointer+new.count)
+        
+        if (length(new.amount) > 0) {
+          # create dispersed demes
+          demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
+                                            list(cellID=deme.dest$cellNum,
+                                                 x=deme.dest$col,
+                                                 y=deme.dest$row,
+                                                 amount=deme$amount * deme.dest$suitability), fill=T)
+          demetable.nichegroup.new$speciesID[new.rows] <- deme$speciesID
+          demetable.nichegroup.new$niche1.position[new.rows] <- deme$niche1.position
+          demetable.nichegroup.new$niche1.breadth[new.rows]  <- deme$niche1.breadth
+          demetable.nichegroup.new$niche2.position[new.rows] <- deme$niche2.position
+          demetable.nichegroup.new$niche2.breadth[new.rows]  <- deme$niche2.breadth
+          demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
+          demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
+          demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
+          
+          demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
+  
+          # apply distance function
+          weights <- distance.weights(source = deme[1, c("x", "y")], 
+                                      destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
+                                      dispersal.range = dispersal.range,
+                                      distance.type = "euclidean", 
+                                      distance.decay = "linear")
+          
+          demetable.nichegroup.new$amount[new.rows] <- demetable.nichegroup.new$amount[new.rows] * weights
+          new.count <- length(which(demetable.nichegroup.new$amount[new.rows] > 0))
+          demetable.nichegroup.new <- demetable.nichegroup.new[demetable.nichegroup.new$amount > 0, ]
+  
+        }
+  
+        row.pointer <- row.pointer + new.count
+  
       }
-
-      row.pointer <- row.pointer + new.count
-
-    }
-
-    demetable.nichegroup.new <- demetable.nichegroup.new[amount > 0, ]
-
-    # combine the niche group demetable rows
-    if (exists("demetable.species.new")) {
-
-      demetable.species.new <- rbind(demetable.species.new, demetable.nichegroup.new)
-    } else {
-      demetable.species.new <- demetable.nichegroup.new
+  
+      demetable.nichegroup.new <- demetable.nichegroup.new[amount > 0, ]
+  
+      # combine the niche group demetable rows
+      if (exists("demetable.species.new")) {
+        demetable.species.new <- rbind(demetable.species.new, demetable.nichegroup.new)
+      } else {
+        demetable.species.new <- demetable.nichegroup.new
+      }
     }
   }
 
-  #TEMPTEMPTEMP
-  #newdemes <- unique(demetable.species.new[, c("x","y")])
-  #points(newdemes$x, newdemes$y, col="white", pch=1)
-  
   return(demetable.species.new)
 
 }
 
-combine.demes <- function (demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, verbose=FALSE) {
+combine.demes <- function (demetable.species.overlap, 
+                           genomeDimensions, 
+                           speciation.gene.distance, 
+                           minimum.amount, 
+                           env.table,
+                           verbose=FALSE) {
   # determine what happens to populations which are in the same cell
   
   demetable.species <- demetable.species.overlap[0, -"originCell"]
 
   deme.cells <- unique(demetable.species.overlap$cellID)
   for (cell in deme.cells) {
-    demetable.cell <- demetable.species.overlap[cellID==cell, ]
+    demetable.cell <- demetable.species.overlap[cellID==cell]
     deme.count     <- demetable.species.overlap[cellID==cell, .N]
    
     if (deme.count==1) {
@@ -180,7 +178,7 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
       demetable.cell <- demetable.cell[gene.flow==TRUE,]
       
       if (nrow(demetable.cell) > 0) { # make sure that there are still demes with gene flow - better check why not - should be gene flow to self
-        demetable.species.new <- demetable.cell[, list(amount=mean(amount),
+        demetable.species.new <- demetable.cell[, list(amount=1,  # this amount is just a place filler. Real amount will be the suitability for the new niche
                                   niche1.position=weighted.mean(niche1.position, amount), 
                                   niche1.breadth  =weighted.mean(niche1.breadth, amount),
                                   niche2.position =weighted.mean(niche2.position, amount), 
@@ -203,9 +201,16 @@ combine.demes <- function (demetable.species.overlap, genomeDimensions, speciati
 
   }
 
+browser()  
+  
+  # update amount based on environment and new niche
+  if (nrow(demetable.species) > 0) {
+    demetable.species$amount <- demetable.species[, .(niche_suitability(suitability.mode = "sine", niche1.position, niche1.breadth, niche2.position, niche2.breadth, env = env.table)), by=cellID]
+  }
+
   # remove occurrences below the amount threshold, after combinations are complete
   demetable.species <- subset(demetable.species, amount >= minimum.amount)
-  
+
   return(demetable.species)
 }
 
@@ -244,11 +249,12 @@ niche_suitability <- function(env,
       env$suitability <- env$env1
       env$suitability <- env[, suitability - niche1.min]
       if (min(env$suitability) < 0) {
-        env[suitability < 0, suitability] <- 0
+        #env[suitability < 0, suitability] <- 0
+        env[suitability < 0, "suitability"] <- 0
       } 
       env$suitability <- env$suitability * (pi / niche1.breadth)
       if (max(env$suitability) > pi) {
-        env[suitability > pi, suitability] <- 0
+        env[suitability > pi, "suitability"] <- 0
       }
       env$suitability <- sin(env$suitability)
     } else if (env.class=="raster") {
@@ -418,10 +424,11 @@ niche.evolution <- function(demetable.species,
     niche1.max <- deme$niche1.position + (deme$niche1.breadth / 2)
     
     env1 <- env.table$env1[env.table$cellNum == deme$cellID]
-    
+  
     # move the niche min and max towards the local environment
     niche1.min.new <- niche1.min + ((env1 - niche1.min) * niche.evolution.rate)
     niche1.max.new <- niche1.max - ((niche1.max - env1) * niche.evolution.rate)
+cat("\t", niche1.max.new - niche1.min.new)
     demetable.species[d, "niche1.breadth"]  <- niche1.max.new - niche1.min.new
     demetable.species[d, "niche1.position"] <- (niche1.max.new + niche1.min.new) / 2
   }

@@ -246,14 +246,18 @@ plot(env)
 
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
-      
+browser()      
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
         edgetable <- extinction(edgetable, current.speciesID)
       }
-      
-      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, verbose=FALSE)
 
+      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
+
+      # check for extinction here
+      if (nrow(demetable.species) == 0) {
+        edgetable <- extinction(edgetable, current.speciesID)
+      }
 
   ############################  5. Evolution ######################
 
