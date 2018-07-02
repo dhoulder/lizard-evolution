@@ -76,10 +76,12 @@ disperse_ds <- function (demetable.species,
       for (d in 1:nrow(demetable.nichegroup)) {
   
         deme <-  demetable.nichegroup[d,]
-        
+
         # remove once dispersal is working correctly
-        #points(deme$x, deme$y, col="black", pch=0)
-  
+        # if (do.display) {
+        #   display.update(list(one_deme=deme))
+        # }
+
         # find the cells in dispersal distance
         deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range 
                                          & col <= deme$x+dispersal.range

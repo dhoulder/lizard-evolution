@@ -130,7 +130,9 @@ DREaD_ds <- function (total.time,
   names(all.coords)[1] <- "cellID"
 
 # TEMP
-plot(env)
+if (do.display) {
+  display.update(list(env=env))
+}
 
   ###########################  2. Seed initial species  ###################################
 
@@ -271,15 +273,9 @@ plot(env)
       demetable <- demetable[demetable$speciesID != current.speciesID, ]
       demetable <- rbind(demetable, demetable.species)    
 
-      #TEMPTEMPTEMP
-      plot(env, main=paste("Time:", time))
-      
-      #points(env.table.dispersal$col, env.table.dispersal$row, col="blue", pch=20, cex=0.8)
-      
-      these.colours <- colours[round(demetable.species$niche1.position*10)]
-      these.sizes   <- sqrt(demetable.species$amount) * 2
-      points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
-      
+      if (do.display) {
+        display.update(list(env=env, demes_amount_position=demetable.species, time=time))
+      }
       
     } #end of looping through species
 

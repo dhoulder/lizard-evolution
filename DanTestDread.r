@@ -1,9 +1,8 @@
 rm(list=ls())
 gc()
 
-scripts <- c("disperse_evolve_compete_ds.r", "nicheEvolution.R","speciateAllopatric.R","speciateSympatric.R",
-             "speciateParapatric.R","speciateDispersal.R","seedSpecies.R","environmentalChange.R",
-             "nicheRecenter.R","DREaD_ds.R","generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r")
+scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange.R", "DREaD_ds.R",
+             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r")
 
 lapply(scripts, source)
 
@@ -26,12 +25,12 @@ suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap between the min (or max)
                           # and the local environment is reduced each timestep
+do.display            <- TRUE
 
-windows(15,11)
-
-# TEMP FOR PLOTTING NICHE DIFFERENTIATION
-my.colours <- colorRampPalette(colors = c("red", "yellow", "blue"))
-colours    <- my.colours(250)
+if (do.display) {
+  source("dynamicDisplay.r")
+  my.colours <- display.initialise()
+}
 
 # Run model
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
