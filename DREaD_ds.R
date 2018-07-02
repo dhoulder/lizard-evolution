@@ -1,6 +1,4 @@
 
-library(dplyr)
-
 #  SOME QUICK NOTES AND EDITS TO CONSIDER MODIFYING ROLLING STONE
 #  TO SIMULATE EVOLUTION WITHIN SPECIES USING DEMES AS THE BASIC UNITS
 
@@ -85,18 +83,19 @@ DREaD_ds <- function (total.time,
                       niche.evolution.rate) {
   
   ##### required libraries
-  require(raster)
-  require(gstat)
   #require(ape)
-  #require(phytools)
-  #require(geiger)
+  #require(apTreeshape)
+  require(data.table)  
+  require(dplyr)
+  #require(ENMTools)
+  #require(fossil)
+  #require(geiger)  
+  require(gstat)
   #require(moments)
   #require(phyloclim)
-  require(data.table)
-  #require(fossil)
-  #require(apTreeshape)
-  # require(ENMTools)
-  
+  #require(phytools)
+  require(raster)
+
   # extinction rate constant
   ext.rate = 0.02
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
@@ -128,7 +127,7 @@ DREaD_ds <- function (total.time,
   # use the background environment to define all cells in the model
   all.coords <- rowColFromCell(env, 1:ncell(env))
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
-  names(all.coords)[1] <- "cellNum"
+  names(all.coords)[1] <- "cellID"
 
 # TEMP
 plot(env)
@@ -240,13 +239,14 @@ plot(env)
 
   ############################# 4. Dispersal ###########################
       demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
-      
+
       env.table <- as.data.table(cbind(all.coords, env[]))
       names(env.table)[4] <- "env1"
+      setkey(env.table, cellID)
 
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
-browser()      
+ 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
         edgetable <- extinction(edgetable, current.speciesID)

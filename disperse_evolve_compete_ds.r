@@ -58,14 +58,13 @@ disperse_ds <- function (demetable.species,
     #niche2.max <- niche.values$niche2.position.group + niche.values$niche2.breadth /2    
     
     env.table.dispersal <- env.table.dispersal[env1 >= niche1.min & env1 <= niche1.max, ]  # need to add 2nd niche dimension
-    # dispersal.cells <- which(!is.na(env.dispersal[]))
-    
+
     #apply niche suitability function to env.dispersal to give suitability for 0 to 1
-    env.table.dispersal <- niche_suitability(env=env.table.dispersal, suitability.mode = suitability.mode, niche1.breadth = niche.values$niche1.breadth, niche1.position = niche.values$niche1.position)
+    env.table.dispersal$suitability <- niche_suitability(env=env.table.dispersal$env1, niche1.breadth = niche.values$niche1.breadth, niche1.position = niche.values$niche1.position, suitability.mode = suitability.mode)
  
     #remove dispersal destinations which are within the bounding rectangle, but too far away
     include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")], env.table.dispersal[, c("col", "row")], dispersal.range)
-    env.table.dispersal <-env.table.dispersal[include.in.dispersal]
+    env.table.dispersal <- env.table.dispersal[include.in.dispersal]
     
     # process this nichegroup only if there are cells to disperse to
     if (nrow(env.table.dispersal) > 0) {
@@ -91,11 +90,11 @@ disperse_ds <- function (demetable.species,
         
         new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
         new.rows    <- (row.pointer+1):(row.pointer+new.count)
-        
+       
         if (length(new.amount) > 0) {
           # create dispersed demes
           demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
-                                            list(cellID=deme.dest$cellNum,
+                                            list(cellID=deme.dest$cellID,
                                                  x=deme.dest$col,
                                                  y=deme.dest$row,
                                                  amount=deme$amount * deme.dest$suitability), fill=T)
@@ -200,12 +199,13 @@ combine.demes <- function (demetable.species.overlap,
     }
 
   }
-
-browser()  
   
   # update amount based on environment and new niche
-  if (nrow(demetable.species) > 0) {
-    demetable.species$amount <- demetable.species[, .(niche_suitability(suitability.mode = "sine", niche1.position, niche1.breadth, niche2.position, niche2.breadth, env = env.table)), by=cellID]
+if (nrow(demetable.species) > 0) {
+  setkey(demetable.species, cellID)
+
+  env.demes <- merge(env.table, demetable.species, by="cellID", nomatch=0)
+  demetable.species$amount <- env.demes[, .(amount=niche_suitability(env1, niche1.position, niche1.breadth, niche2.position, niche2.breadth, suitability.mode)), by=cellID][, 2]
   }
 
   # remove occurrences below the amount threshold, after combinations are complete
@@ -215,62 +215,48 @@ browser()
 }
 
 niche_suitability <- function(env,
-                              suitability.mode,
-                              niche1.position, 
-                              niche1.breadth, 
-                              niche2.position=0, 
-                              niche2.breadth=0) {
+                               niche1.position, 
+                               niche1.breadth, 
+                               niche2.position=0, 
+                               niche2.breadth=0,
+                               suitability.mode="sine") {
   # convert environment to suitability
-
-  env.class <- class(env)  # allow env to be either a raster, or a data.table, and handle accordingly
-
+  
   niche1.min <- niche1.position - (niche1.breadth /2)
   niche1.max <- niche1.position + (niche1.breadth /2)
   niche2.min <- niche2.position - (niche2.breadth /2)
   niche2.max <- niche2.position + (niche2.breadth /2)
-
+  
+  env.class <- class(env)  # allow env to be a numeric vector, a raster or a data.table, but handle it as a vector
+  
+  if (env.class=="raster") {
+    suitability <- env[]
+  } else if (any(env.class=="data.table")) {
+    suitability <- env[,1] # the first column must be env1.  
+    # Note that this does not yet handle a second environment dimension
+  } else {
+    suitability <- env
+  }
+  
   if (suitability.mode=="block") {
     # block suitability is 1 within the suitable range, zero elsewhere
-    if (any(env.class=="data.table")) {
-      env$suitability <- env$env1
-      env[env1 < niche1.min | env1 > niche1.max, "suitability"] <- 0
-      env[env1 > 0, "suitability"] <- 1
-    } else if (env.class=="raster") {
-      suitability[suitability < niche1.min | suitability > niche1.max] <- 0
-      suitability[suitability > 0] <- 1
-    }
+    suitability[suitability < niche1.min | suitability > niche1.max] <- 0
+    suitability[suitability > 0] <- 1
     
   } else if (suitability.mode=="sine") {
     # sine suitability is 1 for the central niche position, declining to 0 at
     # the niche limits according to a sine curve
     
     # transform suitability to range from 0 (for minimum to pi for maximum)
-    if (any(env.class=="data.table")) {
-      env$suitability <- env$env1
-      env$suitability <- env[, suitability - niche1.min]
-      if (min(env$suitability) < 0) {
-        #env[suitability < 0, suitability] <- 0
-        env[suitability < 0, "suitability"] <- 0
-      } 
-      env$suitability <- env$suitability * (pi / niche1.breadth)
-      if (max(env$suitability) > pi) {
-        env[suitability > pi, "suitability"] <- 0
-      }
-      env$suitability <- sin(env$suitability)
-    } else if (env.class=="raster") {
-      suitability <- suitability - niche1.min
-      suitability[suitability < 0] <- 0
-      suitability <- suitability * (pi / niche1.breadth)
-      suitability[suitability > pi] <- 0
-      suitability <- sin(suitability)
-    }
+    suitability <- suitability - niche1.min
+    suitability[suitability < 0] <- 0
+    suitability <- suitability * (pi / niche1.breadth)
+    suitability[suitability > pi] <- 0
+    suitability <- sin(suitability)
   }
   
-  if (any(env.class=="data.table")) {
-    return(env)
-    } else {
-    return(suitability)
-  }
+  return(suitability)
+  
 }
 
 distances <- function(source, destinations, distance.type="euclidean") {
@@ -423,7 +409,7 @@ niche.evolution <- function(demetable.species,
     niche1.min <- deme$niche1.position - (deme$niche1.breadth / 2)
     niche1.max <- deme$niche1.position + (deme$niche1.breadth / 2)
     
-    env1 <- env.table$env1[env.table$cellNum == deme$cellID]
+    env1 <- env.table$env1[env.table$cellID == deme$cellID]
   
     # move the niche min and max towards the local environment
     niche1.min.new <- niche1.min + ((env1 - niche1.min) * niche.evolution.rate)
