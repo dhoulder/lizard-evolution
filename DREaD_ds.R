@@ -265,17 +265,22 @@ if (do.display) {
 
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
-browser()      
+  
       # calcualte and print a niche summary - probably drop this once development is done
-      niche.summary <- demetable.species[, .(niche1.position.mean=mean(niche1.position),
-                                             niche1.position.sd=sd(niche1.position),
-                                             niche1.breadth.mean=mean(niche1.breadth),
-                                             niche1.breadth.sd=sd(niche1.breadth),
-                                             niche1.sp.min =min(niche1.position - (niche1.breadth/2)))]
-      cat("\nTime:", current.time, "\tSpecies:", current.speciesID, "\tRange:", demetable.species[,.N],
-          "\nNiche1 position\tMean:", niche.summary$niche1.position.mean, "\tSD:", niche.summary$niche1.position.sd,
-          "\nNiche1 breadth\tMean:", niche.summary$niche1.breadth.mean, "\tSD:", niche.summary$niche1.breadth.sd, "\n")
-      
+      sp.summary <- demetable.species[, .(range=.N,
+                                          niche1.position.mean=mean(niche1.position),
+                                          niche1.position.sd=sd(niche1.position),
+                                          niche1.breadth.mean=mean(niche1.breadth),
+                                          niche1.breadth.sd=sd(niche1.breadth),
+                                          niche1.sp.min =min(niche1.position - (niche1.breadth/2)),
+                                          niche1.sp.max =max(niche1.position + (niche1.breadth/2)))]
+      sp.summary <- round(sp.summary, 4)
+      if (do.text.output) {
+        list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)), 
+                          as.list(sp.summary[1,]))
+        text.update(list(species_range_niche=list.for.text))
+      }
+
       # drift for each deme
 
       

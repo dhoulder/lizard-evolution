@@ -422,9 +422,8 @@ niche.evolution <- function(demetable.species,
 
     demetable.species[d, "niche1.breadth"]  <- niche1.max.new - niche1.min.new
     demetable.species[d, "niche1.position"] <- (niche1.max.new + niche1.min.new) / 2
-
-    return(demetable.species)
   }
+  return(demetable.species)
 }
 
 extinction <- function(edgetable, speciesID) {

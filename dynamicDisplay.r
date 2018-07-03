@@ -40,3 +40,18 @@ display.update <- function(plotItems) {
   return()
 }
 
+text.update <- function(textItems) {
+  
+  if (length(textItems[["species_range_niche"]]) > 0) {
+   
+    sp.summary <- textItems[["species_range_niche"]]
+
+    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID, "\tRange:", sp.summary$range,
+        "\nNiche1 position\tMean:", sp.summary$niche1.position.mean, "\tSD:", sp.summary$niche1.position.sd,
+        "\nNiche1 breadth\tMean:", sp.summary$niche1.breadth.mean, "\tSD:", sp.summary$niche1.breadth.sd,
+        "\nNiche1 species\tMin: ", sp.summary$niche1.sp.min, "\tMax:", sp.summary$niche1.sp.max,
+        "\tTotal breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min), "\n")
+  } 
+  
+  return()
+}
