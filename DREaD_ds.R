@@ -71,7 +71,7 @@ DREaD_ds <- function (total.time,
                       freq = NA, 
                       slope = NA,
                       plot = FALSE,
-                      stepsize = 0.1,
+                      stepsize = 1,
                       generateSummaryStatistics = TRUE,
                       lambda1 = 0.04,
                       lambda2 = 0.0005,
@@ -183,7 +183,6 @@ if (do.display) {
   species.rasters[[1]] <- initial.species[[1]]
   
   current.time <- 1
-  stepsize <- stepsize
   tips <- 1
   
   extinct <- vector("logical", 10000)
@@ -208,7 +207,6 @@ if (do.display) {
     #   species.rasters <- vector('list', 10000)
     #   species.rasters[[1]] <- initial.species[[1]]
     #   current.time <- 1
-    #   stepsize <- stepsize
     #   tips <- 1
     #   extinct.number=0
     #   extinct <- vector("logical", 10000)
@@ -305,7 +303,6 @@ if (do.display) {
   #       species.rasters <- vector('list', 10000)
   #       species.rasters[[1]] <- initial.species[[1]]
   #       current.time <- 1
-  #       stepsize <- stepsize
   #       tips <- 1
   #       extinct <- vector("logical", 10000)
   #       # Record mass extinction event. When 5 mass extinction events occur (extinction =5) in a row the simulation will sample new parameters and start again
