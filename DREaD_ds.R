@@ -215,7 +215,7 @@ browser()
     # }
 
     # environment changes
-    env <- enviroChange(start.env=starting.env, env=env, time=current.time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
+    env <- enviroChange(start.env=starting.env, env=env, current.time=current.time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
     # species.tips is the row index of non-extinct lineages (rows in the edgetable)
     if(any(extinct==TRUE)){
       species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
