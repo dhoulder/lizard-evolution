@@ -419,13 +419,12 @@ niche.evolution <- function(demetable.species,
     # move the niche min and max towards the local environment
     niche1.min.new <- niche1.min + ((env1 - niche1.min) * niche.evolution.rate)
     niche1.max.new <- niche1.max - ((niche1.max - env1) * niche.evolution.rate)
-cat("\t", niche1.max.new - niche1.min.new)
+
     demetable.species[d, "niche1.breadth"]  <- niche1.max.new - niche1.min.new
     demetable.species[d, "niche1.position"] <- (niche1.max.new + niche1.min.new) / 2
+
+    return(demetable.species)
   }
-  
-  return(demetable.species)
-  
 }
 
 extinction <- function(edgetable, speciesID) {

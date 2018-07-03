@@ -190,7 +190,7 @@ if (do.display) {
   extinct.number <- 0
 
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
-browser()
+
   while(current.time < total.time) {
 
   ############################# 3. Environmental change ###########################
@@ -265,6 +265,16 @@ browser()
 
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
+browser()      
+      # calcualte and print a niche summary - probably drop this once development is done
+      niche.summary <- demetable.species[, .(niche1.position.mean=mean(niche1.position),
+                                             niche1.position.sd=sd(niche1.position),
+                                             niche1.breadth.mean=mean(niche1.breadth),
+                                             niche1.breadth.sd=sd(niche1.breadth),
+                                             niche1.sp.min =min(niche1.position - (niche1.breadth/2)))]
+      cat("\nTime:", current.time, "\tSpecies:", current.speciesID, "\tRange:", demetable.species[,.N],
+          "\nNiche1 position\tMean:", niche.summary$niche1.position.mean, "\tSD:", niche.summary$niche1.position.sd,
+          "\nNiche1 breadth\tMean:", niche.summary$niche1.breadth.mean, "\tSD:", niche.summary$niche1.breadth.sd, "\n")
       
       # drift for each deme
 

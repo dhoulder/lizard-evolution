@@ -25,7 +25,7 @@ suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap between the min (or max)
                           # and the local environment is reduced each timestep
-do.display            <- FALSE
+do.display            <- TRUE
 
 if (do.display) {
   source("dynamicDisplay.r")
