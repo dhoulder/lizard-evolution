@@ -279,72 +279,74 @@ if (do.display) {
       
     } #end of looping through species
 
-    # if all species are extinct reset to the starting values of the simulation
-      if (all(edgetable[, 10][which(!edgetable[, 2] %in% edgetable[, 1])] =="extinct")) {
-        initial.species <- seedSpecies(env, dispersal=dispersal)
-        edgetable <- matrix(ncol=10, nrow=10000)
-        edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
-        edgetable[1,5] <- sum(initial.species[[1]]@data@values, na.rm=T)
-        edgetable[1,7] <- initial.species[[2]]
-        edgetable[1,8] <- breadth
-        species.rasters <- vector('list', 10000)
-        species.rasters[[1]] <- initial.species[[1]]
-        time <- 1
-        stepsize <- stepsize
-        tips <- 1
-        extinct <- vector("logical", 10000)
-        # Record mass extinction event. When 5 mass extinction events occur (extinction =5) in a row the simulation will sample new parameters and start again
-        extinction <- extinction + 1
-        extinct.number <- 0
-        if(extinction == 5) {return(list(params, "too many extinctions with these parameters"))}
-        next
-      }
-      extinct.species <- which(extinct==TRUE)
-      extinct.number <- length(extinct.species)
-      terminal.branches <- which(!edgetable[, 2] %in% edgetable[, 1])
-      tips <- length(terminal.branches)
-    }# end of while loop
-
-  # species.rasters.2 are extant species rasters (extinct rasters are empty)
-  species.rasters.2 <- species.rasters[terminal.branches[!terminal.branches %in% extinct.species]]
-  # Build phylogeny
-  phy.table <- buildPhyInSim(edgetable, species.rasters.2@layers, extinct, tips)
-
-  # plot species ranges
-  if (plot == TRUE ) {
-    cols <- sample(rainbow(100,end=1, start=0, alpha=0.6 ), 100, replace = TRUE)
-    par(mfrow = c(2, 1), mar=c(2,2,2,2))
-    plot(env)
-    for (i in 1:length(species.rasters.2)) {
-      par(new=T)
-      sp<-rasterToPolygons(species.rasters.2[[i]], dissolve=T)
-      plot(sp, add=T, col=cols[i])
-    }
-    plot(phy.table[[2]]); axisPhylo()
-  }
-
-  species.rasters.2 <- stack(species.rasters.2)
-  # record proportion of domain occupied by the whole clade
-  clade.area <- sum(stackApply(species.rasters.2, indices = rep(1, length(species.rasters.2@layers)), fun=mean)@data@values, na.rm=T)
-  #generate summary statistics (must have ENMTools loaded)
-  if(generateSummaryStatistics == TRUE) {
-    summaryStats <- try(generateSummaryStatistics(phy.table[[1]], species.rasters.2, phy.table[[2]], drop.fossil = T))
-    ARC.clade <- createENMToolsclade(species.rasters.2, phy.table[[1]], phy.table[[2]], env, drop.fossil = T)
-    ARC <- try(enmtools.aoc(clade = ARC.clade,  nreps = 0, overlap.source = "range"))
-    if(class(summaryStats) == "try-error") {
-      summary.vector=NA
-    } else {
-      if(class(ARC)=="try-error"){
-        summary.vector = c(summaryStats$analysis, NA, NA)
-        ARC <- NA
-      } else {
-        summary.vector = c(summaryStats$analysis, ARC$coefficients[[1,1]], ARC$coefficients[[1,2]])
-      }
-    }
-    results <- list("df" = phy.table[[1]], "phy" = phy.table[[2]], "rasters" = species.rasters.2, "env" = env, "params"=params, "ARC"=ARC, "summaryStats"=summaryStats, "summaryVector"= summary.vector , "extinct"= length(which(extinct==TRUE)), "clade.area"= clade.area)
-  } else {
-  results <- list("df" = phy.table[[1]], "phy" = phy.table[[2]], "rasters" = species.rasters.2, "env" = env, "params"=params, "extinct"= length(which(extinct==TRUE)), "clade.area"=clade.area)
-  }
+  #   # if all species are extinct reset to the starting values of the simulation
+  #     if (all(edgetable[, 10][which(!edgetable[, 2] %in% edgetable[, 1])] =="extinct")) {
+  #       initial.species <- seedSpecies(env, dispersal=dispersal)
+  #       edgetable <- matrix(ncol=10, nrow=10000)
+  #       edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
+  #       edgetable[1,5] <- sum(initial.species[[1]]@data@values, na.rm=T)
+  #       edgetable[1,7] <- initial.species[[2]]
+  #       edgetable[1,8] <- breadth
+  #       species.rasters <- vector('list', 10000)
+  #       species.rasters[[1]] <- initial.species[[1]]
+  #       time <- 1
+  #       stepsize <- stepsize
+  #       tips <- 1
+  #       extinct <- vector("logical", 10000)
+  #       # Record mass extinction event. When 5 mass extinction events occur (extinction =5) in a row the simulation will sample new parameters and start again
+  #       extinction <- extinction + 1
+  #       extinct.number <- 0
+  #       if(extinction == 5) {return(list(params, "too many extinctions with these parameters"))}
+  #       next
+  #     }
+  #     extinct.species <- which(extinct==TRUE)
+  #     extinct.number <- length(extinct.species)
+  #     terminal.branches <- which(!edgetable[, 2] %in% edgetable[, 1])
+  #     tips <- length(terminal.branches)
+  #   }# end of while loop
+  # 
+  # # species.rasters.2 are extant species rasters (extinct rasters are empty)
+  # species.rasters.2 <- species.rasters[terminal.branches[!terminal.branches %in% extinct.species]]
+  # # Build phylogeny
+  # phy.table <- buildPhyInSim(edgetable, species.rasters.2@layers, extinct, tips)
+  # 
+  # # plot species ranges
+  # if (plot == TRUE ) {
+  #   cols <- sample(rainbow(100,end=1, start=0, alpha=0.6 ), 100, replace = TRUE)
+  #   par(mfrow = c(2, 1), mar=c(2,2,2,2))
+  #   plot(env)
+  #   for (i in 1:length(species.rasters.2)) {
+  #     par(new=T)
+  #     sp<-rasterToPolygons(species.rasters.2[[i]], dissolve=T)
+  #     plot(sp, add=T, col=cols[i])
+  #   }
+  #   plot(phy.table[[2]]); axisPhylo()
+  # }
+  # 
+  # species.rasters.2 <- stack(species.rasters.2)
+  # # record proportion of domain occupied by the whole clade
+  # clade.area <- sum(stackApply(species.rasters.2, indices = rep(1, length(species.rasters.2@layers)), fun=mean)@data@values, na.rm=T)
+  # #generate summary statistics (must have ENMTools loaded)
+  # if(generateSummaryStatistics == TRUE) {
+  #   summaryStats <- try(generateSummaryStatistics(phy.table[[1]], species.rasters.2, phy.table[[2]], drop.fossil = T))
+  #   ARC.clade <- createENMToolsclade(species.rasters.2, phy.table[[1]], phy.table[[2]], env, drop.fossil = T)
+  #   ARC <- try(enmtools.aoc(clade = ARC.clade,  nreps = 0, overlap.source = "range"))
+  #   if(class(summaryStats) == "try-error") {
+  #     summary.vector=NA
+  #   } else {
+  #     if(class(ARC)=="try-error"){
+  #       summary.vector = c(summaryStats$analysis, NA, NA)
+  #       ARC <- NA
+  #     } else {
+  #       summary.vector = c(summaryStats$analysis, ARC$coefficients[[1,1]], ARC$coefficients[[1,2]])
+  #     }
+  #   }
+  #   results <- list("df" = phy.table[[1]], "phy" = phy.table[[2]], "rasters" = species.rasters.2, "env" = env, "params"=params, "ARC"=ARC, "summaryStats"=summaryStats, "summaryVector"= summary.vector , "extinct"= length(which(extinct==TRUE)), "clade.area"= clade.area)
+  # } else {
+  # results <- list("df" = phy.table[[1]], "phy" = phy.table[[2]], "rasters" = species.rasters.2, "env" = env, "params"=params, "extinct"= length(which(extinct==TRUE)), "clade.area"=clade.area)
+  # }
+    
+    
 # returns a list with the following elements 1) data frame with species information, 2) phylogeney, 3) environment (as was at end of simulation), 4) parameters used in that simulation
 # 5) the Age-Range_correlation object crated by ENMTools, 6) a list of summary statistics (see generateSummaryStatistics function for details), 7) number of extinct lineages, 8) total area occupied by clade
   return(results)

@@ -62,9 +62,12 @@ disperse_ds <- function (demetable.species,
     #apply niche suitability function to env.dispersal to give suitability for 0 to 1
     env.table.dispersal$suitability <- niche_suitability(env=env.table.dispersal$env1, niche1.breadth = niche.values$niche1.breadth, niche1.position = niche.values$niche1.position, suitability.mode = suitability.mode)
  
-    #remove dispersal destinations which are within the bounding rectangle, but too far away
-    include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")], env.table.dispersal[, c("col", "row")], dispersal.range)
-    env.table.dispersal <- env.table.dispersal[include.in.dispersal]
+    if (env.table.dispersal[, .N] > 0) {
+      #remove dispersal destinations which are within the bounding rectangle, but too far away
+      include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")], 
+                                           env.table.dispersal[, c("col", "row")], dispersal.range)
+      env.table.dispersal <- env.table.dispersal[include.in.dispersal]
+    }
     
     # process this nichegroup only if there are cells to disperse to
     if (nrow(env.table.dispersal) > 0) {
@@ -392,7 +395,7 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
     }
 
   } else {
-    cat("\nFunction close_enough() requires at least one dispersal.destinations row and one dispersal.origins row.\n")
+    cat("\nFunction close.enough() requires at least one dispersal.destinations row and one dispersal.origins row.\n")
 browser()
   }
 
