@@ -432,6 +432,6 @@ extinction <- function(edgetable, speciesID) {
   # this function takes the steps required when a species is found to have no demes
   # initially it makes the most minimal changes, but more could be done here
   
-  cat("\nSpecies", speciesID, "has become extinct at time", time, "\n")
+  cat("\nSpecies", speciesID, "has become extinct at time", current.time, "\n")
   browser()
 }

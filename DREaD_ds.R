@@ -182,7 +182,7 @@ if (do.display) {
   species.rasters <- vector('list', 10000)
   species.rasters[[1]] <- initial.species[[1]]
   
-  time <- 1
+  current.time <- 1
   stepsize <- stepsize
   tips <- 1
   
@@ -190,15 +190,15 @@ if (do.display) {
   extinct.number <- 0
 
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
-
-  while(time < total.time) {
+browser()
+  while(current.time < total.time) {
 
   ############################# 3. Environmental change ###########################
 
     # time changes
-    time <- round(time + stepsize, 3)
+    current.time <- round(current.time + stepsize, 3)
     # # if simulation runs too long restart
-    # if(time >= maxtime){
+    # if(current.time >= maxtime){
     #   initial.species <- seedSpecies(env)
     #   edgetable <- matrix(ncol=10, nrow=10000)
     #   edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
@@ -207,7 +207,7 @@ if (do.display) {
     #   edgetable[1,8] <- initial.species[[3]]
     #   species.rasters <- vector('list', 10000)
     #   species.rasters[[1]] <- initial.species[[1]]
-    #   time <- 1
+    #   current.time <- 1
     #   stepsize <- stepsize
     #   tips <- 1
     #   extinct.number=0
@@ -215,7 +215,7 @@ if (do.display) {
     # }
 
     # environment changes
-    env <- enviroChange(start.env=starting.env, env=env, time=time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
+    env <- enviroChange(start.env=starting.env, env=env, time=current.time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
     # species.tips is the row index of non-extinct lineages (rows in the edgetable)
     if(any(extinct==TRUE)){
       species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
@@ -274,7 +274,7 @@ if (do.display) {
       demetable <- rbind(demetable, demetable.species)    
 
       if (do.display) {
-        display.update(list(env=env, demes_amount_position=demetable.species, time=time))
+        display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time))
       }
       
     } #end of looping through species
@@ -289,7 +289,7 @@ if (do.display) {
   #       edgetable[1,8] <- breadth
   #       species.rasters <- vector('list', 10000)
   #       species.rasters[[1]] <- initial.species[[1]]
-  #       time <- 1
+  #       current.time <- 1
   #       stepsize <- stepsize
   #       tips <- 1
   #       extinct <- vector("logical", 10000)
@@ -349,5 +349,5 @@ if (do.display) {
     
 # returns a list with the following elements 1) data frame with species information, 2) phylogeney, 3) environment (as was at end of simulation), 4) parameters used in that simulation
 # 5) the Age-Range_correlation object crated by ENMTools, 6) a list of summary statistics (see generateSummaryStatistics function for details), 7) number of extinct lineages, 8) total area occupied by clade
-  return(results)
+  return()
 }

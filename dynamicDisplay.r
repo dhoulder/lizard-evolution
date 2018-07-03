@@ -17,8 +17,8 @@ display.update <- function(plotItems) {
  
   if (length(plotItems[["env"]]) > 0) { 
 
-    if (length(plotItems[["time"]]) > 0) {
-      main.header <- paste("Time:", plotItems[["time"]])
+    if (length(plotItems[["current.time"]]) > 0) {
+      main.header <- paste("Time:", plotItems[["current.time"]])
     } else {
       main.header <- ""
     }
