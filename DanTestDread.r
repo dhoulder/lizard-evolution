@@ -28,8 +28,9 @@ niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap 
 do.display            <- FALSE
 do.text.output        <- TRUE
 
+source("dynamicDisplay.r")
+
 if (do.display) {
-  source("dynamicDisplay.r")
   my.colours <- display.initialise()
 }
 
