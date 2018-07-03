@@ -303,7 +303,7 @@ if (do.display) {
   #     extinct.number <- length(extinct.species)
   #     terminal.branches <- which(!edgetable[, 2] %in% edgetable[, 1])
   #     tips <- length(terminal.branches)
-  #   }# end of while loop
+     }# end of while loop
   # 
   # # species.rasters.2 are extant species rasters (extinct rasters are empty)
   # species.rasters.2 <- species.rasters[terminal.branches[!terminal.branches %in% extinct.species]]
