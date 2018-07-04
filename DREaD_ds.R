@@ -63,12 +63,12 @@ DREaD_ds <- function (total.time,
                       niche.ev.rate,
                       breadth.ev.rate,
                       phylo.sig,
-                      Me,  
+                      Me,
                       enviro.hetero,
                       geo.mode,
                       enviro.mode,
-                      amp = NA, 
-                      freq = NA, 
+                      amp = NA,
+                      freq = NA,
                       slope = NA,
                       plot = FALSE,
                       stepsize = 1,
@@ -78,18 +78,18 @@ DREaD_ds <- function (total.time,
                       lambda3 = 0.010375,
                       genomeDimensions = 3,
                       niche.blocksize = 0.1,
-                      suitability.mode="block", 
+                      suitability.mode="block",
                       speciation.gene.distance,
                       niche.evolution.rate) {
-  
+
   ##### required libraries
   #require(ape)
   #require(apTreeshape)
-  require(data.table)  
+  require(data.table)
   require(dplyr)
   #require(ENMTools)
   #require(fossil)
-  #require(geiger)  
+  #require(geiger)
   require(gstat)
   #require(moments)
   #require(phyloclim)
@@ -107,20 +107,21 @@ DREaD_ds <- function (total.time,
 
   # Keep track of number of Mass Extinctions
   extinction <- 1
-  
+
   # define the minimum occurrence amount (between 0 and 1).  Values below this will be treated as 0
   minimum.amount <- 0.001
 
   ####################### CHECK INPUT ARGUMENTS - just checking some at this point ########
-  
+
   # slope parameter required only for linear climate models, amp and freq only for sine cliamte models
   if (enviro.mode == "linear") {
     if (is.na(slope)) {stop("When enviro.mode is 'linear', A value must be provided for slope.")}
   } else if (enviro.mode == "sine") {
     if (is.na(amp) | is.na(freq)) {stop("When enviro.mode is 'sine', values must be provided for amp and freq.")}
   }
-  
+
   ########################### 1. Generate background environment ##########################
+
   env <- generateEnv(original = T)
   starting.env <- env
 
@@ -138,7 +139,7 @@ if (do.display) {
 
   initial.species <- seedSpecies(env, dispersal = dispersal)
   initial.species.ras <- initial.species[[1]]
-  # generate edgetable  -  edgetable is a matrix that stores information on each species' 
+  # generate edgetable  -  edgetable is a matrix that stores information on each species'
   # phylogeny, niche position, niche breadth, speciation modes, range size each row is a
   # species
 
@@ -149,7 +150,7 @@ if (do.display) {
   edgetable[1,7]  <- initial.species[[2]]
   edgetable[1,8]  <- initial.species[[3]]
   edgetable[1,11] <- 1
-  
+
 
   presence.cells <- which(initial.species.ras[] == 1)
   coords <- rowColFromCell(initial.species.ras, presence.cells)
@@ -158,7 +159,7 @@ if (do.display) {
   demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
 
   for (i in 1:length(presence.cells)) {
-    cell <- presence.cells[i]  
+    cell <- presence.cells[i]
     new.row <-  c(cell,                  # cellID
                   1,                     # speciesID
                   coords[i, 2],     # x
@@ -170,21 +171,21 @@ if (do.display) {
                   0                      # niche2.breadth  - need to sort out values if using
     )
     new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
-    
+#browser()
     for (j in 1:ncol(demetable)) {
       demetable[i, j] <- new.row[j]
     }
   }
 
   demetable.used.rows <- i
-  
+
   # species rasters is a list that hangs onto each species geographic range in the form of a raster
   species.rasters <- vector('list', 10000)
   species.rasters[[1]] <- initial.species[[1]]
-  
+
   current.time <- 1
   tips <- 1
-  
+
   extinct <- vector("logical", 10000)
   extinct.number <- 0
 
@@ -243,10 +244,10 @@ if (do.display) {
       env.table <- as.data.table(cbind(all.coords, env[]))
       names(env.table)[4] <- "env1"
       setkey(env.table, cellID)
-
+browser()
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
- 
+
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
         edgetable <- extinction(edgetable, current.speciesID)
@@ -263,8 +264,8 @@ if (do.display) {
 
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
-  
-      # calcualte and print a niche summary - probably drop this once development is done
+
+      # calculate and print a niche summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range=.N,
                                           niche1.position.mean=mean(niche1.position),
                                           niche1.position.sd=sd(niche1.position),
@@ -274,22 +275,22 @@ if (do.display) {
                                           niche1.sp.max =max(niche1.position + (niche1.breadth/2)))]
       sp.summary <- round(sp.summary, 4)
       if (do.text.output) {
-        list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)), 
+        list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)),
                           as.list(sp.summary[1,]))
         text.update(list(species_range_niche=list.for.text))
       }
 
       # drift for each deme
 
-      
+
       # update this species in demetable
       demetable <- demetable[demetable$speciesID != current.speciesID, ]
-      demetable <- rbind(demetable, demetable.species)    
+      demetable <- rbind(demetable, demetable.species)
 
       if (do.display) {
         display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time))
       }
-      
+
     } #end of looping through species
 
   #   # if all species are extinct reset to the starting values of the simulation
@@ -316,12 +317,12 @@ if (do.display) {
   #     terminal.branches <- which(!edgetable[, 2] %in% edgetable[, 1])
   #     tips <- length(terminal.branches)
      }# end of while loop
-  # 
+  #
   # # species.rasters.2 are extant species rasters (extinct rasters are empty)
   # species.rasters.2 <- species.rasters[terminal.branches[!terminal.branches %in% extinct.species]]
   # # Build phylogeny
   # phy.table <- buildPhyInSim(edgetable, species.rasters.2@layers, extinct, tips)
-  # 
+  #
   # # plot species ranges
   # if (plot == TRUE ) {
   #   cols <- sample(rainbow(100,end=1, start=0, alpha=0.6 ), 100, replace = TRUE)
@@ -334,7 +335,7 @@ if (do.display) {
   #   }
   #   plot(phy.table[[2]]); axisPhylo()
   # }
-  # 
+  #
   # species.rasters.2 <- stack(species.rasters.2)
   # # record proportion of domain occupied by the whole clade
   # clade.area <- sum(stackApply(species.rasters.2, indices = rep(1, length(species.rasters.2@layers)), fun=mean)@data@values, na.rm=T)
@@ -357,8 +358,8 @@ if (do.display) {
   # } else {
   # results <- list("df" = phy.table[[1]], "phy" = phy.table[[2]], "rasters" = species.rasters.2, "env" = env, "params"=params, "extinct"= length(which(extinct==TRUE)), "clade.area"=clade.area)
   # }
-    
-    
+
+
 # returns a list with the following elements 1) data frame with species information, 2) phylogeney, 3) environment (as was at end of simulation), 4) parameters used in that simulation
 # 5) the Age-Range_correlation object crated by ENMTools, 6) a list of summary statistics (see generateSummaryStatistics function for details), 7) number of extinct lineages, 8) total area occupied by clade
   return()
