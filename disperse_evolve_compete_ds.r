@@ -76,7 +76,8 @@ if (demetable.species[,.N] < 35) {browser()}
 
       #remove dispersal destinations which are within the bounding rectangle, but too far away
       include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")],
-                                           env.table.dispersal[, c("col", "row")], dispersal.range)
+                                           env.table.dispersal[, c("col", "row")],
+                                           dispersal.range)
       env.table.dispersal <- env.table.dispersal[include.in.dispersal]
     }
 
@@ -103,27 +104,25 @@ if (demetable.species[,.N] < 35) {browser()}
                                          & row <= deme$y+dispersal.range), ]
         #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
         new.count <- nrow(deme.dest)
-browser()
         new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
         new.rows    <- (row.pointer + 1):(row.pointer + new.count)
 
         if (length(new.amount) > 0) {
           # create dispersed demes
+
           demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
                                             list(cellID = deme.dest$cellID,
                                                  x =      deme.dest$col,
                                                  y =      deme.dest$row,
                                                  amount = new.amount), fill = TRUE)
-          demetable.nichegroup.new$speciesID[new.rows] <- deme$speciesID
-          demetable.nichegroup.new$niche1.position[new.rows] <- deme$niche1.position
-          demetable.nichegroup.new$niche1.breadth[new.rows]  <- deme$niche1.breadth
-          demetable.nichegroup.new$niche2.position[new.rows] <- deme$niche2.position
-          demetable.nichegroup.new$niche2.breadth[new.rows]  <- deme$niche2.breadth
-          demetable.nichegroup.new$gene.pos1[new.rows] <- deme$gene.pos1
-          demetable.nichegroup.new$gene.pos2[new.rows] <- deme$gene.pos2
-          demetable.nichegroup.new$gene.pos3[new.rows] <- deme$gene.pos3
 
-          demetable.nichegroup.new$originCell[new.rows] <- deme$cellID
+          set(demetable.nichegroup.new,  # assign values which are the same for each new row in the niche group
+              i=new.rows,
+              j=c("speciesID", "niche1.position", "niche1.breadth", "niche2.position",
+                  "niche2.breadth", "gene.pos1", "gene.pos2", "gene.pos3", "originCell"),
+              value=list(deme$speciesID, deme$niche1.position, deme$niche1.breadth, deme$niche2.position,
+                         deme$niche2.breadth, deme$gene.pos1, deme$gene.pos2, deme$gene.pos3, deme$cellID)
+              )
 
           # apply distance function
           weights <- distance.weights(source = deme[1, c("x", "y")],

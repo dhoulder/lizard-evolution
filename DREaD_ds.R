@@ -244,7 +244,7 @@ if (do.display) {
       env.table <- as.data.table(cbind(all.coords, env[]))
       names(env.table)[4] <- "env1"
       setkey(env.table, cellID)
-browser()
+
       # run the deme dispersal function
       demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
 
