@@ -1,16 +1,8 @@
 # this file contains functions for dispersal, competition, niche evolution and drift
 
-
-######### rangeDispersal #########
-
-# Function extends a species range based on a dispersal kernal and the inherent niche breadth of the species
-
-############# Arguments ###############
-
 # env = current environmental layer
 # position = niche position of species
 # breadth = niche breadth of species
-# species.ras is the current species range in raster format (presence/absence)
 
 disperse_ds <- function (demetable.species,
                          env,
@@ -25,7 +17,7 @@ disperse_ds <- function (demetable.species,
   demetable.species$niche1.position.group <- as.integer(round(demetable.species$niche1.position/niche.blocksize))
   demetable.species$niche2.breadth.group <- as.integer(round(demetable.species$niche2.breadth/niche.blocksize))
   demetable.species$niche2.position.group <- as.integer(round(demetable.species$niche2.position/niche.blocksize))
-if (demetable.species[,.N] < 35) {browser()}
+
   # create groupos of demes with similar environemnt to calculate dispersal
   niche.groups <- demetable.species[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, .N), by=list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group)]
   niche.groups <- niche.groups[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, N)]
@@ -101,8 +93,7 @@ if (demetable.species[,.N] < 35) {browser()}
         deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range
                                          & col <= deme$x+dispersal.range
                                          & row >= deme$y-dispersal.range
-                                         & row <= deme$y+dispersal.range), ]
-        #deme.dest <- deme.dest[row >= deme$y-dispersal.range & row <= deme$y+dispersal.range, ]
+                                         & row <= deme$y+dispersal.range)]
         new.count <- nrow(deme.dest)
         new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
         new.rows    <- (row.pointer + 1):(row.pointer + new.count)
@@ -430,7 +421,7 @@ niche.evolution <- function(demetable.species,
   return(demetable.species)
 }
 
-extinction <- function(edgetable, speciesID) {
+extinction <- function(edgetable, speciesID, current.time) {
   # this function takes the steps required when a species is found to have no demes
   # initially it makes the most minimal changes, but more could be done here
 

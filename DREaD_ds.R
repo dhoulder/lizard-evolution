@@ -250,7 +250,7 @@ if (do.display) {
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
-        edgetable <- extinction(edgetable, current.speciesID)
+        edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
       demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
