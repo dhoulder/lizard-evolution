@@ -18,30 +18,30 @@
 
 enviroChange <- function (start.env, env, current.time, amp, freq, slope, model, hetero=T, env.change.matrix) {
 
-# if homogenously varying across domain   
+# if homogenously varying across domain
 if(hetero==F){
-# for linear model environment 
+# for linear model environment
   if(model == "linear") {
-    env <-  env + slope 
+    env <-  env + slope
     } else {
-# for sine model environment 
-    env <-  start.env + (sin((current.time-1)/freq)/amp) 
+# for sine model environment
+    env <-  start.env + (sin((current.time-1)/freq)/amp)
     }
 } else {
-# if hetergoensouly changing across across domain   
+# if hetergoensouly changing across across domain
   if(model == "linear"){
-# for linear model 
+# for linear model
     data <- matrix(env@data@values, ncol=100, byrow=F)
     data <- data + (slope*env.change.matrix)
     env@data@values <- as.numeric(data)
   } else {
 # for sine model
-    data<-matrix(start.env@data@values, ncol=100, byrow=F)
-    data <- data + ((sin((current.time-1)/freq)/amp)*env.change.matrix)  
+    data<-matrix(start.env[], ncol=100, byrow=F)
+    data <- data + ((sin((current.time-1)/freq)/amp)*env.change.matrix)
     env@data@values <- as.numeric(data)
   }
-} 
-#returns new env layer    
+}
+#returns new env layer
 return(env)
 }
 

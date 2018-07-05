@@ -58,7 +58,7 @@
   # a larger number should lead to faster running, but could miss effects of small niche differences
   # each niche axis is scaled from 0 to 25
 
-DREaD_ds <- function (total.time,
+DREaD_ds <- function(total.time,
                       dispersal,
                       niche.ev.rate,
                       breadth.ev.rate,
@@ -80,7 +80,8 @@ DREaD_ds <- function (total.time,
                       niche.blocksize = 0.1,
                       suitability.mode="block",
                       speciation.gene.distance,
-                      niche.evolution.rate) {
+                      niche.evolution.rate,
+                      environment.source) {
 
   ##### required libraries
   #require(ape)
@@ -113,16 +114,20 @@ DREaD_ds <- function (total.time,
 
   ####################### CHECK INPUT ARGUMENTS - just checking some at this point ########
 
-  # slope parameter required only for linear climate models, amp and freq only for sine cliamte models
+  # slope parameter required only for linear climate models, amp and freq only for sine climate models
   if (enviro.mode == "linear") {
     if (is.na(slope)) {stop("When enviro.mode is 'linear', A value must be provided for slope.")}
   } else if (enviro.mode == "sine") {
     if (is.na(amp) | is.na(freq)) {stop("When enviro.mode is 'sine', values must be provided for amp and freq.")}
   }
 
-  ########################### 1. Generate background environment ##########################
+  ######################### 1. Generate or load background environment ########################
 
-  env <- generateEnv(original = T)
+  if (environment.source == "internal") {
+    env <- generateEnv(original = T)
+  } else {
+    env <- raster(environment.source)
+  }
   starting.env <- env
 
   # use the background environment to define all cells in the model
@@ -171,7 +176,7 @@ if (do.display) {
                   0                      # niche2.breadth  - need to sort out values if using
     )
     new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
-#browser()
+
     for (j in 1:ncol(demetable)) {
       demetable[i, j] <- new.row[j]
     }
@@ -183,7 +188,7 @@ if (do.display) {
   species.rasters <- vector('list', 10000)
   species.rasters[[1]] <- initial.species[[1]]
 
-  current.time <- 1
+  current.time <- 0
   tips <- 1
 
   extinct <- vector("logical", 10000)
@@ -250,6 +255,7 @@ if (do.display) {
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
+        browser()
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 

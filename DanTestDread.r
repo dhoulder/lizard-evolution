@@ -2,7 +2,7 @@ rm(list=ls())
 gc()
 
 scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange.R", "DREaD_ds.R",
-             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r")
+             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
 
 lapply(scripts, source)
 
@@ -20,15 +20,16 @@ NEp                   <- runif(1, 0.005, 2)
 NEb                   <- runif(1, 0.0025, 1)
 PS                    <- runif(1, 0.25, 1)
 m                     <- runif(1, 50, 250)
-niche.blocksize       <- 0.1
+niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 niche.evolution.rate  <- 0.2  # this (so far) is just the proportion of the gap between the min (or max)
                           # and the local environment is reduced each timestep
-do.display            <- FALSE
+do.display            <- TRUE
 do.text.output        <- TRUE
-
-source("dynamicDisplay.r")
+environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
+                          # or a raster file to load
+#environment.source    <- "internal"
 
 if (do.display) {
   my.colours <- display.initialise()
@@ -38,4 +39,5 @@ if (do.display) {
 simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
                   niche.ev.rate=NEp, breadth.ev.rate=NEb, phylo.sig=PS, Me=m,
                   enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine", suitability.mode=suitability.mode,
-                  speciation.gene.distance=speciation.gene.distance, niche.evolution.rate=niche.evolution.rate)
+                  speciation.gene.distance=speciation.gene.distance, niche.evolution.rate=niche.evolution.rate,
+                  environment.source=environment.source)
