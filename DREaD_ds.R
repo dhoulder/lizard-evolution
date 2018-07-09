@@ -258,7 +258,7 @@ if (do.display) {
         browser()
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
-
+browser()
       demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
 
       # check for extinction here

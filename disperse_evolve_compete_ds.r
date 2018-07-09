@@ -168,13 +168,13 @@ combine.demes <- function (demetable.species.overlap,
       deme.primary <- which(demetable.cell$originCell==cell)
 
       if (length(deme.primary) == 0) {
-        # otherwise pick a cell at random, wit probability weighted by amount
+        # otherwise pick a cell at random, with probability weighted by amount
         deme.primary <- sample(x=deme.count, size=1, prob=demetable.cell$amount, replace = T)
       }
 
       # now loop through each of the source demes and combine them with the primary deme, as determined above
-      demetable.cell$gene.flow <- is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)
-      demetable.cell <- demetable.cell[gene.flow==TRUE,]
+      demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)]
+      set(demetable.cell, j="gene.flow", value=TRUE)
 
       if (nrow(demetable.cell) > 0) { # make sure that there are still demes with gene flow - better check why not - should be gene flow to self
         demetable.species.new <- demetable.cell[, list(amount=1,  # this amount is just a place filler. Real amount will be the suitability for the new niche
@@ -316,11 +316,10 @@ gene.distances <- function(source, destinations, dimensions=3) {
 
   for (i in 1:dimensions) {
     source.coord <- as.numeric(source[1, j=i, with=FALSE])
-    d <- d + (destinations[, j=i, with=FALSE] - source.coord) ^ 2
+    d <- d + ((destinations[, j=i, with=FALSE] - source.coord) ^ 2)
   }
-  distances <- sqrt(d)
 
-  return(distances)
+  return(sqrt(d))
 }
 
 prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
@@ -338,7 +337,7 @@ prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
 }
 
 is.geneflow <- function(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance) {
-  # this function measures the genetic distance between the primary deme and the
+  # this function calculates the genetic distance between the primary deme and the
   # other origin demes and applies a distance function to determine if there is
   # gene flow.  The result is returned as TRUE or FALSE for each origin deme.
 
@@ -346,17 +345,33 @@ is.geneflow <- function(demetable.cell, deme.primary, dimensions=3, speciation.g
   gene.cols             <- first.gene.col.idx:(first.gene.col.idx + dimensions - 1)
   source.coords         <- demetable.cell[deme.primary, gene.cols, with=FALSE]
   destination.coords    <- demetable.cell[, gene.cols, with=FALSE]
-  g.distances           <- gene.distances(source.coords, destination.coords, dimensions)
-  demetable.cell$probs  <- prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance)
-  demetable.cell[probs>1, "probs"] <- 1
 
-  # determine geneflow using the probablities
-  origin.deme.count     <- nrow(demetable.cell)
-  for (k in 1:origin.deme.count) {
-    demetable.cell$geneflow[k] <- sample(x=c(1,0), size=1, replace=TRUE, prob=c(demetable.cell$probs[k],
-                                                                                demetable.cell$probs[k]))
+  set(demetable.cell, j="geneflow", value=FALSE)
+
+  # deal quickly with those that have the same location
+  for (dest.row in 1:nrow(destination.coords)) {
+    if (all(destination.coords[dest.row]==source.coords)) {
+      set(demetable.cell, dest.row, "geneflow", TRUE)
+    }
   }
-  demetable.cell$geneflow <- demetable.cell$geneflow == 1
+
+  dest.rows <- which(!demetable.cell$geneflow)
+
+  if (length(dest.rows) > 0) {  # do this loop where the destination gene position differs from the origin
+    g.distances   <- gene.distances(source.coords, destination.coords[dest.rows], dimensions)
+    set(demetable.cell, i=dest.rows, j="probs", value=prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance))
+    demetable.cell <- demetable.cell[(probs>1), probs := 1]
+
+    # determine geneflow using the probablities
+    for (k in dest.rows) {
+      demetable.cell$geneflow[k] <- (sample(x=c(1,0),
+                                            size=1,
+                                            replace=TRUE,
+                                            prob=c(demetable.cell$probs[k], (1-demetable.cell$probs[k])))
+                                     ==1)
+    }
+  }
+
   return(demetable.cell$geneflow)
 
 }
@@ -385,7 +400,7 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
       xy <- dispersal.destinations[destination.index, 2:3]
       dist.from.dest <- pointDistance(xy, dispersal.origins, lonlat = FALSE)
       if(min(dist.from.dest) <= dispersal.range) {
-        dispersal.destinations[destination.index, 4] <- 1
+        set(dispersal.destinations, destination.index, "include", 1)
       }
     }
 
