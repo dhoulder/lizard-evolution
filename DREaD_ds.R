@@ -255,10 +255,10 @@ if (do.display) {
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
-        browser()
+        #browser()
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
-browser()
+
       demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
 
       # check for extinction here
@@ -267,7 +267,7 @@ browser()
       }
 
   ############################  5. Evolution ######################
-
+#browser()
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
 

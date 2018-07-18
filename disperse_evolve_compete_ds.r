@@ -176,25 +176,23 @@ combine.demes <- function (demetable.species.overlap,
       demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)]
       set(demetable.cell, j="gene.flow", value=TRUE)
 
-      if (nrow(demetable.cell) > 0) { # make sure that there are still demes with gene flow - better check why not - should be gene flow to self
-        demetable.species.new <- demetable.cell[, list(amount=1,  # this amount is just a place filler. Real amount will be the suitability for the new niche
-                                  niche1.position=weighted.mean(niche1.position, amount),
-                                  niche1.breadth  =weighted.mean(niche1.breadth, amount),
-                                  niche2.position =weighted.mean(niche2.position, amount),
-                                  niche2.breadth  =weighted.mean(niche2.breadth, amount),
-                                  gene.pos1       =weighted.mean(gene.pos1, amount),
-                                  gene.pos2       =weighted.mean(gene.pos1, amount)),
-                                  by=list(cellID, speciesID, x, y) ]
-        if (genomeDimensions > 2) {
-          for (g in 3:genomeDimensions) {
-            column.name <- paste("gene.pos", g, sep="")
+      demetable.species.new <- demetable.cell[, list(amount=1,  # amount is just a place filler. Real amount will be the suitability for the new niche
+                                niche1.position=weighted.mean(niche1.position, amount),
+                                niche1.breadth  =weighted.mean(niche1.breadth, amount),
+                                niche2.position =weighted.mean(niche2.position, amount),
+                                niche2.breadth  =weighted.mean(niche2.breadth, amount),
+                                gene.pos1       =weighted.mean(gene.pos1, amount),
+                                gene.pos2       =weighted.mean(gene.pos1, amount)),
+                                by=list(cellID, speciesID, x, y) ]
+      if (genomeDimensions > 2) {
+        for (g in 3:genomeDimensions) {
+          column.name <- paste("gene.pos", g, sep="")
 
-            demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
-          }
+          demetable.species.new[[column.name]] <- weighted.mean(demetable.cell[[column.name]], demetable.cell[["amount"]])
         }
-
-        demetable.species <- rbindlist(list(demetable.species, demetable.species.new))
       }
+
+      demetable.species <- rbindlist(list(demetable.species, demetable.species.new))
     }
 
   }
@@ -415,16 +413,27 @@ browser()
 
 niche.evolution <- function(demetable.species,
                             env.table,
-                            niche.evolution.rate) {
+                            niche.evolution.rate,
+                            niche.evolution.mode = "1") {
 
-  # this function adjusts the niche limits of each deme towards the local environment
+  # niche evolution mode is a work in progress
+  #   mode 1 has the niche position moving towards the local environment in proportion to distance from it, without any change in niche breadth.
+  #   mode 2 has the niche min and max moving towards the local environment in proportion to distance from it.
+  #     this leads to an ever narrowing niche
+
   for (d in 1:nrow(demetable.species)) {
     deme <- demetable.species[d]
+    env1 <- env.table$env1[env.table$cellID == deme$cellID]
+
+    if (niche.evolution.mode == 1) {
+
+      position1.old <- deme$niche1.position
+      demetable.species[d, "niche1.position"] <- position1.old + ((env1 - position1.old) * niche.evolution.rate)
+
+    } else if (niche.evolution.mode == 2) {
 
     niche1.min <- deme$niche1.position - (deme$niche1.breadth / 2)
     niche1.max <- deme$niche1.position + (deme$niche1.breadth / 2)
-
-    env1 <- env.table$env1[env.table$cellID == deme$cellID]
 
     # move the niche min and max towards the local environment
     niche1.min.new <- niche1.min + ((env1 - niche1.min) * niche.evolution.rate)
@@ -432,6 +441,12 @@ niche.evolution <- function(demetable.species,
 
     demetable.species[d, "niche1.breadth"]  <- niche1.max.new - niche1.min.new
     demetable.species[d, "niche1.position"] <- (niche1.max.new + niche1.min.new) / 2
+
+    } else {
+
+      stop("Niche evolution mode", niche.evolution.mode, "does not exist in the niche.evolution function.")
+
+    }
   }
   return(demetable.species)
 }
