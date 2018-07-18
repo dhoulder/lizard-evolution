@@ -13,7 +13,7 @@ lapply(scripts, source)
 
 #sample parameters
 total.time            <- 100
-D                     <- runif(1, 1, 10)
+D                     <- 2                    # dispersal distance
 ENVa                  <- runif(1, 0.25, 2)
 ENVf                  <- runif(1, 0.25, 2)
 NEp                   <- runif(1, 0.005, 2)

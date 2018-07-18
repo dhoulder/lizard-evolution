@@ -1,4 +1,3 @@
-
 #  SOME QUICK NOTES AND EDITS TO CONSIDER MODIFYING ROLLING STONE
 #  TO SIMULATE EVOLUTION WITHIN SPECIES USING DEMES AS THE BASIC UNITS
 
@@ -137,7 +136,7 @@ DREaD_ds <- function(total.time,
 
 # TEMP
 if (do.display) {
-  display.update(list(env=env))
+  display.update(list(env = env))
 }
 
   ###########################  2. Seed initial species  ###################################
@@ -148,14 +147,12 @@ if (do.display) {
   # phylogeny, niche position, niche breadth, speciation modes, range size each row is a
   # species
 
-  edgetable <- makeEdgeTable(10000, dynamicSpeciation=TRUE)
+  edgetable <- makeEdgeTable(1000, dynamicSpeciation = TRUE)
 
-  edgetable[1,5]  <- sum(initial.species.ras@data@values)
   edgetable[1,5]  <- sum(initial.species.ras@data@values)
   edgetable[1,7]  <- initial.species[[2]]
   edgetable[1,8]  <- initial.species[[3]]
   edgetable[1,11] <- 1
-
 
   presence.cells <- which(initial.species.ras[] == 1)
   coords <- rowColFromCell(initial.species.ras, presence.cells)
@@ -163,23 +160,23 @@ if (do.display) {
 
   demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
 
+  genomeInitial <- rep(0, genomeDimensions)
+
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
     new.row <-  c(cell,                  # cellID
                   1,                     # speciesID
-                  coords[i, 2],     # x
-                  coords[i, 1],     # y
+                  coords[i, 2],          # x
+                  coords[i, 1],          # y
                   1,                     # amount - need to sort out values!
                   initial.species[[2]],  # niche1.position
                   initial.species[[3]],  # niche1.breadth
                   0,                     # niche2.position - need to sort out values if using
-                  0                      # niche2.breadth  - need to sort out values if using
+                  0,                     # niche2.breadth  - need to sort out values if using
+                  genomeInitial          # an initial value for each genome dimension
     )
-    new.row <- c(new.row, rep(0, genomeDimensions)) # add the gene.pos columns
 
-    for (j in 1:ncol(demetable)) {
-      demetable[i, j] <- new.row[j]
-    }
+    demetable[i, ] <- new.row
   }
 
   demetable.used.rows <- i
@@ -191,7 +188,7 @@ if (do.display) {
   current.time <- 0
   tips <- 1
 
-  extinct <- vector("logical", 10000)
+  extinct <- vector("logical", 1000)
   extinct.number <- 0
 
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
@@ -251,7 +248,7 @@ if (do.display) {
       setkey(env.table, cellID)
 
       # run the deme dispersal function
-      demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=2, suitability.mode=suitability.mode)
+      demetable.species.overlap <- disperse_ds(demetable.species, env=env, env.table, dispersal.range=dispersal, suitability.mode=suitability.mode)
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
