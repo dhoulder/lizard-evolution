@@ -38,10 +38,9 @@
 # amp = amplitude of environmental change sine wave
 # freq = frequency of environmnental change sine wave
 # slope = slope of environmental change linear model
-# breadth.ev.rate = rate of niche breadth evolution
-# niche.ev.rate = rate of niche position evolution
+# breadth.ev.rate = rate of niche breadth evolution - not currently used
+# niche.evolution.rate = rate of niche evolution - impact depends on the mode of niche evolution
 # phylo.sig = phylogenetic signal of species niches at speciation
-# Me = range size threshold at which a species will not go extinct stochastically
 # enviro.hetero = biniary variable. whether environmental change model varies spatially or operates in synchrony across the domain
 # geo.mode = geographic mode of species
 # plot = whether to plot species ranges and phylogeny at end of simulation (plot results)
@@ -59,10 +58,9 @@
 
 DREaD_ds <- function(total.time,
                       dispersal,
-                      niche.ev.rate,
+                      niche.evolution.rate,
                       breadth.ev.rate,
                       phylo.sig,
-                      Me,
                       enviro.hetero,
                       geo.mode,
                       enviro.mode,
@@ -79,7 +77,6 @@ DREaD_ds <- function(total.time,
                       niche.blocksize = 0.1,
                       suitability.mode="block",
                       speciation.gene.distance,
-                      niche.evolution.rate,
                       environment.source) {
 
   ##### required libraries
@@ -98,10 +95,11 @@ DREaD_ds <- function(total.time,
 
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/100), 100), ncol=100, nrow=100, byrow=F)
+
   # vector of parameters
-  params<-data.frame(total.time=total.time, dispersal=dispersal, amp=amp,
-                    freq=freq, niche.ev.rate=niche.ev.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig, Me=Me,
-                    geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
+  params <- data.frame(total.time=total.time, dispersal=dispersal, amp=amp, freq=freq,
+              niche.evolution.rate=niche.evolution.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig,
+              geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
 
   # define the minimum occurrence amount (between 0 and 1).  Values below this will be treated as 0
   minimum.amount <- 0.001
@@ -153,12 +151,12 @@ DREaD_ds <- function(total.time,
   rownum <- 1
 
   demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
+  genomeInitial <- as.list(rep(0, genomeDimensions))
+  demetable.columncount <- ncol(demetable)
 
-  genomeInitial <- rep(0, genomeDimensions)
-browser()
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
-    new.row <-  c(cell,                  # cellID
+    new.row <-  list(cell,                  # cellID
                   1,                     # speciesID
                   coords[i, 2],          # x
                   coords[i, 1],          # y
@@ -166,11 +164,11 @@ browser()
                   initial.species[[2]],  # niche1.position
                   initial.species[[3]],  # niche1.breadth
                   0,                     # niche2.position - need to sort out values if using
-                  0,                     # niche2.breadth  - need to sort out values if using
-                  genomeInitial          # an initial value for each genome dimension
+                  0                     # niche2.breadth  - need to sort out values if using
     )
+    new.row <- c(new.row, genomeInitial) # add the genome columns - 2 or more
 
-    demetable[i, ] <- new.row
+    set(demetable, i=i, j=1:demetable.columncount, value=new.row)
   }
 
   demetable.used.rows <- i
@@ -254,11 +252,11 @@ browser()
 
       # check for extinction here
       if (nrow(demetable.species) == 0) {
-        edgetable <- extinction(edgetable, current.speciesID)
+        edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
   ############################  5. Evolution ######################
-#browser()
+
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
 
