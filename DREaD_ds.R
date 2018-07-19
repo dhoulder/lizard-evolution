@@ -96,17 +96,12 @@ DREaD_ds <- function(total.time,
   #require(phytools)
   require(raster)
 
-  # extinction rate constant
-  ext.rate = 0.02
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/100), 100), ncol=100, nrow=100, byrow=F)
   # vector of parameters
   params<-data.frame(total.time=total.time, dispersal=dispersal, amp=amp,
                     freq=freq, niche.ev.rate=niche.ev.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig, Me=Me,
                     geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
-
-  # Keep track of number of Mass Extinctions
-  extinction <- 1
 
   # define the minimum occurrence amount (between 0 and 1).  Values below this will be treated as 0
   minimum.amount <- 0.001
@@ -134,12 +129,11 @@ DREaD_ds <- function(total.time,
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
   names(all.coords)[1] <- "cellID"
 
-# TEMP
-if (do.display) {
-  display.update(list(env = env))
-}
+  if (do.display) {
+    display.update(list(env = env))
+  }
 
-  ###########################  2. Seed initial species  ###################################
+  ###########################  2. Seed initial species and data structures #############################
 
   initial.species <- seedSpecies(env, dispersal = dispersal)
   initial.species.ras <- initial.species[[1]]
@@ -161,7 +155,7 @@ if (do.display) {
   demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
 
   genomeInitial <- rep(0, genomeDimensions)
-
+browser()
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
     new.row <-  c(cell,                  # cellID
@@ -181,9 +175,9 @@ if (do.display) {
 
   demetable.used.rows <- i
 
-  # species rasters is a list that hangs onto each species geographic range in the form of a raster
-  species.rasters <- vector('list', 10000)
-  species.rasters[[1]] <- initial.species[[1]]
+  # # species rasters is a list that hangs onto each species geographic range in the form of a raster
+  # species.rasters <- vector('list', 10000)
+  # species.rasters[[1]] <- initial.species[[1]]
 
   current.time <- 0
   tips <- 1
@@ -198,7 +192,7 @@ if (do.display) {
   ############################# 3. Environmental change ###########################
 
     # time changes
-    current.time <- round(current.time + stepsize, 3)
+    current.time <- current.time + stepsize
     # # if simulation runs too long restart
     # if(current.time >= maxtime){
     #   initial.species <- seedSpecies(env)

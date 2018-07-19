@@ -13,7 +13,7 @@ lapply(scripts, source)
 
 #sample parameters
 total.time            <- 100
-D                     <- 2                    # dispersal distance
+dispersal             <- 2                    # dispersal distance
 ENVa                  <- runif(1, 0.25, 2)
 ENVf                  <- runif(1, 0.25, 2)
 NEp                   <- runif(1, 0.005, 2)
@@ -36,7 +36,7 @@ if (do.display) {
 }
 
 # Run model
-simulation.1 <- DREaD_ds(total.time=total.time, dispersal=D, amp=ENVa, freq=ENVf,
+simulation.1 <- DREaD_ds(total.time=total.time, dispersal=dispersal, amp=ENVa, freq=ENVf,
                   niche.ev.rate=NEp, breadth.ev.rate=NEb, phylo.sig=PS, Me=m,
                   enviro.hetero=T, geo.mode="dispersal", enviro.mode="sine", suitability.mode=suitability.mode,
                   speciation.gene.distance=speciation.gene.distance, niche.evolution.rate=niche.evolution.rate,
