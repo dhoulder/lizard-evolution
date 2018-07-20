@@ -18,31 +18,37 @@
 
 enviroChange <- function (start.env, env, current.time, amp, freq, slope, model, hetero=T, env.change.matrix) {
 
-# if homogenously varying across domain
-if(hetero==F){
-# for linear model environment
-  if(model == "linear") {
-    env <-  env + slope
-    } else {
-# for sine model environment
-    env <-  start.env + (sin((current.time-1)/freq)/amp)
-    }
-} else {
-# if hetergoensouly changing across across domain
-  if(model == "linear"){
-# for linear model
-    data <- matrix(env@data@values, ncol=100, byrow=F)
-    data <- data + (slope*env.change.matrix)
-    env@data@values <- as.numeric(data)
+  if (amp==0) {
+    return(start.env)
+
   } else {
-# for sine model
-    data<-matrix(start.env[], ncol=100, byrow=F)
-    data <- data + ((sin((current.time-1)/freq)/amp)*env.change.matrix)
-    env@data@values <- as.numeric(data)
+
+    # if homogenously varying across domain
+    if(hetero==F){
+    # for linear model environment
+      if(model == "linear") {
+        env <-  env + slope
+        } else {
+    # for sine model environment
+        env <-  start.env + (sin((2 * pi * (current.time-1)) / freq) * amp)
+        }
+    } else {
+    # if hetergenously changing across across domain
+      if(model == "linear"){
+    # for linear model
+        data <- matrix(env@data@values, ncol=100, byrow=F)
+        data <- data + (slope*env.change.matrix)
+        env@data@values <- as.numeric(data)
+      } else {
+    # for sine model
+        env <- start.env # this creates a raster of the same dimensions - all the values will be replaced
+        env[] <- start.env[] + ((sin((2 * pi * (current.time-1)) / freq) * amp) * env.change.matrix[])
+      }
+    }
+
+  #return new env layer
+  return(env)
   }
-}
-#returns new env layer
-return(env)
 }
 
 

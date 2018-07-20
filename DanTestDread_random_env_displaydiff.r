@@ -9,20 +9,28 @@ lapply(scripts, source)
 total.time            <- 100
 dispersal             <- 2                    # dispersal distance
 niche.evolution.rate  <- 0.1
-env.amp               <- runif(1, 0.25, 2)
+env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
 NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 do.display            <- TRUE
+do.display.diff       <- TRUE
 do.text.output        <- TRUE
-environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
+#environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
                           # or a raster file to load
-#environment.source    <- "internal"
+environment.source    <- "internal"
 
 if (do.display) {
-  my.colours <- display.initialise()
+  if (do.display.diff) {
+    my.colours.double <- display.initialise.double()
+    my.colours      <- my.colours.double[[1]]
+    my.coloursdiff  <- my.colours.double[[2]]
+    rm(my.colours.double)
+  } else {
+    my.colours <- display.initialise()
+  }
 }
 
 # Run model

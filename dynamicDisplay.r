@@ -9,6 +9,19 @@ display.initialise <- function() {
   return(my.colours)
 }
 
+display.initialise.double <- function() {
+  windows(18,9)
+  par(mfcol=c(1,2))
+
+  my.colours.function <- colorRampPalette(colors = c("red", "yellow", "blue"))
+  my.colours    <- my.colours.function(250)
+
+  my.diffcolours.function <- colorRampPalette(colors = c("green", "white", "orange"))
+  my.diffcolours    <- my.diffcolours.function(250)
+
+  return(list(my.colours, my.diffcolours))
+}
+
 display.update <- function(plotItems) {
   # elements is a list of named components to include in the display
 
@@ -30,6 +43,21 @@ display.update <- function(plotItems) {
     these.colours <- my.colours[round(demetable.species$niche1.position*10)]
     these.sizes   <- sqrt(demetable.species$amount) * 2
     points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+  }
+
+  if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
+    demetable.species <- plotItems[["demes_amount_position_diff"]]
+    env <- plotItems[["env"]]
+    set(demetable.species, j="env", value=env[demetable.species$cellID])
+    demetable.species[, diff:=niche1.position-env]
+    breadth.max <- demetable.species[, max(niche1.breadth)]
+
+    colour.nums <- round(demetable.species$diff * (248 / breadth.max)) + 124
+    colour.nums[colour.nums < 1] <- 1
+    colour.nums[colour.nums >250] <- 250
+    these.colours <- my.coloursdiff[colour.nums]
+    #these.sizes   <- sqrt(demetable.species$amount) * 2
+    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)#these.sizes)
   }
 
   if (length(plotItems[["one_deme"]] > 0)) {

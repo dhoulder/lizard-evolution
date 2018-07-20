@@ -26,7 +26,6 @@
 
 
 
-
 ######### Dynamic Range Evolution and Diversification model (DREaD) #########
 
 # main simulator function of geographic diversification model
@@ -40,14 +39,11 @@
 # slope = slope of environmental change linear model
 # breadth.ev.rate = rate of niche breadth evolution - not currently used
 # niche.evolution.rate = rate of niche evolution - impact depends on the mode of niche evolution
-# phylo.sig = phylogenetic signal of species niches at speciation
 # enviro.hetero = biniary variable. whether environmental change model varies spatially or operates in synchrony across the domain
-# geo.mode = geographic mode of species
 # plot = whether to plot species ranges and phylogeny at end of simulation (plot results)
 # animate = whethe to save a snapshot of species range at each time step (png) to turn into a GIF using otehr software (visualisation tool)
-# stepsize = size of each time step
+# timestep.size = size of each time step
 # generateSummaryStatistics = logical. whether to generate the 32 summary statistics
-# lambda = speciation rates for each speciation mode lambda1 = predominate mode, lambda2 = non-predominate modes, lambda3= mixed speciation
 
 # Arguments specific to the dynamic speciation model
 
@@ -60,20 +56,15 @@ DREaD_ds <- function(total.time,
                       dispersal,
                       niche.evolution.rate,
                       breadth.ev.rate,
-                      phylo.sig,
                       enviro.hetero,
-                      geo.mode,
                       enviro.mode,
                       amp = NA,
                       freq = NA,
                       slope = NA,
                       plot = FALSE,
-                      stepsize = 1,
+                      timestep.size = 1,
                       generateSummaryStatistics = TRUE,
-                      lambda1 = 0.04,
-                      lambda2 = 0.0005,
-                      lambda3 = 0.010375,
-                      genomeDimensions = 3,
+                      genome.Dimensions = 3,
                       niche.blocksize = 0.1,
                       suitability.mode="block",
                       speciation.gene.distance,
@@ -98,8 +89,8 @@ DREaD_ds <- function(total.time,
 
   # vector of parameters
   params <- data.frame(total.time=total.time, dispersal=dispersal, amp=amp, freq=freq,
-              niche.evolution.rate=niche.evolution.rate, breath.ev.rate=breadth.ev.rate, phylo.sig=phylo.sig,
-              geo.mode=geo.mode,  slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
+              niche.evolution.rate=niche.evolution.rate, breath.ev.rate=breadth.ev.rate,
+              slope=slope, enviro.mode=enviro.mode, enviro.hetero=enviro.hetero)
 
   # define the minimum occurrence amount (between 0 and 1).  Values below this will be treated as 0
   minimum.amount <- 0.001
@@ -127,7 +118,7 @@ DREaD_ds <- function(total.time,
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
   names(all.coords)[1] <- "cellID"
 
-  if (do.display) {
+  if (do.display & !do.display.diff) {
     display.update(list(env = env))
   }
 
@@ -150,8 +141,8 @@ DREaD_ds <- function(total.time,
   coords <- rowColFromCell(initial.species.ras, presence.cells)
   rownum <- 1
 
-  demetable <- makeDemeTable(genomeDimensions = genomeDimensions, rowcount = 10000)
-  genomeInitial <- as.list(rep(0, genomeDimensions))
+  demetable <- makeDemeTable(genome.Dimensions = genome.Dimensions, rowcount = 10000)
+  genomeInitial <- as.list(rep(0, genome.Dimensions))
   demetable.columncount <- ncol(demetable)
 
   for (i in 1:length(presence.cells)) {
@@ -190,7 +181,7 @@ DREaD_ds <- function(total.time,
   ############################# 3. Environmental change ###########################
 
     # time changes
-    current.time <- current.time + stepsize
+    current.time <- current.time + timestep.size
     # # if simulation runs too long restart
     # if(current.time >= maxtime){
     #   initial.species <- seedSpecies(env)
@@ -248,7 +239,7 @@ DREaD_ds <- function(total.time,
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
-      demetable.species <- combine.demes(demetable.species.overlap, genomeDimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
+      demetable.species <- combine.demes(demetable.species.overlap, genome.Dimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
 
       # check for extinction here
       if (nrow(demetable.species) == 0) {
@@ -284,6 +275,10 @@ DREaD_ds <- function(total.time,
 
       if (do.display) {
         display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time))
+
+        if(do.display.diff) {
+          display.update(list(env=env, demes_amount_position_diff=demetable.species, current.time=current.time))
+        }
       }
 
     } #end of looping through species

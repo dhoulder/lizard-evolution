@@ -49,7 +49,7 @@ makeEdgeTable <- function(rowcount=10000,
 }
 
 
-makeDemeTable <- function(genomeDimensions=3, rowcount=10000, columnInfo=FALSE) {
+makeDemeTable <- function(genome.Dimensions=3, rowcount=10000, columnInfo=FALSE) {
 
   # this function creates and returns an empty demes matrix
   # it is placed in a separate function for clarity and flexibility
@@ -74,8 +74,8 @@ makeDemeTable <- function(genomeDimensions=3, rowcount=10000, columnInfo=FALSE) 
                            gene.pos1=0.0,
                            gene.pos2=0.0)
 
-  if (genomeDimensions > 2) {
-    for (i in 3:genomeDimensions) {
+  if (genome.Dimensions > 2) {
+    for (i in 3:genome.Dimensions) {
       genecol.df <- data.frame(gene.pos=0.0)
       names(genecol.df) <- paste("gene.pos", i, sep="")
       demetable <- cbind(demetable, genecol.df)
