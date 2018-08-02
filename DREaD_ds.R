@@ -253,6 +253,7 @@ DREaD_ds <- function(total.time,
 
       # calculate and print a niche summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range=.N,
+                                          total_amount=sum(amount),
                                           niche1.position.mean=mean(niche1.position),
                                           niche1.position.sd=sd(niche1.position),
                                           niche1.breadth.mean=mean(niche1.breadth),
@@ -274,7 +275,8 @@ DREaD_ds <- function(total.time,
       demetable <- rbind(demetable, demetable.species)
 
       if (do.display) {
-        display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time))
+        niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal=dispersal)
+        display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time, niche.params=niche.params))
 
         if(do.display.diff) {
           display.update(list(env=env, demes_amount_position_diff=demetable.species, current.time=current.time))

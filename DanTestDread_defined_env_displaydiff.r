@@ -6,9 +6,9 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
 lapply(scripts, source)
 
 #sample parameters
-total.time            <- 100
-dispersal             <- 2                    # dispersal distance
-niche.evolution.rate  <- 0.1
+total.time            <- 250
+dispersal             <- 1.5                    # dispersal distance
+niche.evolution.rate  <- 0.015
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
 NEb                   <- runif(1, 0.0025, 1)

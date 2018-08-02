@@ -1,10 +1,9 @@
-# functions for displaying information in runtime such as
-# a map and summary stats
+# functions for displaying information in runtime such as a map and summary stats
 
 display.initialise <- function() {
   windows(15,11)
 
-  my.colours.function <- colorRampPalette(colors = c("red", "yellow", "blue"))
+  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
   return(my.colours)
 }
@@ -13,10 +12,10 @@ display.initialise.double <- function() {
   windows(18,9)
   par(mfcol=c(1,2))
 
-  my.colours.function <- colorRampPalette(colors = c("red", "yellow", "blue"))
+  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
 
-  my.diffcolours.function <- colorRampPalette(colors = c("green", "white", "orange"))
+  my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
   my.diffcolours    <- my.diffcolours.function(250)
 
   return(list(my.colours, my.diffcolours))
@@ -35,7 +34,15 @@ display.update <- function(plotItems) {
     } else {
       main.header <- ""
     }
+
+    if (length(plotItems[["niche.params"]]) > 0) {
+      main.header <- paste(main.header, "\nNiche breadth:", plotItems[["niche.params"]][[1]],
+                           "\tNiche evol rate:", plotItems[["niche.params"]][[2]],
+                           "\tDispersal:", plotItems[["niche.params"]][[3]])
+    }
+
     plot(plotItems[["env"]], main=main.header, col=my.colours)
+    #plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight diff values
   }
 
   if (length(plotItems[["demes_amount_position"]]) > 0) {
@@ -78,7 +85,8 @@ text.update <- function(textItems) {
         "\nNiche1 position\tMean:", sp.summary$niche1.position.mean, "\tSD:", sp.summary$niche1.position.sd,
         "\nNiche1 breadth\tMean:", sp.summary$niche1.breadth.mean, "\tSD:", sp.summary$niche1.breadth.sd,
         "\nNiche1 species\tMin: ", sp.summary$niche1.sp.min, "\tMax:", sp.summary$niche1.sp.max,
-        "\tTotal breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min), "\n")
+        "\nTotal breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min),
+        "\tTotal amount:", sp.summary$total_amount, "\n")
   }
 
   return()
