@@ -68,7 +68,8 @@ DREaD_ds <- function(total.time,
                       niche.blocksize = 0.1,
                       suitability.mode="block",
                       speciation.gene.distance,
-                      environment.source) {
+                      environment.source,
+                      initial.species.defined=NA) {
 
   ##### required libraries
   #require(ape)
@@ -123,9 +124,10 @@ DREaD_ds <- function(total.time,
   }
 
   ###########################  2. Seed initial species and data structures #############################
-
-  initial.species <- seedSpecies(env, dispersal = dispersal)
+  #initial.species <- seedSpecies(env, dispersal = dispersal, print.species.params = TRUE)
+  initial.species <- seedSpecies_defined(env, dispersal = dispersal, initial.species.defined)
   initial.species.ras <- initial.species[[1]]
+
   # generate edgetable  -  edgetable is a matrix that stores information on each species'
   # phylogeny, niche position, niche breadth, speciation modes, range size each row is a
   # species
@@ -267,7 +269,7 @@ DREaD_ds <- function(total.time,
         text.update(list(species_range_niche=list.for.text))
       }
 
-      # drift for each deme
+      # drift for each deme TO DO
 
 
       # update this species in demetable
