@@ -455,17 +455,12 @@ genetic_drift <- function(demetable, timestep.size, genome.cols) {
   # this function shifts the position in genetic drift space according to a Brownian motion model
   # movement in each dimension is sampled from a normal distribution with mean: 0, standard deviation: 1 * timestep
 
-  dimensions <- length(genome.cols)
   rows <- demetable[,.N]
-browser()
 
-  movements <- rnorm(n = dimensions * rows, mean = 0, sd = timestep.size)
-  k <- 1
-  for (row in 1:demetable[,.N]) {
-    for (col in genome.cols) {
-      set(demetable, i=row, j=col, movements[k])
-      k <- k+1
-    }
+  for (col in genome.cols) {
+    colname <- names(demetable)[col]
+    movements <- rnorm(n = rows, mean = 0, sd = timestep.size)
+    set(demetable, j = col, value = demetable[[colname]] + movements)
   }
 
   return(demetable)
