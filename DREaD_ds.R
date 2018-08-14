@@ -64,7 +64,7 @@ DREaD_ds <- function(total.time,
                       plot = FALSE,
                       timestep.size = 1,
                       generateSummaryStatistics = TRUE,
-                      genome.Dimensions = 3,
+                      genome.dimensions = 3,
                       niche.blocksize = 0.1,
                       suitability.mode="block",
                       speciation.gene.distance,
@@ -143,9 +143,13 @@ DREaD_ds <- function(total.time,
   coords <- rowColFromCell(initial.species.ras, presence.cells)
   rownum <- 1
 
-  demetable <- makeDemeTable(genome.Dimensions = genome.Dimensions, rowcount = 10000)
-  genomeInitial <- as.list(rep(0, genome.Dimensions))
+  demetable <- makeDemeTable(genome.dimensions = genome.dimensions, rowcount = 10000)
+  genomeInitial <- as.list(rep(0, genome.dimensions))
   demetable.columncount <- ncol(demetable)
+
+  # identify the genone position columns - to avoid repeating it within loops
+  first.gene.col.idx    <- which(names(demetable)=="gene.pos1")
+  genome.cols             <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
 
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
@@ -241,7 +245,7 @@ DREaD_ds <- function(total.time,
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
-      demetable.species <- combine.demes(demetable.species.overlap, genome.Dimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
+      demetable.species <- combine.demes(demetable.species.overlap, genome.dimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
 
       # check for extinction here
       if (nrow(demetable.species) == 0) {
@@ -269,7 +273,8 @@ DREaD_ds <- function(total.time,
         text.update(list(species_range_niche=list.for.text))
       }
 
-      # drift for each deme TO DO
+      # genetic drift for each deme
+      demetable.species <- genetic_drift(demetable.species, timestep.size, genome.cols)
 
 
       # update this species in demetable

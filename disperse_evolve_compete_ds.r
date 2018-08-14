@@ -173,7 +173,7 @@ combine.demes <- function (demetable.species.overlap,
       }
 
       # now loop through each of the source demes and combine them with the primary deme, as determined above
-      demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance)]
+      demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, speciation.gene.distance, dimensions=3)]
       set(demetable.cell, j="gene.flow", value=TRUE)
 
       demetable.species.new <- demetable.cell[, list(amount=1,  # amount is just a place filler. Real amount will be the suitability for the new niche
@@ -334,7 +334,7 @@ prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
   return(prob)
 }
 
-is.geneflow <- function(demetable.cell, deme.primary, dimensions=3, speciation.gene.distance) {
+is.geneflow <- function(demetable.cell, deme.primary, speciation.gene.distance, dimensions=3) {
   # this function calculates the genetic distance between the primary deme and the
   # other origin demes and applies a distance function to determine if there is
   # gene flow.  The result is returned as TRUE or FALSE for each origin deme.
@@ -449,6 +449,19 @@ niche.evolution <- function(demetable.species,
     }
   }
   return(demetable.species)
+}
+
+genetic_drift <- function(demetable, timestep.size, genome.cols) {
+  # this function shifts the position in genetic drift space according to a Brownian motion model
+  # movement in each dimension is sampled from a normal distribution with mean: 0, standard deviation: 1 * timestep
+browser()
+  dimensions <- length(genome.cols)
+  rows <- edgetable[, i=genome.cols, j=rnorm(n = dimensions, mean = 0, sd  = timestep.size)]
+
+  #movement   <- rnorm(n = dimensions, mean = 0, sd  = timestep.size)
+  #set(edgetable, )
+
+  return(edgetable)
 }
 
 extinction <- function(edgetable, speciesID, current.time) {
