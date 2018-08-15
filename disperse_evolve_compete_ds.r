@@ -451,13 +451,13 @@ niche.evolution <- function(demetable.species,
   return(demetable.species)
 }
 
-genetic_drift <- function(demetable, timestep.size, genome.cols) {
+genetic_drift <- function(demetable, timestep.size, genome.columns) {
   # this function shifts the position in genetic drift space according to a Brownian motion model
   # movement in each dimension is sampled from a normal distribution with mean: 0, standard deviation: 1 * timestep
 
   rows <- demetable[,.N]
 
-  for (col in genome.cols) {
+  for (col in genome.columns) {
     colname <- names(demetable)[col]
     movements <- rnorm(n = rows, mean = 0, sd = timestep.size)
     set(demetable, j = col, value = demetable[[colname]] + movements)

@@ -147,9 +147,9 @@ DREaD_ds <- function(total.time,
   genomeInitial <- as.list(rep(0, genome.dimensions))
   demetable.columncount <- ncol(demetable)
 
-  # identify the genone position columns - to avoid repeating it within loops
+  # identify the genome position columns - to avoid repeating it within loops
   first.gene.col.idx    <- which(names(demetable)=="gene.pos1")
-  genome.cols             <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
+  genome.columns             <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
 
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
@@ -258,10 +258,10 @@ DREaD_ds <- function(total.time,
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
 
       # genetic drift for each deme
-      demetable.species <- genetic_drift(demetable.species, timestep.size, genome.cols)
+      demetable.species <- genetic_drift(demetable.species, timestep.size, genome.columns)
 
       # temporary test of within species genetic distances
-      genome.distances <- dist(demetable.species[, genome.cols, with=FALSE])
+      genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
       genome.distance.max     <- max(genome.distances)
       genome.distance.median  <- median(genome.distances)
 
@@ -287,12 +287,21 @@ DREaD_ds <- function(total.time,
       demetable <- demetable[demetable$speciesID != current.speciesID, ]
       demetable <- rbind(demetable, demetable.species)
 
+      # update the dynamic plot
       if (do.display) {
-        niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal=dispersal)
-        display.update(list(env=env, demes_amount_position=demetable.species, current.time=current.time, niche.params=niche.params))
+        niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
+        display.update(list(env = env, demes_amount_position=demetable.species, current.time=current.time, niche.params = niche.params))
 
-        if(do.display.diff) {
-          display.update(list(env=env, demes_amount_position_diff=demetable.species, current.time=current.time))
+        if (do.display.diff) {
+          display.update(list(env = env, demes_amount_position_diff = demetable.species, current.time = current.time))
+        }
+
+        if (do.display.genome) {
+          display.update(list(env = env,
+                              demes_dispersion = demetable.species,
+                              current.time = current.time,
+                              genome.columns = genome.columns))
+          plot(demetable.species$gene.pos1, demetable.species$gene.pos2)  # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
         }
       }
 

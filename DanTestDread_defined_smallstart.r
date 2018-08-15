@@ -7,7 +7,7 @@ lapply(scripts, source)
 
 #sample parameters
 total.time            <- 250
-dispersal             <- 5                    # dispersal distance
+dispersal             <- 1                    # dispersal distance
 niche.evolution.rate  <- 0.015
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
@@ -17,20 +17,21 @@ suitability.mode      <- "sine"
 speciation.gene.distance <- 10  # this parameter will need to be set with the drift rate
 do.display            <- TRUE
 do.display.diff       <- TRUE
+do.display.genome     <- TRUE
 do.text.output        <- TRUE
 environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
                           # or a raster file to load
 #environment.source    <- "internal"
 initial.breadth       <- 2.5
 initial.cell          <- 6121
-initial.extent        <- c(8.18, 37.98, 22.09, 56.09)
+initial.extent        <- c(8.18, 37.98, 22.09, 50)
 initial.species.defined = list(initial.breadth = initial.breadth,
                                initial.cell = initial.cell,
                                initial.extent = initial.extent)
 
 if (do.display) {
   if (do.display.diff) {
-    my.colours.double <- display.initialise.double()
+    my.colours.double <- display.initialise.2by2()
     my.colours      <- my.colours.double[[1]]
     my.coloursdiff  <- my.colours.double[[2]]
     rm(my.colours.double)

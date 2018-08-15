@@ -21,6 +21,19 @@ display.initialise.double <- function() {
   return(list(my.colours, my.diffcolours))
 }
 
+display.initialise.2by2 <- function() {
+  windows(17,17)
+  par(mfcol=c(2,2))
+
+  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
+  my.colours    <- my.colours.function(250)
+
+  my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
+  my.diffcolours    <- my.diffcolours.function(250)
+
+  return(list(my.colours, my.diffcolours))
+}
+
 display.update <- function(plotItems) {
   # elements is a list of named components to include in the display
 
@@ -63,8 +76,20 @@ display.update <- function(plotItems) {
     colour.nums[colour.nums < 1] <- 1
     colour.nums[colour.nums >250] <- 250
     these.colours <- my.coloursdiff[colour.nums]
-    #these.sizes   <- sqrt(demetable.species$amount) * 2
-    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)#these.sizes)
+    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
+  }
+
+  if (length(plotItems[["demes_dispersion"]]) > 0) {
+
+    demetable.species <- plotItems[["demes_dispersion"]]
+    env <- plotItems[["env"]]
+    genome.columns <- plotItems[["genome.columns"]]
+
+    # call genome.colours function to turn gene positions into R, G & B
+    deme.colours <- genome.colour(demetable.species, genome.columns)
+
+    these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=20, cex=1)
   }
 
   if (length(plotItems[["one_deme"]] > 0)) {
@@ -95,4 +120,30 @@ text.update <- function(textItems) {
   }
 
   return()
+}
+
+genome.colour <- function(demetable.species, genome.columns) {
+
+  # this function uses the gene.pos columns to generate red, green, blue colours (from 0 to 1)
+  #  for each deme based on genetic position.
+  # the simplest approach is for 3 gene dismensions to translate to RGB
+  # a more general approach uses an ordination
+
+  # the no ordination method
+  max.dist <- 50  # this should be the genetic distance for maximum colour intensity in any one dimension
+  genome.dimensions <- length(genome.columns)
+
+  # this is an inelegant method, but I can't effectively reference columns in a data.table via a variable
+  genomes.species.df <- as.data.frame(demetable.species[, ..genome.columns])
+
+  for (col in 1:genome.dimensions) {
+    mid.range <- mean(range(genomes.species.df[, col]))
+    max.range <- mid.range + (max.dist/2)
+    min.range <- mid.range - (max.dist/2)
+    new.col.name <- paste("genome.colour", col, sep='')
+    genomes.species.df[, new.col.name] <- (genomes.species.df[, col] - min.range) / max.dist
+  }
+
+  return(genomes.species.df[, 4:6])
+
 }
