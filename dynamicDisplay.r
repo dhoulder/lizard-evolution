@@ -81,12 +81,17 @@ text.update <- function(textItems) {
 
     sp.summary <- textItems[["species_range_niche"]]
 
-    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID, "\tRange:", sp.summary$range,
+    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID,
+        "\nRange:", sp.summary$range,
+        "\tTotal amount:", sp.summary$total_amount,
+        "\n\n\tNiche",
         "\nNiche1 position\tMean:", sp.summary$niche1.position.mean, "\tSD:", sp.summary$niche1.position.sd,
         "\nNiche1 breadth\tMean:", sp.summary$niche1.breadth.mean, "\tSD:", sp.summary$niche1.breadth.sd,
         "\nNiche1 species\tMin: ", sp.summary$niche1.sp.min, "\tMax:", sp.summary$niche1.sp.max,
-        "\nTotal breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min),
-        "\tTotal amount:", sp.summary$total_amount, "\n")
+        "\nTotal niche breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min),
+        "\n\n\tGenetic divergence",
+        "\nMaximum:", sp.summary$gen.distance.max,
+        "\tMedian:", sp.summary$gen.distance.median, "\n")
   }
 
   return()

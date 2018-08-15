@@ -257,15 +257,25 @@ DREaD_ds <- function(total.time,
       # niche evolution for each deme
       demetable.species <- niche.evolution(demetable.species, env.table, niche.evolution.rate)
 
-      # calculate and print a niche summary - probably drop this once development is done
+      # genetic drift for each deme
+      demetable.species <- genetic_drift(demetable.species, timestep.size, genome.cols)
+
+      # temporary test of within species genetic distances
+      genome.distances <- dist(demetable.species[, genome.cols, with=FALSE])
+      genome.distance.max     <- max(genome.distances)
+      genome.distance.median  <- median(genome.distances)
+
+      # calculate and print a species summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range = .N,
-                                          total_amount = sum(amount),
-                                          niche1.position.mean = mean(niche1.position),
-                                          niche1.position.sd = sd(niche1.position),
-                                          niche1.breadth.mean = mean(niche1.breadth),
-                                          niche1.breadth.sd = sd(niche1.breadth),
-                                          niche1.sp.min = min(niche1.position - (niche1.breadth/2)),
-                                          niche1.sp.max = max(niche1.position + (niche1.breadth/2)))]
+                                      total_amount = sum(amount),
+                                      niche1.position.mean = mean(niche1.position),
+                                      niche1.position.sd = sd(niche1.position),
+                                      niche1.breadth.mean = mean(niche1.breadth),
+                                      niche1.breadth.sd = sd(niche1.breadth),
+                                      niche1.sp.min = min(niche1.position - (niche1.breadth/2)),
+                                      niche1.sp.max = max(niche1.position + (niche1.breadth/2)),
+                                      gen.distance.max = genome.distance.max,
+                                      gen.distance.median = genome.distance.median)]
       sp.summary <- round(sp.summary, 4)
       if (do.text.output) {
         list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)),
@@ -273,9 +283,6 @@ DREaD_ds <- function(total.time,
         text.update(list(species_range_niche=list.for.text))
       }
 
-      # genetic drift for each deme
-      demetable.species <- genetic_drift(demetable.species, timestep.size, genome.cols)
-browser()
       # update this species in demetable
       demetable <- demetable[demetable$speciesID != current.speciesID, ]
       demetable <- rbind(demetable, demetable.species)

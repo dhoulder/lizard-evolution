@@ -101,8 +101,8 @@ seedSpecies_defined <- function(env,
       initial.breadth <- runif(1, min=initial.breadth.min, max=initial.breadth.max)
   }
 
-  # range boundaries are provided, or sampled from a uniform distribution (from the value of the dispersal kernel to 25)
-  if (is.na(initial.extent)) {
+  # range boundaries are provided, or sampled from a uniform distribution (ranging from the value of the dispersal kernel to 25)
+  if (is.na(initial.extent[1])) {
     initial.extent <- runif(4, min=dispersal, max=25)
     # range boundaries are drawn around the starting cell
     initial.extent <- extent(c(starting.cell[[1]] - initial.extent[[1]], starting.cell[[1]] + initial.extent[[2]], starting.cell[[2]] - initial.extent[[3]], starting.cell[[2]] + initial.extent[[4]]))
