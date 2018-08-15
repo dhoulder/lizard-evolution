@@ -142,13 +142,14 @@ disperse_ds <- function (demetable.species,
 }
 
 combine.demes <- function (demetable.species.overlap,
-                           genomeDimensions,
+                           genome.columns,
                            speciation.gene.distance,
                            minimum.amount,
                            env.table,
                            verbose=FALSE) {
   # determine what happens to populations which are in the same cell
 
+  genomeDimensions  <- length(genome.columns)
   demetable.species <- demetable.species.overlap[0, -"originCell"]
 
   deme.cells <- unique(demetable.species.overlap$cellID)
@@ -173,7 +174,7 @@ combine.demes <- function (demetable.species.overlap,
       }
 
       # now loop through each of the source demes and combine them with the primary deme, as determined above
-      demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, speciation.gene.distance, dimensions=3)]
+      demetable.cell <- demetable.cell[is.geneflow(demetable.cell, deme.primary, speciation.gene.distance, genome.columns)]
       set(demetable.cell, j="gene.flow", value=TRUE)
 
       demetable.species.new <- demetable.cell[, list(amount=1,  # amount is just a place filler. Real amount will be the suitability for the new niche
@@ -331,20 +332,20 @@ prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
   # so that the values of 0 and 1 are actually reached
   rescale_y <- (1 / (1 - (2 * threshold)))
   prob <-  (logistic_result * rescale_y) - threshold
+  prob[prob < 0] <- 0
   return(prob)
 }
 
-is.geneflow <- function(demetable.cell, deme.primary, speciation.gene.distance, dimensions=3) {
+is.geneflow <- function(demetable.cell, deme.primary, speciation.gene.distance, genome.columns) {
   # this function calculates the genetic distance between the primary deme and the
   # other origin demes and applies a distance function to determine if there is
   # gene flow.  The result is returned as TRUE or FALSE for each origin deme.
 
-  first.gene.col.idx    <- which(names(demetable.cell)=="gene.pos1")
-  gene.cols             <- first.gene.col.idx:(first.gene.col.idx + dimensions - 1)
-  source.coords         <- demetable.cell[deme.primary, gene.cols, with=FALSE]
-  destination.coords    <- demetable.cell[, gene.cols, with=FALSE]
+  genome.dimensions <- length(genome.columns)
+  source.coords       <- demetable.cell[deme.primary, genome.columns, with = FALSE]
+  destination.coords  <- demetable.cell[, genome.columns, with = FALSE]
 
-  set(demetable.cell, j="geneflow", value=FALSE)
+  set(demetable.cell, j = "geneflow", value = FALSE)
 
   # deal quickly with those that have the same location
   for (dest.row in 1:nrow(destination.coords)) {
@@ -356,7 +357,8 @@ is.geneflow <- function(demetable.cell, deme.primary, speciation.gene.distance, 
   dest.rows <- which(!demetable.cell$geneflow)
 
   if (length(dest.rows) > 0) {  # do this loop where the destination gene position differs from the origin
-    g.distances   <- gene.distances(source.coords, destination.coords[dest.rows], dimensions)
+
+    g.distances   <- gene.distances(source.coords, destination.coords[dest.rows], genome.dimensions)
     set(demetable.cell, i=dest.rows, j="probs", value=prob.geneflow(g.distances, zero_flow_dist=speciation.gene.distance))
     demetable.cell <- demetable.cell[(probs>1), probs := 1]
 

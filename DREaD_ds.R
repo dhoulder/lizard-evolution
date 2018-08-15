@@ -149,7 +149,7 @@ DREaD_ds <- function(total.time,
 
   # identify the genome position columns - to avoid repeating it within loops
   first.gene.col.idx    <- which(names(demetable)=="gene.pos1")
-  genome.columns             <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
+  genome.columns        <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
 
   for (i in 1:length(presence.cells)) {
     cell <- presence.cells[i]
@@ -188,21 +188,6 @@ DREaD_ds <- function(total.time,
 
     # time changes
     current.time <- current.time + timestep.size
-    # # if simulation runs too long restart
-    # if(current.time >= maxtime){
-    #   initial.species <- seedSpecies(env)
-    #   edgetable <- matrix(ncol=10, nrow=10000)
-    #   edgetable[1,] <- c(0, 1, 0, NA, NA, 1, NA, NA, NA, "X")
-    #   edgetable[1,5] <- sum(initial.species[[1]]@data@values)
-    #   edgetable[1,7] <- initial.species[[2]]
-    #   edgetable[1,8] <- initial.species[[3]]
-    #   species.rasters <- vector('list', 10000)
-    #   species.rasters[[1]] <- initial.species[[1]]
-    #   current.time <- 1
-    #   tips <- 1
-    #   extinct.number=0
-    #   extinct <- vector("logical", 10000)
-    # }
 
     # environment changes
     env <- enviroChange(start.env=starting.env, env=env, current.time=current.time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
@@ -245,7 +230,7 @@ DREaD_ds <- function(total.time,
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
-      demetable.species <- combine.demes(demetable.species.overlap, genome.dimensions, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
+      demetable.species <- combine.demes(demetable.species.overlap, genome.columns, speciation.gene.distance, minimum.amount, env.table, verbose=FALSE)
 
       # check for extinction here
       if (nrow(demetable.species) == 0) {
@@ -301,7 +286,6 @@ DREaD_ds <- function(total.time,
                               demes_dispersion = demetable.species,
                               current.time = current.time,
                               genome.columns = genome.columns))
-          plot(demetable.species$gene.pos1, demetable.species$gene.pos2)  # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
         }
       }
 

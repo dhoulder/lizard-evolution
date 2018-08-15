@@ -90,6 +90,11 @@ display.update <- function(plotItems) {
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
     points(demetable.species$x, demetable.species$y, col=these.colours, pch=20, cex=1)
+
+    ########################################################################################
+    # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
+    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, pch=20)
+    ########################################################################################
   }
 
   if (length(plotItems[["one_deme"]] > 0)) {
@@ -130,7 +135,7 @@ genome.colour <- function(demetable.species, genome.columns) {
   # a more general approach uses an ordination
 
   # the no ordination method
-  max.dist <- 50  # this should be the genetic distance for maximum colour intensity in any one dimension
+  max.dist <- 25  # this should be the genetic distance for maximum colour intensity in any one dimension
   genome.dimensions <- length(genome.columns)
 
   # this is an inelegant method, but I can't effectively reference columns in a data.table via a variable
@@ -142,6 +147,8 @@ genome.colour <- function(demetable.species, genome.columns) {
     min.range <- mid.range - (max.dist/2)
     new.col.name <- paste("genome.colour", col, sep='')
     genomes.species.df[, new.col.name] <- (genomes.species.df[, col] - min.range) / max.dist
+    genomes.species.df[which(genomes.species.df$new.col.name < 0), new.col.name] <- 0
+    genomes.species.df[which(genomes.species.df$new.col.name > 1), new.col.name] <- 1
   }
 
   return(genomes.species.df[, 4:6])
