@@ -22,7 +22,7 @@ display.initialise.double <- function() {
 }
 
 display.initialise.2by2 <- function() {
-  windows(17,17)
+  windows(10,10)
   par(mfcol=c(2,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
@@ -93,7 +93,7 @@ display.update <- function(plotItems) {
 
     ########################################################################################
     # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
-    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, pch=20)
+    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, pch=20, xlab="Genome axis 1")
     ########################################################################################
   }
 
@@ -142,15 +142,22 @@ genome.colour <- function(demetable.species, genome.columns) {
   genomes.species.df <- as.data.frame(demetable.species[, ..genome.columns])
 
   for (col in 1:genome.dimensions) {
-    mid.range <- mean(range(genomes.species.df[, col]))
+    col.range <- range(genomes.species.df[, col])
+    mid.range <- mean(col.range)
+    col.span  <- col.range[2] - col.range[1]
+
+    # if the range of values in a dimesion is greater than max.dist, expand max.dist so that all values
+    # fit within the range of colours intensities
+    max.dist <- (max(max.dist, col.span))
+
     max.range <- mid.range + (max.dist/2)
     min.range <- mid.range - (max.dist/2)
-    new.col.name <- paste("genome.colour", col, sep='')
+    new.col.name <- paste("genome.colour", col, sep = '')
     genomes.species.df[, new.col.name] <- (genomes.species.df[, col] - min.range) / max.dist
-    genomes.species.df[which(genomes.species.df$new.col.name < 0), new.col.name] <- 0
-    genomes.species.df[which(genomes.species.df$new.col.name > 1), new.col.name] <- 1
+    genomes.species.df[which(genomes.species.df[new.col.name] < 0), new.col.name] <- 0
+    genomes.species.df[which(genomes.species.df[new.col.name] > 1), new.col.name] <- 1
   }
 
-  return(genomes.species.df[, 4:6])
+  return(genomes.species.df[, (genome.dimensions + 1):(genome.dimensions * 2)])  # return a data frame of just the colour columns
 
 }

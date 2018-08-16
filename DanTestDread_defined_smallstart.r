@@ -6,8 +6,8 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
 lapply(scripts, source)
 
 #sample parameters
-total.time            <- 50
-dispersal             <- 4                    # dispersal distance
+total.time            <- 150
+dispersal             <- 1.5              # dispersal distance
 niche.evolution.rate  <- 0.015
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
@@ -22,7 +22,7 @@ do.text.output        <- TRUE
 environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
                           # or a raster file to load
 #environment.source    <- "internal"
-initial.breadth       <- 2.5
+initial.breadth       <- 4
 initial.cell          <- 6121
 initial.extent        <- c(8.18, 37.98, 22.09, 55)
 initial.species.defined = list(initial.breadth = initial.breadth,
