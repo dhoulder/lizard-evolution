@@ -283,7 +283,7 @@ DREaD_ds <- function(total.time,
 
         if (do.display.genome) {
           display.update(list(env = env,
-                              demes_dispersion = demetable.species,
+                              demes_genecolour = demetable.species,
                               current.time = current.time,
                               genome.columns = genome.columns))
         }

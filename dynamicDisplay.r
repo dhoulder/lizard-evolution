@@ -79,9 +79,9 @@ display.update <- function(plotItems) {
     points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
   }
 
-  if (length(plotItems[["demes_dispersion"]]) > 0) {
+  if (length(plotItems[["demes_genecolour"]]) > 0) {
 
-    demetable.species <- plotItems[["demes_dispersion"]]
+    demetable.species <- plotItems[["demes_genecolour"]]
     env <- plotItems[["env"]]
     genome.columns <- plotItems[["genome.columns"]]
 
@@ -93,8 +93,20 @@ display.update <- function(plotItems) {
 
     ########################################################################################
     # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
-    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, pch=20, xlab="Genome axis 1")
+    these.sizes   <- sqrt(demetable.species$amount) * 1.5
+
+    # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
+    plot.limit  <- speciation.gene.distance * 0.6
+    plot.limits <- as.numeric(demetable.species[, .(min(gene.pos1, (plot.limit * -1)), max(gene.pos1, plot.limit), min(gene.pos2, (plot.limit * -1)), max(gene.pos2, plot.limit))])
+
+    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, cex=these.sizes,
+         pch=20, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
+
+    # add a weighted genome mean for the species, to the plot
+    means <- genome.mean(demetable.species, genome.columns)
+    points(means[1], means[2], pch=3, cex=1.5)
     ########################################################################################
+
   }
 
   if (length(plotItems[["one_deme"]] > 0)) {
@@ -121,7 +133,9 @@ text.update <- function(textItems) {
         "\nTotal niche breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min),
         "\n\n\tGenetic divergence",
         "\nMaximum:", sp.summary$gen.distance.max,
-        "\tMedian:", sp.summary$gen.distance.median, "\n")
+        "\tMedian:", sp.summary$gen.distance.median,
+        "\ngeneflow prob at max distance:", round(prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance), 3),
+        "\n*****************************************\n")
   }
 
   return()
@@ -160,4 +174,19 @@ genome.colour <- function(demetable.species, genome.columns) {
 
   return(genomes.species.df[, (genome.dimensions + 1):(genome.dimensions * 2)])  # return a data frame of just the colour columns
 
+}
+
+genome.mean <- function(demetable.species, genome.columns) {
+
+  # this function calculates the mean genome position for the species, weighted by deme amount
+
+  genome.dimensions <- length(genome.columns)
+  genome.mean.pos   <- genome.columns # a lazy way to get a vector of the right length
+
+  for (col in 1:genome.dimensions) {
+    genome.col <- as.data.frame(demetable.species[, genome.columns[col], with=F])
+    genome.mean.pos[col] <- weighted.mean(genome.col[,1], demetable.species$amount)
+  }
+
+  return(genome.mean.pos)
 }

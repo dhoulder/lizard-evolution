@@ -7,7 +7,7 @@ lapply(scripts, source)
 
 #sample parameters
 total.time            <- 150
-dispersal             <- 1.5              # dispersal distance
+dispersal             <- 1              # dispersal distance
 niche.evolution.rate  <- 0.015
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
