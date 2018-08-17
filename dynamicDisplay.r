@@ -1,7 +1,7 @@
 # functions for displaying information in runtime such as a map and summary stats
 
 display.initialise <- function() {
-  windows(15,11)
+  x11(15,11)
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
@@ -9,7 +9,7 @@ display.initialise <- function() {
 }
 
 display.initialise.double <- function() {
-  windows(18,9)
+  x11(18,9)
   par(mfcol=c(1,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
@@ -23,7 +23,7 @@ display.initialise.double <- function() {
 
 display.initialise.2by2 <- function() {
 
-  windows(10,10)
+  x11(10,10)
   par(mfcol=c(2,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
