@@ -22,6 +22,7 @@ display.initialise.double <- function() {
 }
 
 display.initialise.2by2 <- function() {
+
   windows(10,10)
   par(mfcol=c(2,2))
 
@@ -62,7 +63,8 @@ display.update <- function(plotItems) {
     demetable.species <- plotItems[["demes_amount_position"]]
     these.colours <- my.colours[round(demetable.species$niche1.position*10)]
     these.sizes   <- sqrt(demetable.species$amount) * 2
-    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+    #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
   }
 
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
@@ -122,6 +124,7 @@ text.update <- function(textItems) {
   if (length(textItems[["species_range_niche"]]) > 0) {
 
     sp.summary <- textItems[["species_range_niche"]]
+    geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance)
 
     cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID,
         "\nRange:", sp.summary$range,
@@ -134,7 +137,7 @@ text.update <- function(textItems) {
         "\n\n\tGenetic divergence",
         "\nMaximum:", sp.summary$gen.distance.max,
         "\tMedian:", sp.summary$gen.distance.median,
-        "\ngeneflow prob at max distance:", round(prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance), 3),
+        "\ngeneflow prob at max distance:", paste(round(geneflow.prob * 100, 2), "%", sep=""),
         "\n*****************************************\n")
   }
 

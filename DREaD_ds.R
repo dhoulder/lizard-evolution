@@ -287,6 +287,10 @@ DREaD_ds <- function(total.time,
                               current.time = current.time,
                               genome.columns = genome.columns))
         }
+
+        if (do.animate) {
+          ani.record() # record the current frame
+        }
       }
 
     } #end of looping through species
