@@ -45,7 +45,7 @@ getMinimumDistanceBetweenPoints <- function(coords.list, coords.df) {
 ######### buildPhyInSim #########
 # builds phylogeny within the simulator function
 buildPhyInSim <- function (edgetable, n.layers, extinct, tips){
-  edgetable2 <- edgetable 
+  edgetable2 <- edgetable
   edgetable <- edgetable[-which(is.na(edgetable[, 1])),]
   rownames(edgetable) <- NULL
   colnames(edgetable) <- NULL
@@ -88,9 +88,11 @@ buildPhyInSim <- function (edgetable, n.layers, extinct, tips){
   colnames(simtrtabord)<- c("parent", "daughter", "brlen", "specMode", "area", "birthDate", "nichePos", "nicheBreadth", "birthMode", "alive", "rasterMatch")
   return(list(simtrtabord, timephylo))
 }
+
 ######### generateEnv #########
 # simulates an environmental layer with a degree of spatial autocorreltion
 generateEnv <- function(grid.size=100, psill=0.005, range=15, rescale.max=25, rescale.min=0, plot=F, original=F) {
+
   xy <- expand.grid(1:grid.size, 1:grid.size)
   names(xy) <- c('x','y')
   #range is the degree of autocorrelation -> bigger is more autocorrelated
@@ -98,7 +100,7 @@ generateEnv <- function(grid.size=100, psill=0.005, range=15, rescale.max=25, re
   g.dummy <- gstat(formula=z~x+y, locations=~x+y, dummy=T, beta=c(1,0,0.005), model=vgm(psill=0.005, range=100, model='Exp'), nmax=20)
   if(original==TRUE){ g.dummy <- gstat(formula=z~1, locations=~x+y, dummy=T, beta=1, model=vgm(psill=10,model="Exp", range=50), nmax=30)}
   yy <- predict(g.dummy, newdata=xy, nsim=1)
-  env<-rasterFromXYZ(yy)  
+  env<-rasterFromXYZ(yy)
 
   env@data@values <- rescaleEnviro(env@data@values, new.min=0, new.max=25)
   env@data@max <- max(env@data@values)
@@ -106,6 +108,7 @@ generateEnv <- function(grid.size=100, psill=0.005, range=15, rescale.max=25, re
   if(plot == TRUE) {  plot(env)}
   return(env=env)
 }
+
 ######### envrasterFromDistribution #########
 # Turns species range from presence/absence to the values of the environmental layer
 envRasterFromDistribution <- function (species.raster, env=env) {

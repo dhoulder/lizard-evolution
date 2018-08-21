@@ -23,7 +23,9 @@ display.initialise.double <- function() {
 
 display.initialise.2by2 <- function() {
 
-  x11(10,10)
+  if (!output_to_file) {
+    x11(10,10) # open on-screen display
+  }
   par(mfcol=c(2,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
@@ -55,16 +57,20 @@ display.update <- function(plotItems) {
                            "\tDispersal:", plotItems[["niche.params"]][[3]])
     }
 
-    plot(plotItems[["env"]], main=main.header, col=my.colours)
-    #plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight diff values
+    if (length(plotItems[["demes_genecolour"]]) > 0) {
+      plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight gene colours
+    } else {
+      plot(plotItems[["env"]], main=main.header, col=my.colours)
+    }
+
   }
 
   if (length(plotItems[["demes_amount_position"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position"]]
     these.colours <- my.colours[round(demetable.species$niche1.position*10)]
     these.sizes   <- sqrt(demetable.species$amount) * 2
-    #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
+    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+    #points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
   }
 
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
@@ -91,10 +97,10 @@ display.update <- function(plotItems) {
     deme.colours <- genome.colour(demetable.species, genome.columns)
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=20, cex=1)
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=1)
 
     ########################################################################################
-    # this plot is just temporary to maintain a stable set of 2 x2 plors through the updates
+    # this plot is just temporary to maintain a stable set of 2 x2 plots through the updates
     these.sizes   <- sqrt(demetable.species$amount) * 1.5
 
     # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed

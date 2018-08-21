@@ -148,7 +148,6 @@ combine.demes <- function (demetable.species.overlap,
                            env.table,
                            verbose=FALSE) {
   # determine what happens to populations which are in the same cell
-
   genomeDimensions  <- length(genome.columns)
   demetable.species <- demetable.species.overlap[0, -"originCell"]
 
@@ -183,7 +182,7 @@ combine.demes <- function (demetable.species.overlap,
                                 niche2.position =weighted.mean(niche2.position, amount),
                                 niche2.breadth  =weighted.mean(niche2.breadth, amount),
                                 gene.pos1       =weighted.mean(gene.pos1, amount),
-                                gene.pos2       =weighted.mean(gene.pos1, amount)),
+                                gene.pos2       =weighted.mean(gene.pos2, amount)),
                                 by=list(cellID, speciesID, x, y) ]
       if (genomeDimensions > 2) {
         for (g in 3:genomeDimensions) {
