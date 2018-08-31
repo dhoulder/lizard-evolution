@@ -7,22 +7,27 @@ lapply(scripts, source)
 
 library(animation)
 
+run.name              <- "anim_real225_nicherate0.02_dispersal4_500gens_v1"
+
 #sample parameters
 total.time            <- 500
-dispersal             <- 1              # dispersal distance
+dispersal             <- 4              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
 NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
-speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-#environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
+speciation.gene.distance <- 40  # this parameter will need to be set with the drift rate
+environment.source    <- "~/Work/Software/dan-github/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
-environment.source    <- "internal"
+#environment.source    <- "internal"
+environment.dimension <- 225
 
-initial.breadth       <- -1
+initial.breadth       <- 3
+#initial.cell          <- 6121
 initial.cell          <- -1
+#initial.extent        <- c(8.18, 37.98, 22.09, 55)
 initial.extent        <- NA
 initial.species.defined = list(initial.breadth = initial.breadth,
                                initial.cell = initial.cell,
@@ -57,12 +62,20 @@ simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = e
                   niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = T,
                   enviro.mode = "sine", suitability.mode = suitability.mode,
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
-                  initial.species.defined = initial.species.defined)
+                  initial.species.defined = initial.species.defined, environment.dimension=environment.dimension)
 
 
+# save the animation
 ani.replay()
 
-ani.options('ani.width'=850, 'ani.height'=850, 'interval'=0.4)
-setwd("~/Dropbox/Simulation/test_runs_July2018/anim_nicherate0.02_dispersal1_500gens")
+ani.options('ani.width'=900, 'ani.height'=900, 'interval'=0.4)
 
-saveHTML(ani.replay(), img.name="animation", htmlfile = "anim_nicherate0.02_dispersal1_500gens.html", navigator = FALSE)
+save.dir <- paste("D:/Simulation/test_runs/", run.name, sep="")
+
+if (dir.exists(save.dir) == FALSE) {
+  dir.create(save.dir)
+}
+
+setwd(save.dir)
+
+saveHTML(ani.replay(), img.name="animation", htmlfile = "index.html", navigator = FALSE)

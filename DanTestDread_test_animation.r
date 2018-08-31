@@ -8,8 +8,8 @@ lapply(scripts, source)
 library(animation)
 
 #sample parameters
-total.time            <- 250
-dispersal             <- 7.5              # dispersal distance
+total.time            <- 500
+dispersal             <- 1              # dispersal distance
 niche.evolution.rate  <- 0.015
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
@@ -34,6 +34,7 @@ do.display.diff       <- TRUE
 do.display.genome     <- TRUE
 do.text.output        <- TRUE
 do.animate            <- TRUE
+output_to_file        <- FALSE
 
 if (do.display) {
   if (do.display.diff) {
@@ -61,7 +62,7 @@ simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = e
 
 ani.replay()
 
-ani.options('ani.width'=850, 'ani.height'=850, 'interval'=0.5)
-setwd("~/Dropbox/Simulation/test_runs_July2018/anim_circle_250gens_nicherate0.015_dispersal7.5")
+ani.options('ani.width'=850, 'ani.height'=850, 'interval'=0.4)
+setwd("~/Dropbox/Simulation/test_runs_July2018/anim_500gens_nicherate0.02_dispersal2v1")
 
-saveHTML(ani.replay(), img.name="animation", htmlfile = "anim_circle_250gens_nicherate0.015_dispersal7.5.html", navigator = FALSE)
+saveHTML(ani.replay(), img.name="animation", htmlfile = "anim_500gens_nicherate0.02_dispersal2v1.html", navigator = FALSE)

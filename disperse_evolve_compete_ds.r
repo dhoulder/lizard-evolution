@@ -27,7 +27,7 @@ disperse_ds <- function (demetable.species,
 
   # create an empty demetable.species.new
   demetable.species.new <- cbind(demetable.species[0, 1:12], data.table(originCell=0)[0])
-
+browser()
   # loop through the niche groups
   for (k in 1:nrow(niche.groups)) {
     niche <- niche.groups[k, ]

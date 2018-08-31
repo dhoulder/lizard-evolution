@@ -1,16 +1,24 @@
 # functions for displaying information in runtime such as a map and summary stats
 
 display.initialise <- function() {
-  x11(15,11)
+  if (!output_to_file) {
+    x11(15,11)
+  }
+
+  stored_par <- par(mfcol=c(1,1))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
-  return(my.colours)
+  return(list(my.colours, stored_par))
 }
 
 display.initialise.double <- function() {
-  x11(18,9)
-  par(mfcol=c(1,2))
+
+  if (!output_to_file) {
+    x11(18,9) # open on-screen display
+  }
+
+  stored_par <- par(mfcol=c(1,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
@@ -18,15 +26,16 @@ display.initialise.double <- function() {
   my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
   my.diffcolours    <- my.diffcolours.function(250)
 
-  return(list(my.colours, my.diffcolours))
+  return(list(my.colours, my.diffcolours, stored_par))
 }
 
-display.initialise.2by2 <- function() {
+display.initialise.2by2 <- function(output_to_file = F) {
 
   if (!output_to_file) {
     x11(10,10) # open on-screen display
   }
-  par(mfcol=c(2,2))
+
+  stored_par <- par(mfcol=c(2,2))
 
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
   my.colours    <- my.colours.function(250)
@@ -34,14 +43,16 @@ display.initialise.2by2 <- function() {
   my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
   my.diffcolours    <- my.diffcolours.function(250)
 
-  return(list(my.colours, my.diffcolours))
+  return(list(my.colours, my.diffcolours, stored_par))
 }
 
 display.update <- function(plotItems) {
   # elements is a list of named components to include in the display
 
-  # this function relies on the data to be plotted being in scope, rather than passed as argument
+  # this function relies on the data to be plotted, being in scope, rather than passed as argument
   # this can be revised if it is a problem
+
+  dot.size.scaler <- 0.75  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   if (length(plotItems[["env"]]) > 0) {
 
@@ -68,9 +79,9 @@ display.update <- function(plotItems) {
   if (length(plotItems[["demes_amount_position"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position"]]
     these.colours <- my.colours[round(demetable.species$niche1.position*10)]
-    these.sizes   <- sqrt(demetable.species$amount) * 2
-    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
-    #points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
+    these.sizes   <- sqrt(demetable.species$amount) * 2 * dot.size.scaler
+    #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
   }
 
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
@@ -84,7 +95,8 @@ display.update <- function(plotItems) {
     colour.nums[colour.nums < 1] <- 1
     colour.nums[colour.nums >250] <- 250
     these.colours <- my.coloursdiff[colour.nums]
-    points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
+    #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=dot.size.scaler)
   }
 
   if (length(plotItems[["demes_genecolour"]]) > 0) {
@@ -97,7 +109,7 @@ display.update <- function(plotItems) {
     deme.colours <- genome.colour(demetable.species, genome.columns)
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=1)
+    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=dot.size.scaler)
 
     ########################################################################################
     # this plot is just temporary to maintain a stable set of 2 x2 plots through the updates
@@ -199,3 +211,18 @@ genome.mean <- function(demetable.species, genome.columns) {
 
   return(genome.mean.pos)
 }
+
+display.to.file.start <- function(image_dir, time, image_filename = "plot") {
+  image.width = 960
+  image.width = 960
+
+  output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
+  png(output.filename, width = 960, height=960)
+  #par(my.par)
+  par(mfcol=c(2,2))
+}
+
+display.to.file.stop <- function() {
+  dev.off()
+}
+
