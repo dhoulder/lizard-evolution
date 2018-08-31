@@ -1,13 +1,18 @@
 
 #include <Rcpp.h>
+
+#include <dread_ds.h>
+
 using namespace Rcpp;
 
 // [[Rcpp::export]]
 List dreadds() {
   // FIXME STUB
-    CharacterVector x = CharacterVector::create("dreadds STUB");
-    NumericVector y   = NumericVector::create( 0.0, 1.0 ) ;
-    List z            = List::create( x, y ) ;
 
-    return z ;
+  DreadDs model;
+
+  CharacterVector x = CharacterVector::create("dreadds STUB", model.version);
+  List z            = List::create(x ) ;
+
+  return z ;
 }

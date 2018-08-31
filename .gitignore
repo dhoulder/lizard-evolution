@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+*.so
+*.o
+dreadds.Rcheck/
+symbols.rds
+dreadds*.tar.gz
+TAGS

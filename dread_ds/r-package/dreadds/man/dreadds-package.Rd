@@ -13,7 +13,7 @@
 }
 \author{
   \packageAuthor{dreadds}
-  
+
   Maintainer: \packageMaintainer{dreadds}
 }
 \references{
