@@ -22,7 +22,7 @@ disperse_ds <- function (demetable.species,
   niche.groups <- demetable.species[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, .N), by=list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group)]
   niche.groups <- niche.groups[, list(niche1.breadth.group, niche1.position.group, niche2.breadth.group, niche2.position.group, N)]
 
-  # get maximum x and y for simulation area
+  # get maximum col and row for simulation area
   domain.max <- env.table[,.(xmax=max(col), ymax=max(row))]
 
   # create an empty demetable.species.new
@@ -39,7 +39,7 @@ disperse_ds <- function (demetable.species,
                                     niche2.position.group== niche$niche2.position.group, 1:12]
 
     # filter env cells to those within the spatial limits (for the niche group)
-    bounds        <- as.list(demetable.nichegroup[, list(xmin=(min(x)-dispersal.range), xmax=(max(x)+dispersal.range), ymin=(min(y)-dispersal.range), ymax=(max(y)+dispersal.range))])
+    bounds        <- as.list(demetable.nichegroup[, list(xmin=(min(col)-dispersal.range), xmax=(max(col)+dispersal.range), ymin=(min(row)-dispersal.range), ymax=(max(row)+dispersal.range))])
 
     bounds[bounds < 0] <- 0
     if(bounds$xmax > domain.max$xmax) {bounds$xmax <- domain.max$xmax}
@@ -67,7 +67,7 @@ disperse_ds <- function (demetable.species,
                                                            suitability.mode = suitability.mode)
 
       #remove dispersal destinations which are within the bounding rectangle, but too far away
-      include.in.dispersal <- close.enough(demetable.nichegroup[, c("x", "y")],
+      include.in.dispersal <- close.enough(demetable.nichegroup[, c("col", "row")],
                                            env.table.dispersal[, c("col", "row")],
                                            dispersal.range)
       env.table.dispersal <- env.table.dispersal[include.in.dispersal]
@@ -90,10 +90,10 @@ disperse_ds <- function (demetable.species,
         # }
 
         # find the cells in dispersal distance
-        deme.dest <- env.table.dispersal[(col >= deme$x-dispersal.range
-                                         & col <= deme$x+dispersal.range
-                                         & row >= deme$y-dispersal.range
-                                         & row <= deme$y+dispersal.range)]
+        deme.dest <- env.table.dispersal[(col >= deme$col-dispersal.range
+                                         & col <= deme$col+dispersal.range
+                                         & row >= deme$row-dispersal.range
+                                         & row <= deme$row+dispersal.range)]
         new.count <- nrow(deme.dest)
         new.amount  <- deme$amount * deme.dest$suitability  # should return a vector
         new.rows    <- (row.pointer + 1):(row.pointer + new.count)
@@ -103,8 +103,8 @@ disperse_ds <- function (demetable.species,
 
           demetable.nichegroup.new <- rbind(demetable.nichegroup.new,
                                             list(cellID = deme.dest$cellID,
-                                                 x =      deme.dest$col,
-                                                 y =      deme.dest$row,
+                                                 col =      deme.dest$col,
+                                                 row =      deme.dest$row,
                                                  amount = new.amount), fill = TRUE)
 
           set(demetable.nichegroup.new,  # assign values which are the same for each new row in the niche group
@@ -116,8 +116,8 @@ disperse_ds <- function (demetable.species,
               )
 
           # apply distance function
-          weights <- distance.weights(source = deme[1, c("x", "y")],
-                                      destinations = demetable.nichegroup.new[new.rows, c("x", "y")],
+          weights <- distance.weights(source = deme[1, c("col", "row")],
+                                      destinations = demetable.nichegroup.new[new.rows, c("col", "row")],
                                       dispersal.range = dispersal.range,
                                       distance.type = "euclidean",
                                       distance.decay = "linear")
@@ -183,7 +183,7 @@ combine.demes <- function (demetable.species.overlap,
                                 niche2.breadth  =weighted.mean(niche2.breadth, amount),
                                 gene.pos1       =weighted.mean(gene.pos1, amount),
                                 gene.pos2       =weighted.mean(gene.pos2, amount)),
-                                by=list(cellID, speciesID, x, y) ]
+                                by=list(cellID, speciesID, col, row) ]
       if (genomeDimensions > 2) {
         for (g in 3:genomeDimensions) {
           column.name <- paste("gene.pos", g, sep="")
@@ -327,7 +327,7 @@ prob.geneflow <- function(gene.dist, threshold=0.001, zero_flow_dist=5) {
   # first a fairly standard logistic function
   logistic_result <- (1 / (1 + exp(((gene.dist / zero_flow_dist) - B) * A)))
 
-  # then expand on the y axis (while remaining centred at 0.5)
+  # then expand on the row axis (while remaining centred at 0.5)
   # so that the values of 0 and 1 are actually reached
   rescale_y <- (1 / (1 - (2 * threshold)))
   prob <-  (logistic_result * rescale_y) - threshold
@@ -379,8 +379,8 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
   # this function returns the index of dispersal destinations which are close enough to include
   # in the dispersal calculation
 
-  # dispersal.origins should be a 2 column data.table of x,y
-  # dispersal.destinations should be a 3 column data.table of index,x,y with index order maintained
+  # dispersal.origins should be a 2 column data.table of col,row
+  # dispersal.destinations should be a 3 column data.table of index,col,row with index order maintained
   #   to return a subset which is close enough, as an index vector
   # dispersal.range is the maximum dispersal distance
 
@@ -388,9 +388,9 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
   if (nrow(dispersal.destinations) > 0 & nrow(dispersal.origins) > 0) {
 
     dispersal.destinations <- cbind(1:nrow(dispersal.destinations), dispersal.destinations, include=0)
-    names(dispersal.destinations)[1:3] <- c("rownum", "x", "y")
+    names(dispersal.destinations)[1:3] <- c("rownum", "col", "row")
 
-    on.origin <- dispersal.destinations[dispersal.origins, on=c(x="x", y="y"), nomatch=0][, 1]
+    on.origin <- dispersal.destinations[dispersal.origins, on=c(col="col", row="row"), nomatch=0][, 1]
     dispersal.destinations$include[on.origin$rownum] <- 1
 
     not.on.origin <- which(dispersal.destinations$include==0)

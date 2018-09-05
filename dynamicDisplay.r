@@ -80,12 +80,14 @@ display.update <- function(plotItems) {
     demetable.species <- plotItems[["demes_amount_position"]]
     these.colours <- my.colours[round(demetable.species$niche1.position*10)]
     these.sizes   <- sqrt(demetable.species$amount) * 2 * dot.size.scaler
-    #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=these.sizes)
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
+
+    #points(demetable.species$col, demetable.species$row, bg=these.colours, pch=21, fg="black", cex=these.sizes)
+    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
   }
 
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position_diff"]]
+
     env <- plotItems[["env"]]
     set(demetable.species, j="env", value=env[demetable.species$cellID])
     demetable.species[, diff:=niche1.position-env]
@@ -96,7 +98,7 @@ display.update <- function(plotItems) {
     colour.nums[colour.nums >250] <- 250
     these.colours <- my.coloursdiff[colour.nums]
     #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=dot.size.scaler)
+    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=dot.size.scaler)
   }
 
   if (length(plotItems[["demes_genecolour"]]) > 0) {
@@ -109,10 +111,9 @@ display.update <- function(plotItems) {
     deme.colours <- genome.colour(demetable.species, genome.columns)
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
-    points(demetable.species$x, demetable.species$y, col=these.colours, pch=19, cex=dot.size.scaler)
+    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=dot.size.scaler)
 
     ########################################################################################
-    # this plot is just temporary to maintain a stable set of 2 x2 plots through the updates
     these.sizes   <- sqrt(demetable.species$amount) * 1.5
 
     # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
@@ -131,7 +132,7 @@ display.update <- function(plotItems) {
 
   if (length(plotItems[["one_deme"]] > 0)) {
     deme <- plotItems[["one_deme"]]
-    points(deme$x, deme$y, col="black", pch=0)
+    points(deme$col, deme$row, col="black", pch=0)
   }
 
   return()

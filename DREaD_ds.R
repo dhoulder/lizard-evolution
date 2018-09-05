@@ -157,8 +157,8 @@ DREaD_ds <- function(total.time,
     cell <- presence.cells[i]
     new.row <-  list(cell,                  # cellID
                   1,                     # speciesID
-                  coords[i, 2],          # x
-                  coords[i, 1],          # y
+                  coords[i, 2],          # col
+                  coords[i, 1],          # row
                   1,                     # amount - need to sort out values!
                   initial.species[[2]],  # niche1.position
                   initial.species[[3]],  # niche1.breadth
