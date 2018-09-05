@@ -16,7 +16,8 @@
 # hetero = logical. specifies whether enviro change is spatially homogenous or heterogenous
 # env.change.matrix = matrix that matches env domain that specifies how much the environment changes in each grid cell
 
-enviroChange <- function (start.env, env, current.time, amp, freq, slope, model, hetero=T, env.change.matrix) {
+enviroChange <- function (start.env, env, current.time, amp, freq, slope, model, hetero=T,
+                          env.change.matrix, env.dimension=100) {
 
   if (amp==0) {
     return(start.env)
@@ -36,7 +37,7 @@ enviroChange <- function (start.env, env, current.time, amp, freq, slope, model,
     # if hetergenously changing across across domain
       if(model == "linear"){
     # for linear model
-        data <- matrix(env@data@values, ncol=100, byrow=F)
+        data <- matrix(env@data@values, ncol=environment.dimension, byrow=F)
         data <- data + (slope*env.change.matrix)
         env@data@values <- as.numeric(data)
       } else {

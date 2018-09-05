@@ -69,7 +69,8 @@ DREaD_ds <- function(total.time,
                       suitability.mode="block",
                       speciation.gene.distance,
                       environment.source,
-                      initial.species.defined=NA) {
+                      initial.species.defined=NA,
+                      environment.dimension = 100) {
 
   ##### required libraries
   #require(ape)
@@ -86,7 +87,7 @@ DREaD_ds <- function(total.time,
   require(raster)
 
   # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
-  env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/100), 100), ncol=100, nrow=100, byrow=F)
+  env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/environment.dimension), environment.dimension), ncol=environment.dimension, nrow=environment.dimension, byrow=F)
 
   # vector of parameters
   params <- data.frame(total.time=total.time, dispersal=dispersal, amp=amp, freq=freq,
@@ -108,7 +109,7 @@ DREaD_ds <- function(total.time,
   ######################### 1. Generate or load background environment ########################
 
   if (environment.source == "internal") {
-    env <- generateEnv(original = T)
+    env <- generateEnv(grid.size = environment.dimension, original = T)
   } else {
     env <- raster(environment.source)
   }
@@ -119,12 +120,13 @@ DREaD_ds <- function(total.time,
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
   names(all.coords)[1] <- "cellID"
 
-  if (do.display & !do.display.diff) {
+  if (do.display & !do.display.diff & !output_to_file) {
     display.update(list(env = env))
   }
 
   ###########################  2. Seed initial species and data structures #############################
   #initial.species <- seedSpecies(env, dispersal = dispersal, print.species.params = TRUE)
+
   initial.species <- seedSpecies_defined(env, dispersal = dispersal, initial.species.defined)
   initial.species.ras <- initial.species[[1]]
 
@@ -190,7 +192,9 @@ DREaD_ds <- function(total.time,
     current.time <- current.time + timestep.size
 
     # environment changes
-    env <- enviroChange(start.env=starting.env, env=env, current.time=current.time, amp=amp, freq=freq, slope=slope, model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix)
+    env <- enviroChange(start.env=starting.env, env=env, current.time=current.time, amp=amp, freq=freq, slope=slope,
+                        model= enviro.mode, hetero=enviro.hetero, env.change.matrix=env.change.matrix,
+                        env.dimension=environment.dimension)
     # species.tips is the row index of non-extinct lineages (rows in the edgetable)
     if(any(extinct==TRUE)){
       species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
@@ -274,6 +278,10 @@ DREaD_ds <- function(total.time,
 
       # update the dynamic plot
       if (do.display) {
+        if (output_to_file) {
+          display.to.file.start(image_dir, current.time)
+        }
+
         niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
         display.update(list(env = env, demes_amount_position=demetable.species, current.time=current.time, niche.params = niche.params))
 
@@ -290,6 +298,10 @@ DREaD_ds <- function(total.time,
 
         if (do.animate) {
           ani.record() # record the current frame
+        }
+
+        if (output_to_file) {
+          display.to.file.stop()
         }
       }
 
