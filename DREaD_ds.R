@@ -86,7 +86,7 @@ DREaD_ds <- function(total.time,
   #require(phytools)
   require(raster)
 
-  # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
+  # matrix describing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/environment.dimension), environment.dimension), ncol=environment.dimension, nrow=environment.dimension, byrow=F)
 
   # vector of parameters
@@ -230,7 +230,6 @@ DREaD_ds <- function(total.time,
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
-        #browser()
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
@@ -279,7 +278,7 @@ DREaD_ds <- function(total.time,
       # update the dynamic plot
       if (do.display) {
         if (output_to_file) {
-          display.to.file.start(image_dir, current.time)
+          display.to.file.start(image_dir, current.time, image_filename = "animation")
         }
 
         niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)

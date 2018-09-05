@@ -27,7 +27,7 @@ disperse_ds <- function (demetable.species,
 
   # create an empty demetable.species.new
   demetable.species.new <- cbind(demetable.species[0, 1:12], data.table(originCell=0)[0])
-browser()
+
   # loop through the niche groups
   for (k in 1:nrow(niche.groups)) {
     niche <- niche.groups[k, ]
@@ -405,7 +405,7 @@ close.enough <- function(dispersal.origins, dispersal.destinations, dispersal.ra
 
   } else {
     cat("\nFunction close.enough() requires at least one dispersal.destinations row and one dispersal.origins row.\n")
-browser()
+
   }
 
   return(which(dispersal.destinations$include==1))
@@ -472,5 +472,5 @@ extinction <- function(edgetable, speciesID, current.time) {
   # initially it makes the most minimal changes, but more could be done here
 
   cat("\nSpecies", speciesID, "has become extinct at time", current.time, "\n")
-  browser()
+
 }
