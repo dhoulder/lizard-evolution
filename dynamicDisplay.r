@@ -52,7 +52,7 @@ display.update <- function(plotItems) {
   # this function relies on the data to be plotted, being in scope, rather than passed as argument
   # this can be revised if it is a problem
 
-  dot.size.scaler <- 0.75  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
+  dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   if (length(plotItems[["env"]]) > 0) {
 

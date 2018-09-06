@@ -5,8 +5,6 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
              "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
 lapply(scripts, source)
 
-#library(animation)
-
 run.name              <- "anim_real225_nicherate0.02_dispersal2_250gens_v1"
 
 #sample parameters
