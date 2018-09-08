@@ -157,6 +157,7 @@ text.update <- function(textItems) {
         "\nMaximum:", sp.summary$gen.distance.max,
         "\tMedian:", sp.summary$gen.distance.median,
         "\ngeneflow prob at max distance:", paste(round(geneflow.prob * 100, 2), "%", sep=""),
+        "\nThis step:", sp.summary$elapsed.time.step, "\tTotal time elapsed:", sp.summary$elapsed.time.total,
         "\n*****************************************\n")
   }
 

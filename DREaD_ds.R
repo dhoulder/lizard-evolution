@@ -86,6 +86,8 @@ DREaD_ds <- function(total.time,
   #require(phytools)
   require(raster)
 
+  starttime_global <- Sys.time()
+
   # matrix describing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/environment.dimension), environment.dimension), ncol=environment.dimension, nrow=environment.dimension, byrow=F)
 
@@ -186,6 +188,8 @@ DREaD_ds <- function(total.time,
 
   while(current.time < total.time) {
 
+  starttime_timestep <- Sys.time()
+
   ############################# 3. Environmental change ###########################
 
     # time changes
@@ -252,7 +256,7 @@ DREaD_ds <- function(total.time,
       genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
       genome.distance.max     <- max(genome.distances)
       genome.distance.median  <- median(genome.distances)
-
+browser()
       # calculate and print a species summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range = .N,
                                       total_amount = sum(amount),
@@ -266,7 +270,10 @@ DREaD_ds <- function(total.time,
                                       gen.distance.median = genome.distance.median)]
       sp.summary <- round(sp.summary, 4)
       if (do.text.output) {
-        list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)),
+        list.for.text <- c(list(current.time=current.time,
+                                elapsed.time.total = difftime(Sys.time(), starttime_global),
+                                elapsed.time.step = difftime(Sys.time(), starttime_timestep),
+                                current.speciesID=as.integer(current.speciesID)),
                           as.list(sp.summary[1,]))
         text.update(list(species_range_niche=list.for.text))
       }
