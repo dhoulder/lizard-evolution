@@ -256,7 +256,7 @@ DREaD_ds <- function(total.time,
       genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
       genome.distance.max     <- max(genome.distances)
       genome.distance.median  <- median(genome.distances)
-browser()
+
       # calculate and print a species summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range = .N,
                                       total_amount = sum(amount),
