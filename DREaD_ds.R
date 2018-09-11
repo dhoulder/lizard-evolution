@@ -86,7 +86,9 @@ DREaD_ds <- function(total.time,
   #require(phytools)
   require(raster)
 
-  # matrix descrbing the degree of environmental change across the landscape (for enviro.hetero=T)
+  starttime_global <- Sys.time()
+
+  # matrix describing the degree of environmental change across the landscape (for enviro.hetero=T)
   env.change.matrix <- matrix(rep(seq(from=0.01, to =1, by=1/environment.dimension), environment.dimension), ncol=environment.dimension, nrow=environment.dimension, byrow=F)
 
   # vector of parameters
@@ -157,8 +159,8 @@ DREaD_ds <- function(total.time,
     cell <- presence.cells[i]
     new.row <-  list(cell,                  # cellID
                   1,                     # speciesID
-                  coords[i, 2],          # x
-                  coords[i, 1],          # y
+                  coords[i, 2],          # col
+                  coords[i, 1],          # row
                   1,                     # amount - need to sort out values!
                   initial.species[[2]],  # niche1.position
                   initial.species[[3]],  # niche1.breadth
@@ -185,6 +187,8 @@ DREaD_ds <- function(total.time,
   # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
 
   while(current.time < total.time) {
+
+  starttime_timestep <- Sys.time()
 
   ############################# 3. Environmental change ###########################
 
@@ -230,7 +234,6 @@ DREaD_ds <- function(total.time,
 
       # check for extinction here
       if (nrow(demetable.species.overlap) == 0) {
-        #browser()
         edgetable <- extinction(edgetable, current.speciesID, current.time)
       }
 
@@ -267,7 +270,10 @@ DREaD_ds <- function(total.time,
                                       gen.distance.median = genome.distance.median)]
       sp.summary <- round(sp.summary, 4)
       if (do.text.output) {
-        list.for.text <- c(list(current.time=current.time, current.speciesID=as.integer(current.speciesID)),
+        list.for.text <- c(list(current.time=current.time,
+                                elapsed.time.total = difftime(Sys.time(), starttime_global),
+                                elapsed.time.step = difftime(Sys.time(), starttime_timestep),
+                                current.speciesID=as.integer(current.speciesID)),
                           as.list(sp.summary[1,]))
         text.update(list(species_range_niche=list.for.text))
       }
@@ -279,7 +285,7 @@ DREaD_ds <- function(total.time,
       # update the dynamic plot
       if (do.display) {
         if (output_to_file) {
-          display.to.file.start(image_dir, current.time)
+          display.to.file.start(image_dir, current.time, image_filename = "animation")
         }
 
         niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)

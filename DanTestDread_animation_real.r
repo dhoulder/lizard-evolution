@@ -7,18 +7,18 @@ lapply(scripts, source)
 
 library(animation)
 
-run.name              <- "anim_real225_nicherate0.02_dispersal4_500gens_v1"
+run.name              <- "anim_real225_nicherate0.02_dispersal1.5_250gens_v1"
 
 #sample parameters
-total.time            <- 500
-dispersal             <- 4              # dispersal distance
+total.time            <- 250
+dispersal             <- 1.5              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
 NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
-speciation.gene.distance <- 40  # this parameter will need to be set with the drift rate
+speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
 environment.source    <- "~/Work/Software/dan-github/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
 #environment.source    <- "internal"
@@ -64,9 +64,10 @@ simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = e
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
                   initial.species.defined = initial.species.defined, environment.dimension=environment.dimension)
 
+gc()
 
 # save the animation
-ani.replay()
+#ani.replay()
 
 ani.options('ani.width'=900, 'ani.height'=900, 'interval'=0.4)
 

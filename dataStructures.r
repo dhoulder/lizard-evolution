@@ -48,7 +48,6 @@ makeEdgeTable <- function(rowcount=10000,
 
 }
 
-
 makeDemeTable <- function(genome.dimensions=3, rowcount=10000, columnInfo=FALSE) {
 
   # this function creates and returns an empty demes matrix
@@ -64,8 +63,8 @@ makeDemeTable <- function(genome.dimensions=3, rowcount=10000, columnInfo=FALSE)
 
   demetable <- data.frame(cellID=0,
                            speciesID=0,
-                           x=0.0,
-                           y=0.0,
+                           col=0,
+                           row=0,
                            amount=0.0,
                            niche1.position=0.0,
                            niche1.breadth=0.0,
