@@ -7,16 +7,20 @@ This builds the dread_ds static library (dread_ds.a on *nix).
 The R package builds `dreadds.so`
 
 ### Prerequisites
+
+* Eigen template library. See http://eigen.tuxfamily.org
+  See `./CMakeLists.txt` for version information.
+
 * `cmake`
+  See https://cmake.org/
 
-  On Ubuntu:
-  `sudo apt-get install cmake`
-
-* C++ compiler
-
+* A C++ compiler.
   Needs to support C++11
-  On Ubuntu:
-  `sudo apt-get install build-essential`
+
+On Ubuntu these prerequisites can be installed with:
+
+  `sudo apt-get install libeigen3-dev cmake build-essential`
+
 
 ### Building
 ```

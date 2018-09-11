@@ -1,6 +1,7 @@
 /**
 
  */
+#include <iostream>
 
 #include <Eigen/Dense>
 
@@ -15,7 +16,10 @@ struct DreadDs::Impl {
 };
 
 DreadDs::DreadDs(): impl(new(Impl)) {
-   // STUB
+  // STUB
+  impl->env = MatrixXd::Random(3,3);
+  std::cout << "constructor" << std::endl;
+  std::cout << impl->env << std::endl;
 }
 
 
