@@ -311,6 +311,8 @@ DREaD_ds <- function(total.time,
         }
       }
 
+      gc(verbose=FALSE)
+
     } #end of looping through species
 
   #   # if all species are extinct reset to the starting values of the simulation
