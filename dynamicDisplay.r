@@ -1,7 +1,7 @@
 # functions for displaying information in runtime such as a map and summary stats
 
 display.initialise <- function() {
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(15,11)
   }
 
@@ -14,7 +14,7 @@ display.initialise <- function() {
 
 display.initialise.double <- function() {
 
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(18,9) # open on-screen display
   }
 
@@ -29,9 +29,9 @@ display.initialise.double <- function() {
   return(list(my.colours, my.diffcolours, stored_par))
 }
 
-display.initialise.2by2 <- function(output_to_file = F) {
+display.initialise.2by2 <- function(image_to_file = F) {
 
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(10,10) # open on-screen display
   }
 
