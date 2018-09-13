@@ -2,13 +2,13 @@ rm(list=ls())
 gc()
 
 scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange.R", "DREaD_ds.R",
-             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
+             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r", "output.r")
 lapply(scripts, source)
 
-run.name              <- "anim_real225_nicherate0.02_dispersal2_250gens_v1"
+run.name              <- "anim_real225_nicherate0.02_dispersal2_100gens_v1"
 
 #sample parameters
-total.time            <- 250
+total.time            <- 100
 dispersal             <- 2              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
@@ -29,27 +29,29 @@ initial.species.defined = list(initial.breadth = initial.breadth,
                                initial.cell = initial.cell,
                                initial.extent = initial.extent)
 
-# display settings
-do.display            <- TRUE
-do.display.diff       <- TRUE
-do.display.genome     <- TRUE
+# display and output settings
+do.display            <- FALSE
+do.display.diff       <- FALSE
+do.display.genome     <- FALSE
 do.text.output        <- TRUE
 do.animate            <- FALSE
-image_to_file        <- TRUE
+image_to_file         <- FALSE
+raster_to_file        <- TRUE
+generations_to_save   <- c(50, 100)
 
-# create the image output directory
-output_dir            <- paste("D:/Simulation/test_runs/", run.name, sep="")
-image_dir             <- paste(output_dir, "/images/", sep="")
+# create the raster output directory
+output_dir            <- paste("C:/Work/Simulation/test_runs_Sept/", run.name, sep="")
+raster_dir             <- paste(output_dir, "/raster/", sep="")
 
-if (dir.exists(image_dir) == FALSE) {
+if (dir.exists(raster_dir) == FALSE) {
 
   if (dir.exists(output_dir) == FALSE) {
     dir.create(output_dir)
     cat("\nCreated directory", output_dir, "\n")
   }
 
-  dir.create(image_dir)
-  cat("\nCreated directory", image_dir, "\n")
+  dir.create(raster_dir)
+  cat("\nCreated directory", raster_dir, "\n")
 }
 
 if (do.display) {
@@ -76,5 +78,3 @@ simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = e
                   enviro.mode = "sine", suitability.mode = suitability.mode,
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
                   initial.species.defined = initial.species.defined)
-
-# ADD CODE HERE TO TURN THE IMAGES INTO AN ANIMATION

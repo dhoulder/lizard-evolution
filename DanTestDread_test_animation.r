@@ -34,7 +34,7 @@ do.display.diff       <- TRUE
 do.display.genome     <- TRUE
 do.text.output        <- TRUE
 do.animate            <- TRUE
-output_to_file        <- FALSE
+image_to_file        <- FALSE
 
 if (do.display) {
   if (do.display.diff) {
