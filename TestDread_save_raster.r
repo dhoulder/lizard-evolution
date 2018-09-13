@@ -5,11 +5,11 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
              "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r", "output.r")
 lapply(scripts, source)
 
-run.name              <- "anim_real225_nicherate0.02_dispersal2_100gens_v1"
+run.name              <- "real225_nicherate0.02_dispersal1.5_250gens"
 
 #sample parameters
-total.time            <- 100
-dispersal             <- 2              # dispersal distance
+total.time            <- 250
+dispersal             <- 1.5              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
