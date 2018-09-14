@@ -6,8 +6,9 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
 lapply(scripts, source)
 
 run.name              <- "real225_nicherate0.02_dispersal1.5_250gens"
+run.number						<- as.integer(commandArgs(trailingOnly = TRUE))
 
-#sample parameters
+#parameters
 total.time            <- 250
 dispersal             <- 1.5              # dispersal distance
 niche.evolution.rate  <- 0.02
@@ -30,14 +31,15 @@ initial.species.defined = list(initial.breadth = initial.breadth,
                                initial.extent = initial.extent)
 
 # display and output settings
-do.display            <- FALSE
-do.display.diff       <- FALSE
-do.display.genome     <- FALSE
-do.text.output        <- TRUE
-do.animate            <- FALSE
-image_to_file         <- FALSE
-raster_to_file        <- TRUE
-generations_to_save   <- c(50, 100)
+do.display              <- FALSE
+do.display.diff         <- FALSE
+do.display.genome       <- FALSE
+do.text.output          <- TRUE
+do.animate              <- FALSE
+image_to_file           <- FALSE
+raster_to_file          <- TRUE
+generations_to_save     <- c(1, 50, 100, 150, 200, 250)
+run_number_in_filename  <- TRUE
 
 # create the raster output directory
 output_dir            <- paste("C:/Work/Simulation/test_runs_Sept/", run.name, sep="")
@@ -74,7 +76,7 @@ if (do.display) {
 
 # Run model
 simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = env.amp, freq = env.freq,
-                  niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = T,
-                  enviro.mode = "sine", suitability.mode = suitability.mode,
-                  speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
-                  initial.species.defined = initial.species.defined)
+                         niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = T,
+                         enviro.mode = "sine", suitability.mode = suitability.mode,
+                         speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
+                         initial.species.defined = initial.species.defined)
