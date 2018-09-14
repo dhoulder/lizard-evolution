@@ -314,7 +314,7 @@ DREaD_ds <- function(total.time,
       if (raster_to_file & current.time %in% generations_to_save) {
         current.species.ras <- demes_to_raster(demetable.species, current.speciesID, env)
         if (run_number_in_filename) {
-          raster.filename <- paste(raster_dir, "species", current.speciesID, "_run",  run.number, "_time", current.time, ".asc", sep="")
+          raster.filename <- paste(raster_dir, "_run",  run.number, "species", current.speciesID, "_time", current.time, ".asc", sep="")
         } else {
           raster.filename <- paste(raster_dir, "species", current.speciesID, "_time", current.time, ".asc", sep="")
         }
