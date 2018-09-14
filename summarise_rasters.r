@@ -1,9 +1,11 @@
 # this file combines and summarises output rasters from the simulations
 library(raster)
 
-raster_dir     <- "/short/ka2/dfr805/simulation/test_runs/real225_nicherate0.02_dispersal1.5_200gens/raster/"
+raster_dir    <- "/short/ka2/dfr805/simulation/test_runs/real225_nicherate0.02_dispersal1.5_200gens/raster/"
 
-file_template  <- "*time100.asc"
+summary.time  <- 150
+
+file_template <- paste("*time", summary.time, ".asc", sep="")
 
 doPlot <- FALSE
 
@@ -33,24 +35,31 @@ for (lyr in 1:layer.count) {
 }
 abundEnd.ras <- sum(abundEnd.stack, na.rm=T)
 
-writeRaster(abund.ras, paste(raster_dir, "abundance_at_100.asc", sep=""), overwrite=TRUE)
-writeRaster(richness.ras, paste(raster_dir, "richness_at_100.asc", sep=""), overwrite=TRUE)
-writeRaster(speciesEnd.ras, paste(raster_dir, "speciesEnd_at_100.asc", sep=""), overwrite=TRUE)
-writeRaster(abundEnd.ras, paste(raster_dir, "abundanceEnd_at_100.asc", sep=""), overwrite=TRUE)
+writeRaster(abund.ras, paste(raster_dir, "abundance_at_", summary.time ,".asc", sep=""), overwrite=TRUE)
+writeRaster(richness.ras, paste(raster_dir, "richness_at_", summary.time ,".asc", sep=""), overwrite=TRUE)
+writeRaster(speciesEnd.ras, paste(raster_dir, "speciesEnd_at_", summary.time ,".asc", sep=""), overwrite=TRUE)
+writeRaster(abundEnd.ras, paste(raster_dir, "abundanceEnd_at_", summary.time ,".asc", sep=""), overwrite=TRUE)
 
 
 if (doPlot) {
 
+  windows(10,10)
+  par(mfcol=c(2,2))
+
   # lines for windows desktop
-  abund.sum   <- raster("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/abundance_at_100.asc")
-  plot(abund.sum)
+  abund.sum   <- raster(paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/abundance_at_", summary.time, ".asc", sep=""))
+  main_header <- paste("Abundance after", summary.time, "steps from", layer.count, "runs")
+  plot(abund.sum, main=main_header)
 
-  richness.sum   <- raster("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/richness_at_100.asc")
-  plot(richness.sum)
+  richness.sum   <- raster(paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/richness_at_", summary.time, ".asc", sep=""))
+  main_header <- paste("Species richness after", summary.time, "steps")
+  plot(richness.sum, main=main_header)
 
-  speciesEndemism.sum   <- raster("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/speciesEnd_at_100.asc")
-  plot(speciesEndemism.sum)
+  speciesEndemism.sum   <- raster(paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/speciesEnd_at_", summary.time, ".asc", sep=""))
+  main_header <- paste("Species endemism after", summary.time, "steps")
+  plot(speciesEndemism.sum, main=main_header)
 
-  abundanceEndemism.sum   <- raster("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/abundanceEnd_at_100.asc")
-  plot(log(abundanceEndemism.sum))
+  abundanceEndemism.sum   <- raster(paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/abundanceEnd_at_", summary.time, ".asc", sep=""))
+  main_header <- paste("log(Abundance endemism) after", summary.time, "steps")
+  plot(log(abundanceEndemism.sum), main=main_header)
 }
