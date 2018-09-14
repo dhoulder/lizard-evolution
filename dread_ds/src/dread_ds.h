@@ -1,4 +1,7 @@
+// -*-c++-*-
+
 /**
+   DREaD_ds model API
  */
 
 #ifndef DREADDS_H
@@ -7,12 +10,12 @@
 #include <memory>
 
 class DreadDs  {
- public:
+public:
   const char *const version = "0.01";
-  DreadDs();
+  DreadDs(int cols, int rows);
   ~DreadDs();
 
- private:
+private:
   class Impl;
   std::unique_ptr<Impl> impl;
 };

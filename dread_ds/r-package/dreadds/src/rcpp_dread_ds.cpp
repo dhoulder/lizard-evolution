@@ -9,7 +9,7 @@ using namespace Rcpp;
 List dreadds() {
   // FIXME STUB
 
-  DreadDs model;
+  DreadDs model(3, 5);
 
   CharacterVector x = CharacterVector::create("dreadds STUB", model.version);
   List z            = List::create(x ) ;
