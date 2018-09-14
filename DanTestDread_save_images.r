@@ -5,11 +5,11 @@ scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange
              "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
 lapply(scripts, source)
 
-run.name              <- "anim_real225_nicherate0.02_dispersal2_250gens_v1"
+run.name              <- "anim_real225_nicherate0.02_dispersal3_300gens_v5"
 
 #sample parameters
-total.time            <- 250
-dispersal             <- 2              # dispersal distance
+total.time            <- 300
+dispersal             <- 3              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
@@ -17,7 +17,7 @@ NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-environment.source    <- "~/Work/Software/dan-github/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
+environment.source    <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
 #environment.source    <- "internal"
 environment.dimension <- 225
@@ -38,7 +38,7 @@ do.animate            <- FALSE
 image_to_file        <- TRUE
 
 # create the image output directory
-output_dir            <- paste("D:/Simulation/test_runs/", run.name, sep="")
+output_dir            <- paste("/short/ka2/dfr805/simulation/test_runs/", run.name, sep="")
 image_dir             <- paste(output_dir, "/images/", sep="")
 
 if (dir.exists(image_dir) == FALSE) {
