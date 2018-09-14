@@ -10,12 +10,15 @@ doPlot <- FALSE
 files <- list.files(path=raster_dir, pattern=file_template, include.dirs = TRUE, full.names = TRUE)
 
 abund.stack <- stack(files)
+layer.count <- nlayers(abund.stack)
+
+cat("\nThere are", layer.count, "simulation results to summarise for:\n", raster_dir, "\n", file_template, "\n")
+
 abund.ras    <- sum(abund.stack)
 presence.stack <- abund.stack
 presence.stack[which(presence.stack[]>0)] <- 1
 richness.ras <- sum(presence.stack)
 
-layer.count <- nlayers(abund.stack)
 speciesEnd.stack <- presence.stack
 for (lyr in 1:layer.count) {
   layer_sum <- sum(speciesEnd.stack[[lyr]][],na.rm=T)
@@ -49,5 +52,5 @@ if (doPlot) {
   plot(speciesEndemism.sum)
 
   abundanceEndemism.sum   <- raster("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_200gens/raster/abundanceEnd_at_100.asc")
-  plot(abundanceEndemism.sum)
+  plot(log(abundanceEndemism.sum))
 }
