@@ -1,10 +1,9 @@
 # DREaD_ds C++ implementation
 
 This directory contains C++ source code that implements the DREaD_ds
-evolution model.
+evolution model and provides an API in the form of a runtime library.
 
-This builds the dread_ds static library (dread_ds.a on *nix).
-The R package builds `dreadds.so`
+See ./dread_ds.h for API usage.
 
 ### Prerequisites
 

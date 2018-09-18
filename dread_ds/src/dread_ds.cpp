@@ -85,7 +85,7 @@ struct Species {
 class DreadDs::Impl {
 public:
 
-  Impl(int cols, int rows): env(MatrixXd::Random(cols, rows)) {
+  Impl(int cols, int rows): env(MatrixXd(cols, rows)) {
     // FIXME WIP
   }
 
@@ -98,8 +98,15 @@ public:
   std::vector <Species> tips; // extant leaf species
 };
 
-DreadDs::DreadDs(int cols, int rows): impl(new Impl(cols, rows)) {
+DreadDs::DreadDs(int cols, int rows): step(0), impl(new Impl(cols, rows)) {
   // FIXME WIP
 }
 
 DreadDs::~DreadDs() = default;
+
+int DreadDs::run(int n_steps) {
+  for (int final = step + n_steps; step < final; step++) {
+    // FIXME STUB
+  }
+  return step;
+}
