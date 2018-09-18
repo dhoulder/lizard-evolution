@@ -12,6 +12,7 @@
 class DreadDs  {
 public:
   const char *const version = "0.01";
+
   DreadDs(int cols, int rows);
   ~DreadDs();
 
