@@ -27,9 +27,10 @@ public:
   int run(int n_steps);
 
 private:
+  int step();
   class Impl;
   std::unique_ptr<Impl> impl;
-  int step;
+  int current_step;
 };
 
 #endif

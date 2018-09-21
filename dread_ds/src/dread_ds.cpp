@@ -47,6 +47,7 @@ struct Range {
 };
 
 struct Characteristics {
+  // Describes a species
   // FIXME std::vector may be overkill (constant lengths)
   std::vector <Niche> niche;   // Niches derived from all demes of this species.
   std::vector <Genetics> genetics;
@@ -55,7 +56,8 @@ struct Characteristics {
 
 struct Deme {
   /**
-     Holds characteristics of a population in a cell.
+     Holds characteristics of a genetically homogeneous population in
+     a cell.
   */
   // FIXME std::vector may be overkill (constant lengths)
   std::vector <float> niche_position;
@@ -72,7 +74,7 @@ typedef std::map <int, std::vector <Deme>> DemeMap;
 struct Spacies;
 struct Species {
   /**
-     Describes species and their phylogeny
+     Describes a species and its phylogeny
    */
   Species *parent;
   std::shared_ptr <Species> left_child = NULL;
@@ -97,6 +99,7 @@ struct DispersalWeight {
 typedef std::vector<DispersalWeight> DispersalKernel;
 
 struct Config {
+  // Parameters for a simulation run.
   int debug = 0;
   float max_dispersal_radius;
   float dispersal_floor; // dispersal weight lower than this is treated as 0
@@ -114,6 +117,7 @@ public:
   }
 
   void setup_dispersal();
+  void disperse(Species &species);
 
   Config conf;
   MatrixXd env;
@@ -131,8 +135,8 @@ void DreadDs::Impl::setup_dispersal() {
   // Calculate dispersal kernel
   // TODO only really have to store one quadrant (perhaps only one octant)
   int r = (int) (ceil(conf.max_dispersal_radius) + 0.5);
-  for (int i = -r; i <= r; i++)
-    for (int j = -r; j <= r; j++) {
+  for (int i = -r; i <= r; ++i)
+    for (int j = -r; j <= r; ++j) {
       float v = (1.0f - ((dispersal_distance(i, j)) / conf.max_dispersal_radius));
       if (v >= conf.dispersal_floor) {
 	dk.push_back(DispersalWeight {i, j, v});
@@ -143,7 +147,25 @@ void DreadDs::Impl::setup_dispersal() {
       std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
 };
 
-DreadDs::DreadDs(int cols, int rows): step(0), impl(new Impl(cols, rows)) {
+void DreadDs::Impl::disperse(Species &species) {
+  // FIXME WIP
+
+  // FIXME setup target DemeMap
+
+
+  for (DemeMap::iterator d_it = species.demes.begin();
+       d_it != species.demes.end();
+       ++d_it) {
+
+    // FIXME disperse to target
+
+
+  }
+
+}
+
+
+DreadDs::DreadDs(int cols, int rows): current_step(0), impl(new Impl(cols, rows)) {
 
   // TODO load config
   impl->conf = { // FIXME STUB
@@ -161,28 +183,42 @@ DreadDs::DreadDs(int cols, int rows): step(0), impl(new Impl(cols, rows)) {
 
 DreadDs::~DreadDs() = default;
 
-int DreadDs::run(int n_steps) {
-  for (int final = step + n_steps; step < final; ++step) {
-    // FIXME STUB
 
-    // TODO Update environment
+int DreadDs::step() {
 
-      for (std::vector<Species>::iterator it = impl->tips.begin();
-	   it != impl->tips.end();
-	   ++it) {
-	// TODO disperse
+  ++current_step;
+  // TODO Update environment
 
-	// TODO niche evolution
-
-	// TODO check for extinction
-
-	// TODO genetic drift
+  for (std::vector<Species>::iterator s_it = impl->tips.begin();
+       s_it != impl->tips.end();
+       ++s_it) {
+    impl->disperse(*s_it);
 
 
-	// TODO speciate.
-	// Make sure iterator doesn't see this.
+    // TODO collapse demes in cell within genetic tolerance.
+    // TODO? can do this row-lagged in the dispersal loop, providing we
+    // stay far enough behind the dispersal area
+    // TODO?? do this in another thread?
 
-      }
+    // TODO niche evolution
+
+    // TODO check for extinction
+
+    // TODO genetic drift
+
+
+    // TODO speciate.
+    // Make sure iterator doesn't see this.
+
   }
-  return step;
+}
+
+
+int DreadDs::run(int n_steps) {
+  for (int final = current_step + n_steps;
+       current_step < final; ) {
+    // FIXME STUB. needs some way to stop when done
+    step();
+  }
+  return current_step;
 }
