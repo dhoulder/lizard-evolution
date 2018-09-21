@@ -1,12 +1,16 @@
 /**
    Implementation of DREaD_ds model. See ./README.md
 */
-
 #include <memory>
 #include <vector>
 #include <map>
+#include <math.h>
 
 #include <Eigen/Dense>
+
+// FIXME for debugging
+#include <iostream>
+#include <iomanip>
 
 #include "dread_ds.h"
 
@@ -57,13 +61,15 @@ struct Deme {
   std::vector <float> niche_position;
   std::vector <float> niche_sd;
   float amount; // population per cell
-  float genetic_position[]; // genetic position in n-dimensional space. See struct Genetics
+  std::vector <float> genetic_position; // genetic position in n-dimensional space. See struct Genetics
 };
 
-
+// Cells occupied by demes of a species, indexed by flattened cell
+// index of environment matrix.  Several demes can occupy a cell,
+// hence std::vector
+typedef std::map <int, std::vector <Deme>> DemeMap;
 
 struct Spacies;
-
 struct Species {
   /**
      Describes species and their phylogeny
@@ -77,9 +83,23 @@ struct Species {
 		  // origin time. -1 if not speciated
   Characteristics initial; // At species origin (i.e. split from parent)
   Characteristics latest; // Updated at each time step. Frozen after speciation.
-  std::map <int, Deme> demes; // Cells occupied by this
-			      // species. indexed by flattened cell
-			      // index of env
+  DemeMap demes; // Cells occupied by this species.
+};
+
+struct DispersalWeight {
+  // Describes dispersal propensity for (x,y) offset from origin cell
+  // at (0,0) due to distance cost.
+  int x;
+  int y;
+  float weight; // 0 to 1.0
+};
+
+typedef std::vector<DispersalWeight> DispersalKernel;
+
+struct Config {
+  int debug = 0;
+  float max_dispersal_radius;
+  float dispersal_floor; // dispersal weight lower than this is treated as 0
 };
 
 class DreadDs::Impl {
@@ -93,20 +113,76 @@ public:
     //FIXME WIP
   }
 
+  void setup_dispersal();
+
+  Config conf;
   MatrixXd env;
+  DispersalKernel dk;
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
 };
 
+static float dispersal_distance(long x, long y) {
+  // Replace with some other distance metric if required.
+  return sqrt(x*x + y*y);
+}
+
+void DreadDs::Impl::setup_dispersal() {
+  // Calculate dispersal kernel
+  // TODO only really have to store one quadrant (perhaps only one octant)
+  int r = (int) (ceil(conf.max_dispersal_radius) + 0.5);
+  for (int i = -r; i <= r; i++)
+    for (int j = -r; j <= r; j++) {
+      float v = (1.0f - ((dispersal_distance(i, j)) / conf.max_dispersal_radius));
+      if (v >= conf.dispersal_floor) {
+	dk.push_back(DispersalWeight {i, j, v});
+      }
+    }
+  if (conf.debug > 3)
+    for (std::vector<DispersalWeight>::iterator it = dk.begin() ; it != dk.end(); ++it)
+      std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
+};
+
 DreadDs::DreadDs(int cols, int rows): step(0), impl(new Impl(cols, rows)) {
-  // FIXME WIP
+
+  // TODO load config
+  impl->conf = { // FIXME STUB
+    4, // debug level
+    2, // dispersal radius
+    0.2 // dispersal floor
+  };
+
+  impl->setup_dispersal();
+
+  // TODO initialise env
+
+  // TODO initialise roots, tips
 }
 
 DreadDs::~DreadDs() = default;
 
 int DreadDs::run(int n_steps) {
-  for (int final = step + n_steps; step < final; step++) {
+  for (int final = step + n_steps; step < final; ++step) {
     // FIXME STUB
+
+    // TODO Update environment
+
+      for (std::vector<Species>::iterator it = impl->tips.begin();
+	   it != impl->tips.end();
+	   ++it) {
+	// TODO disperse
+
+	// TODO niche evolution
+
+	// TODO check for extinction
+
+	// TODO genetic drift
+
+
+	// TODO speciate.
+	// Make sure iterator doesn't see this.
+
+      }
   }
   return step;
 }
