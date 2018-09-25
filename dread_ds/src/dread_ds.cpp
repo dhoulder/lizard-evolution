@@ -66,13 +66,17 @@ struct Deme {
   std::vector <float> genetic_position; // genetic position in n-dimensional space. See struct Genetics
 };
 
-// Cells occupied by demes of a species, indexed by flattened cell
-// index of environment matrix.  Several demes can occupy a cell,
-// hence std::vector
-typedef std::map <int, std::vector <Deme>> DemeMap;
+struct Location {
+  int x;
+  int y;
+};
+// Cells occupied by demes of a species, Several demes can occupy a
+// cell, hence std::vector
+typedef std::map <Location, std::vector <Deme>> DemeMap;
 
-struct Spacies;
-struct Species {
+class Spacies;
+class Species {
+public:
   /**
      Describes a species and its phylogeny
    */
@@ -85,7 +89,12 @@ struct Species {
 		  // origin time. -1 if not speciated
   Characteristics initial; // At species origin (i.e. split from parent)
   Characteristics latest; // Updated at each time step. Frozen after speciation.
-  DemeMap demes; // Cells occupied by this species.
+  std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
+
+  Species(): demes(new(DemeMap)) {
+  }
+
+
 };
 
 struct DispersalWeight {
@@ -96,7 +105,7 @@ struct DispersalWeight {
   float weight; // 0 to 1.0
 };
 
-typedef std::vector<DispersalWeight> DispersalKernel;
+typedef std::vector <DispersalWeight> DispersalKernel;
 
 class Config {
 public:
@@ -130,7 +139,6 @@ public:
 
   void setup_dispersal();
   void disperse(Species &species);
-
 
   void update_environment(int step) {
     // This offset gets applied to every cell in env
@@ -174,16 +182,31 @@ void DreadDs::Impl::disperse(Species &species) {
 
   // FIXME setup target DemeMap
 
+  // Iterate over all cells where this species occurs
+  for (DemeMap::iterator dm_it = species.demes->begin();
+       dm_it != species.demes->end();
+       ++dm_it) {
+    const Location &loc = dm_it->first;
+    std::vector <Deme> &dv =  dm_it->second;
 
-  for (DemeMap::iterator d_it = species.demes.begin();
-       d_it != species.demes.end();
-       ++d_it) {
 
-    // FIXME disperse to target
+    for (std::vector <DispersalWeight>::iterator k = dk.begin(); k != dk.end(); ++k) {
+      int x = loc.x + k->x;
+      int y = loc.y + k->y;
+      if (x < 0 || y < 0 ||
+	  x >= env.cols() || y >= env.rows()) // FIXME or maybe allocate an edge border?
+	continue;
 
+      float target_env = env(y, x) + env_offset;
 
+      // Iterate over all demes (sort of "sub species") in the cell
+      for (std::vector <Deme>::iterator d_it =  dv.begin();
+	   d_it != dv.end();
+	   ++d_it) {
+	// FIXME disperse to target
+      }
+    }
   }
-
 }
 
 
