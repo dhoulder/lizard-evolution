@@ -61,7 +61,7 @@ struct Deme {
   */
   // FIXME std::vector may be overkill (constant lengths)
   std::vector <float> niche_position;
-  std::vector <float> niche_sd;
+  std::vector <float> niche_breadth;
   float amount; // population per cell
   std::vector <float> genetic_position; // genetic position in n-dimensional space. See struct Genetics
 };
@@ -114,16 +114,24 @@ public:
   float max_dispersal_radius;
   float dispersal_floor; // dispersal weight lower than this is treated as 0
   double env_ramp; // linear environment change per time step
-  float sine_period; // wavelength of sinusoidal environment change in time steps
-  float sine_offset; // shift sinusoidal change by this fraction of the
+  float env_sine_period; // wavelength of sinusoidal environment change in time steps
+  float env_sine_offset; // shift sinusoidal change by this fraction of the
 		     // wavelength. Use 0.25 for cos()
-  float sine_amplitude; // maximum swing of sinusoidal environment change
+  float env_sine_amplitude; // maximum swing of sinusoidal environment change
 
   float env_change(int time_step) {
     return (time_step * env_ramp) +
-      (sine_amplitude * sin(2 * M_PI *
-			    ((double)sine_offset + (double)time_step/sine_period)));
+      (env_sine_amplitude * sin(2 * M_PI *
+			    ((double)env_sine_offset + (double)time_step/env_sine_period)));
   }
+
+
+  float niche_suitability(const float e, const Deme &d) {
+    // FIXME adjust population as per https://www.dropbox.com/home/Simulation/plans_and_docs?preview=Macro+evolution+intraspecies+process+simulation+September+2018.docx 3.2.1
+
+    return 0.5; // FIXME STUB
+  }
+
 };
 
 class DreadDs::Impl {
@@ -138,7 +146,7 @@ public:
   }
 
   void setup_dispersal();
-  void disperse(Species &species);
+  std::shared_ptr<DemeMap> disperse(Species &species);
 
   void update_environment(int step) {
     // This offset gets applied to every cell in env
@@ -177,10 +185,13 @@ void DreadDs::Impl::setup_dispersal() {
       std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
 };
 
-void DreadDs::Impl::disperse(Species &species) {
+
+
+
+std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
   // FIXME WIP
 
-  // FIXME setup target DemeMap
+  auto target = std::make_shared <DemeMap>();
 
   // Iterate over all cells where this species occurs
   for (DemeMap::iterator dm_it = species.demes->begin();
@@ -189,24 +200,30 @@ void DreadDs::Impl::disperse(Species &species) {
     const Location &loc = dm_it->first;
     std::vector <Deme> &dv =  dm_it->second;
 
+    // Iterate over all demes (sort of "sub species") in the cell
+    for (std::vector <Deme>::iterator d_it =  dv.begin();
+	 d_it != dv.end();
+	 ++d_it) {
 
-    for (std::vector <DispersalWeight>::iterator k = dk.begin(); k != dk.end(); ++k) {
-      int x = loc.x + k->x;
-      int y = loc.y + k->y;
-      if (x < 0 || y < 0 ||
-	  x >= env.cols() || y >= env.rows()) // FIXME or maybe allocate an edge border?
-	continue;
+      float abundance = conf.niche_suitability(env(loc.y, loc.x), *d_it);
 
-      float target_env = env(y, x) + env_offset;
+      for (std::vector <DispersalWeight>::iterator k = dk.begin(); k != dk.end(); ++k) {
+	int x = loc.x + k->x;
+	int y = loc.y + k->y;
+	if (x < 0 || y < 0 ||
+	    x >= env.cols() || y >= env.rows()) // FIXME or maybe allocate an edge border?
+	  continue;
 
-      // Iterate over all demes (sort of "sub species") in the cell
-      for (std::vector <Deme>::iterator d_it =  dv.begin();
-	   d_it != dv.end();
-	   ++d_it) {
+	float target_env = env(y, x) + env_offset;
+
+
 	// FIXME disperse to target
+
+
       }
     }
   }
+  return target;
 }
 
 
@@ -218,9 +235,9 @@ DreadDs::DreadDs(int cols, int rows): current_step(0), impl(new Impl(cols, rows)
     2, // dispersal radius
     0.2, // dispersal floor
     0, // env_ramp
-    4, // sine_period
-    0, // sine_offset,
-    0 // sine_amplitude
+    4, // env_sine_period
+    0, // env_sine_offset,
+    0 // env_sine_amplitude
   };
 
   impl->setup_dispersal();
@@ -239,7 +256,7 @@ int DreadDs::step() {
   for (std::vector<Species>::iterator s_it = impl->tips.begin();
        s_it != impl->tips.end();
        ++s_it) {
-    impl->disperse(*s_it);
+    auto target = impl->disperse(*s_it);
 
 
     // TODO collapse demes in cell within genetic tolerance.
@@ -247,9 +264,12 @@ int DreadDs::step() {
     // stay far enough behind the dispersal area
     // TODO?? do this in another thread?
 
+    // Finished with source demes now - replace with target;
+    s_it->demes = target;
+
     // TODO niche evolution
 
-    // TODO check for extinction
+    // TODO check for extinction. Remove from DemeMap
 
     // TODO genetic drift
 
