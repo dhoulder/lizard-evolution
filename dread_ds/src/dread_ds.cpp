@@ -27,7 +27,7 @@ struct Niche {
   float position_sd;
   float breadth_mean;
   float breadth_sd;
-  // max and min  values  of  position - (breadth  /2)
+  // max and min values of position - (breadth  /2)
   float max;
   float min;
 };
@@ -98,11 +98,23 @@ struct DispersalWeight {
 
 typedef std::vector<DispersalWeight> DispersalKernel;
 
-struct Config {
+class Config {
+public:
   // Parameters for a simulation run.
   int debug = 0;
   float max_dispersal_radius;
   float dispersal_floor; // dispersal weight lower than this is treated as 0
+  double env_ramp; // linear environment change per time step
+  float sine_period; // wavelength of sinusoidal environment change in time steps
+  float sine_offset; // shift sinusoidal change by this fraction of the
+		     // wavelength. Use 0.25 for cos()
+  float sine_amplitude; // maximum swing of sinusoidal environment change
+
+  float env_change(int time_step) {
+    return (time_step * env_ramp) +
+      (sine_amplitude * sin(2 * M_PI *
+			    ((double)sine_offset + (double)time_step/sine_period)));
+  }
 };
 
 class DreadDs::Impl {
@@ -119,8 +131,18 @@ public:
   void setup_dispersal();
   void disperse(Species &species);
 
+
+  void update_environment(int step) {
+    // This offset gets applied to every cell in env
+    env_offset = conf.env_change(step);
+
+    if (conf.debug > 3)
+      std::cout << step << " env " << env_offset << std::endl;
+  }
+
   Config conf;
   MatrixXd env;
+  float env_offset = 0.0f;
   DispersalKernel dk;
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
@@ -171,7 +193,11 @@ DreadDs::DreadDs(int cols, int rows): current_step(0), impl(new Impl(cols, rows)
   impl->conf = { // FIXME STUB
     4, // debug level
     2, // dispersal radius
-    0.2 // dispersal floor
+    0.2, // dispersal floor
+    0, // env_ramp
+    4, // sine_period
+    0, // sine_offset,
+    0 // sine_amplitude
   };
 
   impl->setup_dispersal();
@@ -185,9 +211,7 @@ DreadDs::~DreadDs() = default;
 
 
 int DreadDs::step() {
-
-  ++current_step;
-  // TODO Update environment
+  impl->update_environment(current_step);
 
   for (std::vector<Species>::iterator s_it = impl->tips.begin();
        s_it != impl->tips.end();
@@ -211,6 +235,8 @@ int DreadDs::step() {
     // Make sure iterator doesn't see this.
 
   }
+
+  ++current_step;
 }
 
 
