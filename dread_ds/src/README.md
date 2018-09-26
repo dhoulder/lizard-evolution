@@ -7,7 +7,7 @@ See ./dread_ds.h for API usage.
 
 ### Prerequisites
 
-* Eigen template library. See http://eigen.tuxfamily.org
+* Boost C++ library. See https://www.boost.org/
   See `./CMakeLists.txt` for version information.
 
 * `cmake`
@@ -18,7 +18,7 @@ See ./dread_ds.h for API usage.
 
 On Ubuntu these prerequisites can be installed with:
 
-  `sudo apt-get install libeigen3-dev cmake build-essential`
+  `sudo apt-get install libboost-dev cmake build-essential`
 
 
 ### Building

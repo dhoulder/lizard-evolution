@@ -6,7 +6,9 @@
 #include <map>
 #include <math.h>
 
-#include <Eigen/Dense>
+
+#define BOOST_DISABLE_ASSERTS
+#include "boost/multi_array.hpp"
 
 // FIXME for debugging
 #include <iostream>
@@ -14,12 +16,20 @@
 
 #include "dread_ds.h"
 
-using Eigen::MatrixXd;
 
-// Dimensionality for genetic spaces.
+// Dimensionality for genetic spaces. // FIXME need max_* versions too?
 static const int niche_dims = 2;
 static const int genetic_dims= 3;
 
+
+struct EnvCell {
+  // has to be a class|struct to keep boost::multi_array allocator happy
+  float v[niche_dims];
+};
+
+
+typedef boost::multi_array<EnvCell, 2> EnvMatrix;
+typedef EnvMatrix::index EnvIndex;
 
 typedef int Timestep;
 
@@ -131,10 +141,13 @@ public:
   }
 
 
-  float niche_suitability(const float e, const Deme &d) {
+  float niche_suitability(const EnvCell &cell, const Deme &d) {
     // FIXME adjust population as per https://www.dropbox.com/home/Simulation/plans_and_docs?preview=Macro+evolution+intraspecies+process+simulation+September+2018.docx 3.2.1
 
-    return 0.5; // FIXME STUB
+    for (int i = 0; i < niche_dims; i++) {
+       // FIXME use d.niche_position[i], d.niche_breadth[i] // FIXME why breadth and not tolerance?
+    }
+    return 1.0;
   }
 
 };
@@ -142,7 +155,7 @@ public:
 class DreadDs::Impl {
 public:
 
-  Impl(int cols, int rows): env(MatrixXd(cols, rows)) {
+  Impl(EnvIndex rows, EnvIndex cols): env(boost::extents[rows][cols]) {
     // FIXME WIP
   }
 
@@ -162,7 +175,7 @@ public:
   }
 
   Config conf;
-  MatrixXd env;
+  EnvMatrix env;
   float env_offset = 0.0f;
   DispersalKernel dk;
   std::vector <Species> roots; // Initial species
@@ -210,21 +223,23 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	 d_it != dv.end();
 	 ++d_it) {
 
-      float abundance = conf.niche_suitability(env(loc.y, loc.x), *d_it);
+      float abundance = conf.niche_suitability(env[loc.y][loc.x], *d_it);
 
       for (std::vector <DispersalWeight>::iterator k = dk.begin(); k != dk.end(); ++k) {
 	int x = loc.x + k->x;
 	int y = loc.y + k->y;
 	if (x < 0 || y < 0 ||
-	    x >= env.cols() || y >= env.rows()) // FIXME or maybe allocate an edge border?
+	    x >= env.shape()[1] || y >= env.shape()[0]) // FIXME or maybe allocate an edge border?
 	  continue;
 
-	float target_env = env(y, x) + env_offset;
-
+	EnvCell target_env;
+	EnvCell &source_env =  env[y][x];
+	for (int i =0; i < niche_dims; i++) {
+	  target_env.v[i] =  source_env.v[i] +  env_offset; // FIXME need env_offset per dimension
 
 	// FIXME disperse to target
 
-
+	}
       }
     }
   }
@@ -272,7 +287,7 @@ int DreadDs::step() {
     // Finished with source demes now - replace with target;
     s_it->demes = target;
 
-    // TODO niche evolution
+    // TODO niche evolution. Remove demes with 0 abundance
 
     // TODO check for extinction. Remove from DemeMap
 
