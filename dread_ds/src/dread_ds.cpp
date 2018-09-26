@@ -16,6 +16,11 @@
 
 using Eigen::MatrixXd;
 
+// Dimensionality for genetic spaces.
+static const int niche_dims = 2;
+static const int genetic_dims= 3;
+
+
 typedef int Timestep;
 
 struct Niche {
@@ -48,9 +53,9 @@ struct Range {
 
 struct Characteristics {
   // Describes a species
-  // FIXME std::vector may be overkill (constant lengths)
-  std::vector <Niche> niche;   // Niches derived from all demes of this species.
-  std::vector <Genetics> genetics;
+
+  Niche niche[niche_dims];   // Niches derived from all demes of this species.
+  Genetics genetics[genetic_dims];
   Range range;
 };
 
@@ -59,11 +64,10 @@ struct Deme {
      Holds characteristics of a genetically homogeneous population in
      a cell.
   */
-  // FIXME std::vector may be overkill (constant lengths)
-  std::vector <float> niche_position;
-  std::vector <float> niche_breadth;
+  float niche_position[niche_dims];
+  float niche_breadth[niche_dims];
   float amount; // population per cell
-  std::vector <float> genetic_position; // genetic position in n-dimensional space. See struct Genetics
+  float genetic_position[genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
 };
 
 struct Location {
@@ -111,6 +115,7 @@ class Config {
 public:
   // Parameters for a simulation run.
   int debug = 0;
+
   float max_dispersal_radius;
   float dispersal_floor; // dispersal weight lower than this is treated as 0
   double env_ramp; // linear environment change per time step
