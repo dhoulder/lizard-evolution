@@ -1,3 +1,5 @@
+// -*- coding: utf-8 -*-
+
 /**
    Implementation of DREaD_ds model. See ./README.md
 */
@@ -69,10 +71,10 @@ struct Characteristics {
 
 struct Deme {
   /**
-     Describes of a genetically homogeneous population in a cell.
+     Describes a genetically homogeneous population in a cell.
   */
-  float niche_position[max_env_dims];
-  float niche_breadth[max_env_dims];
+  float niche_centre[max_env_dims];
+  float niche_tolerance[max_env_dims];
   float amount; // population per cell
   float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
 };
@@ -166,15 +168,23 @@ public:
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
 
-  float niche_suitability(const EnvCell &cell, const Deme &d) {
-    // FIXME adjust population as per https://www.dropbox.com/home/Simulation/plans_and_docs?preview=Macro+evolution+intraspecies+process+simulation+September+2018.docx 3.2.1
 
-    for (int i = 0; i < env_dims; i++) {
-       // FIXME use d.niche_position[i], d.niche_breadth[i] // FIXME why breadth and not tolerance?
-    }
-    return 1.0;
+  static float suitability(float env_value, float niche_centre, float niche_tolerance) {
+    // The suitability function is cos() from -pi to pi, scaled to the
+    // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
+    // 0 at niche_centre±niche_tolerance
+    return
+      (fabs(niche_centre - env_value) > niche_tolerance)?
+      0.0f:
+      0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
   }
 
+  float niche_suitability(const EnvCell &cell, const Deme &d) {
+    float v = 1.0f;
+    for (int i = 0; i < env_dims; i++)
+      v *= suitability(cell.v[i], d.niche_centre[i], d.niche_tolerance[i]);
+    return v;
+  }
 };
 
 class DreadDs::Impl {
