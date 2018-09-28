@@ -36,13 +36,13 @@ struct Niche {
      Describes a niche on an environmental variable for a species.
   */
   // mean and sd of niche position of all demes of this species
-  float position_mean;
-  float position_sd;
-  float breadth_mean;
-  float breadth_sd;
+  float position_mean = 0.0f;
+  float position_sd = 0.0f;
+  float breadth_mean = 0.0f;
+  float breadth_sd = 0.0f;
   // max and min values of position - (breadth  /2)
-  float max;
-  float min;
+  float max = 0.0f;
+  float min = 0.0f;
 };
 
 struct Genetics {
@@ -50,8 +50,8 @@ struct Genetics {
      Holds the genetic position (on an abstract genetic trait) and
      variance of all the demes of a species.
    */
-  float position;
-  float variance;
+  float position = 0.0f;
+  float variance = 0.0f;
 };
 
 struct Range {
@@ -69,8 +69,7 @@ struct Characteristics {
 
 struct Deme {
   /**
-     Holds characteristics of a genetically homogeneous population in
-     a cell.
+     Describes of a genetically homogeneous population in a cell.
   */
   float niche_position[max_env_dims];
   float niche_breadth[max_env_dims];
@@ -86,29 +85,6 @@ struct Location {
 // cell, hence std::vector
 typedef std::map <Location, std::vector <Deme>> DemeMap;
 
-class Spacies;
-class Species {
-public:
-  /**
-     Describes a species and its phylogeny
-   */
-  Species *parent;
-  std::shared_ptr <Species> left_child = NULL;
-  std::shared_ptr <Species> right_child = NULL;
-
-  Timestep extinction; // Time step of extinction, or -1 if extant
-  Timestep split; // Time of speciation. parent->split is species
-		  // origin time. -1 if not speciated
-  Characteristics initial; // At species origin (i.e. split from parent)
-  Characteristics latest; // Updated at each time step. Frozen after speciation.
-  std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
-
-  Species(): demes(new(DemeMap)) {
-  }
-
-
-};
-
 struct DispersalWeight {
   // Describes dispersal propensity for (x,y) offset from origin cell
   // at (0,0) due to distance cost.
@@ -119,6 +95,60 @@ struct DispersalWeight {
 
 typedef std::vector <DispersalWeight> DispersalKernel;
 
+class Spacies;
+class Species {
+public:
+  /**
+     Describes a species and its phylogeny
+   */
+  Species *parent = NULL;
+  std::shared_ptr <Species> left_child = NULL;
+  std::shared_ptr <Species> right_child = NULL;
+
+  Timestep extinction = -1; // Time step of extinction, or -1 if extant
+  Timestep split = -1; // Time of speciation. parent->split is species
+		  // origin time. -1 if not speciated
+  Characteristics initial; // At species origin (i.e. split from parent)
+  Characteristics latest; // Updated at each time step. Frozen after speciation.
+  std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
+
+  float max_dispersal_radius = 1.0f;
+  float dispersal_min = 0.2;
+  DispersalKernel dk;
+
+
+  Species(): demes(new(DemeMap)) {
+    setup_dispersal();
+  }
+
+  static float dispersal_distance(int x, int y) {
+    // Replace with some other distance metric if required.
+    return sqrt(x*x + y*y);
+  }
+
+  void setup_dispersal() {
+
+    // Calculate dispersal kernel
+    // TODO only really have to store one quadrant (perhaps only one octant)
+    int r = (int) (ceil(max_dispersal_radius) + 0.5);
+    for (int i = -r; i <= r; ++i)
+      for (int j = -r; j <= r; ++j) {
+	float dd = dispersal_distance(i, j);
+	if (dd <= max_dispersal_radius) {
+	  dk.push_back(
+		       // FIXME check push_back: copy or move???? move will be bad
+		       DispersalWeight {i, j,
+			   1.0f - ((1.0f - dispersal_min) * dd/max_dispersal_radius)});
+	}
+      }
+  }
+
+  void print_kernel() {
+    for (std::vector<DispersalWeight>::iterator it = dk.begin() ; it != dk.end(); ++it)
+      std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
+  }
+
+};
 
 struct EnvChange {
   double ramp = 0.0; // linear environment change per time step
@@ -134,8 +164,6 @@ public:
   int debug = 0;
   int env_dims = 1; // must be <= max_env_dims
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
-  float max_dispersal_radius = 2.0f;
-  float dispersal_floor = 0.2f; // dispersal weight lower than this is treated as 0
   EnvChange env_change[max_env_dims];
 
   float niche_suitability(const EnvCell &cell, const Deme &d) {
@@ -160,7 +188,6 @@ public:
     //FIXME WIP
   }
 
-  void setup_dispersal();
   std::shared_ptr<DemeMap> disperse(Species &species);
 
   void update_environment(int time_step) {
@@ -178,36 +205,13 @@ public:
     }
   }
 
+
   Config conf;
   EnvMatrix env;
   float env_offset[max_env_dims] = {0.0f};
-  DispersalKernel dk;
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
 };
-
-static float dispersal_distance(long x, long y) {
-  // Replace with some other distance metric if required.
-  return sqrt(x*x + y*y);
-}
-
-void DreadDs::Impl::setup_dispersal() {
-  // Calculate dispersal kernel
-  // TODO only really have to store one quadrant (perhaps only one octant)
-  int r = (int) (ceil(conf.max_dispersal_radius) + 0.5);
-  for (int i = -r; i <= r; ++i)
-    for (int j = -r; j <= r; ++j) {
-      float v = (1.0f - ((dispersal_distance(i, j)) / conf.max_dispersal_radius));
-      if (v >= conf.dispersal_floor) {
-	dk.push_back(DispersalWeight {i, j, v});
-      }
-    }
-  if (conf.debug > 3)
-    for (std::vector<DispersalWeight>::iterator it = dk.begin() ; it != dk.end(); ++it)
-      std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
-};
-
-
 
 
 std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
@@ -229,7 +233,9 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
       float abundance = conf.niche_suitability(env[loc.y][loc.x], *d_it);
 
-      for (std::vector <DispersalWeight>::iterator k = dk.begin(); k != dk.end(); ++k) {
+      for (std::vector <DispersalWeight>::iterator k = species.dk.begin();
+	   k != species.dk.end();
+	   ++k) {
 	int x = loc.x + k->x;
 	int y = loc.y + k->y;
 	if (x < 0 || y < 0 ||
@@ -259,11 +265,18 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
 
   // TODO load env
 
-  impl->setup_dispersal();
-
   // TODO initialise env
 
   // TODO initialise roots, tips
+  {
+    // FIXME STUB
+    impl->roots.push_back(Species {});
+    if (impl->conf.debug > 3) {
+      impl->roots.back().print_kernel();
+    }
+  }
+
+
 }
 
 DreadDs::~DreadDs() = default;
