@@ -242,6 +242,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
       float abundance = niche_suitability(env[loc.y][loc.x], *d_it);
 
+      // Disperse into the area around this cell
       for (std::vector <DispersalWeight>::iterator k = species.dk.begin();
 	   k != species.dk.end();
 	   ++k) {
@@ -253,11 +254,11 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
 	EnvCell current_env;
 	EnvCell &base_env =  env[y][x];
-	for (int i =0; i < conf.env_dims; i++) {
+	for (int i =0; i < conf.env_dims; i++)
 	  current_env.v[i] =  base_env.v[i] + env_offset[i];
+	float target_abundance = abundance * niche_suitability(env[y][x], *d_it) * k->weight;
 	// FIXME disperse to new demes at [y][x]
 
-	}
       }
     }
   }
