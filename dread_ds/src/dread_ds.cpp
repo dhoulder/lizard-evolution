@@ -160,31 +160,12 @@ struct EnvChange {
   float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
 };
 
-class Config {
-public:
+struct Config {
   // Parameters for a simulation run.
   int debug = 0;
   int env_dims = 1; // must be <= max_env_dims
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
-
-
-  static float suitability(float env_value, float niche_centre, float niche_tolerance) {
-    // The suitability function is cos() from -pi to pi, scaled to the
-    // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
-    // 0 at niche_centre±niche_tolerance
-    return
-      (fabs(niche_centre - env_value) > niche_tolerance)?
-      0.0f:
-      0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
-  }
-
-  float niche_suitability(const EnvCell &cell, const Deme &d) {
-    float v = 1.0f;
-    for (int i = 0; i < env_dims; i++)
-      v *= suitability(cell.v[i], d.niche_centre[i], d.niche_tolerance[i]);
-    return v;
-  }
 };
 
 class DreadDs::Impl {
@@ -199,6 +180,12 @@ public:
   }
 
   std::shared_ptr<DemeMap> disperse(Species &species);
+
+  Config conf;
+  EnvMatrix env;
+  float env_offset[max_env_dims] = {0.0f};
+  std::vector <Species> roots; // Initial species
+  std::vector <Species> tips; // extant leaf species
 
   void update_environment(int time_step) {
     // env_offset gets applied to every cell in env
@@ -216,11 +203,23 @@ public:
   }
 
 
-  Config conf;
-  EnvMatrix env;
-  float env_offset[max_env_dims] = {0.0f};
-  std::vector <Species> roots; // Initial species
-  std::vector <Species> tips; // extant leaf species
+  static float suitability(float env_value, float niche_centre, float niche_tolerance) {
+    // The suitability function is cos() from -pi to pi, scaled to the
+    // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
+    // 0 at niche_centre±niche_tolerance
+    return
+      (fabs(niche_centre - env_value) > niche_tolerance)?
+      0.0f:
+      0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
+  }
+
+  float niche_suitability(const EnvCell &cell, const Deme &d) {
+    float v = 1.0f;
+    for (int i = 0; i < conf.env_dims; i++)
+      v *= suitability(cell.v[i], d.niche_centre[i], d.niche_tolerance[i]);
+    return v;
+  }
+
 };
 
 
@@ -241,7 +240,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	 d_it != dv.end();
 	 ++d_it) {
 
-      float abundance = conf.niche_suitability(env[loc.y][loc.x], *d_it);
+      float abundance = niche_suitability(env[loc.y][loc.x], *d_it);
 
       for (std::vector <DispersalWeight>::iterator k = species.dk.begin();
 	   k != species.dk.end();
@@ -252,12 +251,11 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	    x >= env.shape()[1] || y >= env.shape()[0]) // FIXME or maybe allocate an edge border?
 	  continue;
 
-	EnvCell target_env;
-	EnvCell &source_env =  env[y][x];
+	EnvCell current_env;
+	EnvCell &base_env =  env[y][x];
 	for (int i =0; i < conf.env_dims; i++) {
-	  target_env.v[i] =  source_env.v[i] +  env_offset[i];
-
-	// FIXME disperse to target
+	  current_env.v[i] =  base_env.v[i] + env_offset[i];
+	// FIXME disperse to new demes at [y][x]
 
 	}
       }
