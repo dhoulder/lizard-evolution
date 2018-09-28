@@ -16,15 +16,13 @@
 
 #include "dread_ds.h"
 
-
-// Dimensionality for genetic spaces. // FIXME need max_* versions too?
-static const int niche_dims = 2;
-static const int genetic_dims= 3;
-
+static const int max_env_dims = 2; // Max environment layers (e.g. 2
+				   // for temperature, precipitation)
+static const int max_genetic_dims= 3; // Max number of abstract genetic axes
 
 struct EnvCell {
   // has to be a class|struct to keep boost::multi_array allocator happy
-  float v[niche_dims];
+  float v[max_env_dims];
 };
 
 
@@ -64,8 +62,8 @@ struct Range {
 struct Characteristics {
   // Describes a species
 
-  Niche niche[niche_dims];   // Niches derived from all demes of this species.
-  Genetics genetics[genetic_dims];
+  Niche niche[max_env_dims];   // Niches derived from all demes of this species.
+  Genetics genetics[max_genetic_dims];
   Range range;
 };
 
@@ -74,10 +72,10 @@ struct Deme {
      Holds characteristics of a genetically homogeneous population in
      a cell.
   */
-  float niche_position[niche_dims];
-  float niche_breadth[niche_dims];
+  float niche_position[max_env_dims];
+  float niche_breadth[max_env_dims];
   float amount; // population per cell
-  float genetic_position[genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+  float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
 };
 
 struct Location {
@@ -121,30 +119,29 @@ struct DispersalWeight {
 
 typedef std::vector <DispersalWeight> DispersalKernel;
 
+
+struct EnvChange {
+  double ramp = 0.0; // linear environment change per time step
+  float sine_period = 4.0f; // wavelength of sinusoidal environment change in time steps
+  float sine_offset = 0.0f; // shift sinusoidal change by this fraction of the
+		     // wavelength. Use 0.25 for cos()
+  float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
+};
+
 class Config {
 public:
   // Parameters for a simulation run.
   int debug = 0;
-
-  float max_dispersal_radius;
-  float dispersal_floor; // dispersal weight lower than this is treated as 0
-  double env_ramp; // linear environment change per time step
-  float env_sine_period; // wavelength of sinusoidal environment change in time steps
-  float env_sine_offset; // shift sinusoidal change by this fraction of the
-		     // wavelength. Use 0.25 for cos()
-  float env_sine_amplitude; // maximum swing of sinusoidal environment change
-
-  float env_change(int time_step) {
-    return (time_step * env_ramp) +
-      (env_sine_amplitude * sin(2 * M_PI *
-			    ((double)env_sine_offset + (double)time_step/env_sine_period)));
-  }
-
+  int env_dims = 1; // must be <= max_env_dims
+  int genetic_dims = max_genetic_dims; // <= max_genetic_dims
+  float max_dispersal_radius = 2.0f;
+  float dispersal_floor = 0.2f; // dispersal weight lower than this is treated as 0
+  EnvChange env_change[max_env_dims];
 
   float niche_suitability(const EnvCell &cell, const Deme &d) {
     // FIXME adjust population as per https://www.dropbox.com/home/Simulation/plans_and_docs?preview=Macro+evolution+intraspecies+process+simulation+September+2018.docx 3.2.1
 
-    for (int i = 0; i < niche_dims; i++) {
+    for (int i = 0; i < env_dims; i++) {
        // FIXME use d.niche_position[i], d.niche_breadth[i] // FIXME why breadth and not tolerance?
     }
     return 1.0;
@@ -166,17 +163,24 @@ public:
   void setup_dispersal();
   std::shared_ptr<DemeMap> disperse(Species &species);
 
-  void update_environment(int step) {
-    // This offset gets applied to every cell in env
-    env_offset = conf.env_change(step);
-
-    if (conf.debug > 3)
-      std::cout << step << " env " << env_offset << std::endl;
+  void update_environment(int time_step) {
+    // env_offset gets applied to every cell in env
+    float *eo  = env_offset;
+    EnvChange *c = conf.env_change;
+    for (int i = 0; i < conf.env_dims;
+	 ++i, ++c, ++eo) {
+      *eo = (time_step * c->ramp) +
+	(c->sine_amplitude * sin(2 * M_PI *
+				 ((double)c->sine_offset +
+				  (double)time_step/c->sine_period)));
+      if (conf.debug > 3)
+	std::cout << time_step << " env " << *eo << std::endl;
+    }
   }
 
   Config conf;
   EnvMatrix env;
-  float env_offset = 0.0f;
+  float env_offset[max_env_dims] = {0.0f};
   DispersalKernel dk;
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
@@ -234,8 +238,8 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
 	EnvCell target_env;
 	EnvCell &source_env =  env[y][x];
-	for (int i =0; i < niche_dims; i++) {
-	  target_env.v[i] =  source_env.v[i] +  env_offset; // FIXME need env_offset per dimension
+	for (int i =0; i < conf.env_dims; i++) {
+	  target_env.v[i] =  source_env.v[i] +  env_offset[i];
 
 	// FIXME disperse to target
 
@@ -247,18 +251,13 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 }
 
 
-DreadDs::DreadDs(int cols, int rows): current_step(0), impl(new Impl(cols, rows)) {
+DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env grid
+  current_step(0), impl(new Impl(cols, rows)) {
 
   // TODO load config
-  impl->conf = { // FIXME STUB
-    4, // debug level
-    2, // dispersal radius
-    0.2, // dispersal floor
-    0, // env_ramp
-    4, // env_sine_period
-    0, // env_sine_offset,
-    0 // env_sine_amplitude
-  };
+  impl->conf.debug = 4;
+
+  // TODO load env
 
   impl->setup_dispersal();
 
