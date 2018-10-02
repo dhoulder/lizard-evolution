@@ -82,7 +82,13 @@ struct Deme {
 struct Location {
   int x;
   int y;
+
+  // Used as key in a map, so needs an ordering
+  friend bool operator< (const Location &a, const Location &b) {
+    return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+  }
 };
+
 // Cells occupied by demes of a species, Several demes can occupy a
 // cell, hence std::vector
 typedef std::map <Location, std::vector <Deme>> DemeMap;
@@ -117,7 +123,6 @@ public:
   float max_dispersal_radius = 1.0f;
   float dispersal_min = 0.2;
   DispersalKernel dk;
-
 
   Species(): demes(new(DemeMap)) {
     setup_dispersal();
@@ -183,25 +188,33 @@ public:
 
   Config conf;
   EnvMatrix env;
-  float env_offset[max_env_dims] = {0.0f};
+  float env_delta[max_env_dims] = {0.0f};
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
 
   void update_environment(int time_step) {
-    // env_offset gets applied to every cell in env
-    float *eo  = env_offset;
+    // Set env_delta for the current time step. env_delta gets applied
+    // to every cell in env
+    float *ed  = env_delta;
     EnvChange *c = conf.env_change;
     for (int i = 0; i < conf.env_dims;
-	 ++i, ++c, ++eo) {
-      *eo = (time_step * c->ramp) +
+	 ++i, ++c, ++ed) {
+      *ed = (time_step * c->ramp) +
 	(c->sine_amplitude * sin(2 * M_PI *
 				 ((double)c->sine_offset +
 				  (double)time_step/c->sine_period)));
       if (conf.debug > 3)
-	std::cout << time_step << " env " << *eo << std::endl;
+	std::cout << time_step << " env " << *ed << std::endl;
     }
   }
 
+  EnvCell get_env(const Location &loc) {
+    EnvCell ec;
+    const EnvCell &base_env =  env[loc.y][loc.x];
+    for (int i =0; i < conf.env_dims; i++)
+      ec.v[i] =  base_env.v[i] + env_delta[i];
+    return ec;
+  }
 
   static float suitability(float env_value, float niche_centre, float niche_tolerance) {
     // The suitability function is cos() from -pi to pi, scaled to the
@@ -229,34 +242,34 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
   auto target = std::make_shared <DemeMap>();
 
   // Iterate over all cells where this species occurs
+
   for (DemeMap::iterator dm_it = species.demes->begin();
        dm_it != species.demes->end();
        ++dm_it) {
     const Location &loc = dm_it->first;
     std::vector <Deme> &dv =  dm_it->second;
+    EnvCell &&source_env = get_env(loc);
 
     // Iterate over all demes (sort of "sub species") in the cell
-    for (std::vector <Deme>::iterator d_it =  dv.begin();
+    for (auto d_it =  dv.begin();
 	 d_it != dv.end();
 	 ++d_it) {
-
-      float abundance = niche_suitability(env[loc.y][loc.x], *d_it);
-
+      float abundance = niche_suitability(source_env, *d_it);
       // Disperse into the area around this cell
-      for (std::vector <DispersalWeight>::iterator k = species.dk.begin();
+      for (auto k = species.dk.begin();
 	   k != species.dk.end();
 	   ++k) {
-	int x = loc.x + k->x;
-	int y = loc.y + k->y;
-	if (x < 0 || y < 0 ||
-	    x >= env.shape()[1] || y >= env.shape()[0]) // FIXME or maybe allocate an edge border?
+	Location new_loc;
+	new_loc.x = loc.x + k->x;
+	new_loc.y = loc.y + k->y;
+	if (new_loc.x < 0 || new_loc.y < 0 ||
+	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0]) // FIXME or maybe allocate an edge border?
 	  continue;
 
-	EnvCell current_env;
-	EnvCell &base_env =  env[y][x];
-	for (int i =0; i < conf.env_dims; i++)
-	  current_env.v[i] =  base_env.v[i] + env_offset[i];
-	float target_abundance = abundance * niche_suitability(env[y][x], *d_it) * k->weight;
+	EnvCell &&target_env = get_env(new_loc);
+	float target_abundance = abundance * niche_suitability(target_env, *d_it) * k->weight;
+	std::vector <Deme> &target_dv = (*target)[new_loc]; // new or existing vector at location
+
 	// FIXME disperse to new demes at [y][x]
 
       }
