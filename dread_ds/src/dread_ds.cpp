@@ -69,14 +69,20 @@ struct Characteristics {
   Range range;
 };
 
-struct Deme {
+class Deme {
   /**
      Describes a genetically homogeneous population in a cell.
   */
+public:
   float niche_centre[max_env_dims];
   float niche_tolerance[max_env_dims];
   float amount; // population per cell
   float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+
+  Deme(const Deme &from, float new_amount): Deme(from) {
+    // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
+    amount = new_amount;
+  }
 };
 
 struct Location {
@@ -134,7 +140,6 @@ public:
   }
 
   void setup_dispersal() {
-
     // Calculate dispersal kernel
     // TODO only really have to store one quadrant (perhaps only one octant)
     int r = (int) (ceil(max_dispersal_radius) + 0.5);
@@ -142,10 +147,9 @@ public:
       for (int j = -r; j <= r; ++j) {
 	float dd = dispersal_distance(i, j);
 	if (dd <= max_dispersal_radius) {
-	  dk.push_back(
-		       // FIXME check push_back: copy or move???? move will be bad
-		       DispersalWeight {i, j,
-			   1.0f - ((1.0f - dispersal_min) * dd/max_dispersal_radius)});
+	  dk.push_back(DispersalWeight {
+	      i, j,
+		1.0f - ((1.0f - dispersal_min) * dd/max_dispersal_radius)});
 	}
       }
   }
@@ -237,12 +241,8 @@ public:
 
 
 std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
-  // FIXME WIP
-
   auto target = std::make_shared <DemeMap>();
-
   // Iterate over all cells where this species occurs
-
   for (DemeMap::iterator dm_it = species.demes->begin();
        dm_it != species.demes->end();
        ++dm_it) {
@@ -251,10 +251,10 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
     EnvCell &&source_env = get_env(loc);
 
     // Iterate over all demes (sort of "sub species") in the cell
-    for (auto d_it =  dv.begin();
-	 d_it != dv.end();
-	 ++d_it) {
-      float abundance = niche_suitability(source_env, *d_it);
+    for (auto deme_itr =  dv.begin();
+	 deme_itr != dv.end();
+	 ++deme_itr) {
+      float abundance = niche_suitability(source_env, *deme_itr);
       // Disperse into the area around this cell
       for (auto k = species.dk.begin();
 	   k != species.dk.end();
@@ -263,15 +263,15 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	new_loc.x = loc.x + k->x;
 	new_loc.y = loc.y + k->y;
 	if (new_loc.x < 0 || new_loc.y < 0 ||
-	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0]) // FIXME or maybe allocate an edge border?
+	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
 	  continue;
 
 	EnvCell &&target_env = get_env(new_loc);
-	float target_abundance = abundance * niche_suitability(target_env, *d_it) * k->weight;
+	float target_abundance = abundance * niche_suitability(target_env, *deme_itr) * k->weight;
 	std::vector <Deme> &target_dv = (*target)[new_loc]; // new or existing vector at location
-
-	// FIXME disperse to new demes at [y][x]
-
+	// Disperse to new deme. Everything except amount in the source deme gets
+	// copied into the target deme.
+	target_dv.emplace_back(*deme_itr, target_abundance);
       }
     }
   }
