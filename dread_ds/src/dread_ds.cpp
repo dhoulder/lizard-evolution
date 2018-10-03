@@ -155,8 +155,16 @@ public:
   }
 
   void print_kernel() {
-    for (std::vector<DispersalWeight>::iterator it = dk.begin() ; it != dk.end(); ++it)
-      std::cout <<  it->x << ", " << it->y <<  " " << it->weight << std::endl;
+    for (auto &&v: dk)
+      std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
+  }
+
+
+  void collapse(std::shared_ptr<DemeMap> dm) {
+    // TODO STUB
+    // Merge demes where gene flow occurs
+
+
   }
 
 };
@@ -243,35 +251,34 @@ public:
 std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
   auto target = std::make_shared <DemeMap>();
   // Iterate over all cells where this species occurs
-  for (DemeMap::iterator dm_it = species.demes->begin();
-       dm_it != species.demes->end();
-       ++dm_it) {
-    const Location &loc = dm_it->first;
-    std::vector <Deme> &dv =  dm_it->second;
-    EnvCell &&source_env = get_env(loc);
+  for (auto &&deme_cell: *(species.demes)) {
+
+    const Location &loc = deme_cell.first;
+    const EnvCell &&source_env = get_env(loc);
 
     // Iterate over all demes (sort of "sub species") in the cell
-    for (auto deme_itr =  dv.begin();
-	 deme_itr != dv.end();
-	 ++deme_itr) {
-      float abundance = niche_suitability(source_env, *deme_itr);
+    for (auto &&deme:  deme_cell.second) {
+      float abundance = niche_suitability(source_env, deme);
+      if (abundance <= 0.0)
+	// FIXME extinction??? check this against spec.
+	continue;
       // Disperse into the area around this cell
-      for (auto k = species.dk.begin();
-	   k != species.dk.end();
-	   ++k) {
+      for (auto &&k: species.dk) {
 	Location new_loc;
-	new_loc.x = loc.x + k->x;
-	new_loc.y = loc.y + k->y;
+	new_loc.x = loc.x + k.x;
+	new_loc.y = loc.y + k.y;
 	if (new_loc.x < 0 || new_loc.y < 0 ||
 	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
 	  continue;
 
 	EnvCell &&target_env = get_env(new_loc);
-	float target_abundance = abundance * niche_suitability(target_env, *deme_itr) * k->weight;
+	float target_abundance = abundance * niche_suitability(target_env, deme) * k.weight;
 	std::vector <Deme> &target_dv = (*target)[new_loc]; // new or existing vector at location
 	// Disperse to new deme. Everything except amount in the source deme gets
 	// copied into the target deme.
-	target_dv.emplace_back(*deme_itr, target_abundance);
+
+	// FIXME check target_abundance for extinction?? (<=0.0). check against spec
+	target_dv.emplace_back(deme, target_abundance);
       }
     }
   }
@@ -298,7 +305,6 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
     }
   }
 
-
 }
 
 DreadDs::~DreadDs() = default;
@@ -307,19 +313,20 @@ DreadDs::~DreadDs() = default;
 int DreadDs::step() {
   impl->update_environment(current_step);
 
-  for (std::vector<Species>::iterator s_it = impl->tips.begin();
-       s_it != impl->tips.end();
-       ++s_it) {
-    auto target = impl->disperse(*s_it);
+  for (auto && species: impl->tips) {
+    auto target = impl->disperse(species);
 
+    // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
-    // TODO collapse demes in cell within genetic tolerance.
+    // collapse demes in each cell that are within genetic tolerance.
+    species.collapse(target);
+
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
     // TODO?? do this in another thread?
 
     // Finished with source demes now - replace with target;
-    s_it->demes = target;
+    species.demes = target;
 
     // TODO niche evolution. Remove demes with 0 abundance
 
