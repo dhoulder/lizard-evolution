@@ -85,8 +85,15 @@ public:
     // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
     amount = new_amount;
     primary = new_primary;
-
   }
+
+
+  bool gene_flow_occurs(Deme *other) {
+    // FIXME WIP
+    // see 3.4.1 "Does  gene  flow  occur?"
+    return true; // FIXME STUB
+  }
+
 };
 
 struct Location {
@@ -101,7 +108,8 @@ struct Location {
 
 // Cells occupied by demes of a species, Several demes can occupy a
 // cell, hence std::vector
-typedef std::map <Location, std::list <Deme>> DemeMap;
+typedef std::list <Deme> DemeList;
+typedef std::map <Location, DemeList> DemeMap;
 
 struct DispersalWeight {
   // Describes dispersal propensity for (x,y) offset from origin cell
@@ -167,15 +175,44 @@ public:
   }
 
 
+  Deme *choose_primary(DemeList &deme_list) {
+    // FIXME WIP
+    // Find "primary" deme at random by probability weighted by abundance
+    return &deme_list.back(); // FIXME STUB
+  }
+
   void collapse(std::shared_ptr<DemeMap> dm) {
     // Merge demes where gene flow occurs
 
     for (auto &&deme_cell: *dm) {
-      auto &&deme_v = deme_cell.second;
-      if (deme_v.size() < 2)
+      auto &&deme_list = deme_cell.second;
+      if (deme_list.size() < 2)
 	continue;
       // Have at least two demes in this cell, so check for gene flow and merge if required.
       const Location &loc = deme_cell.first;
+
+      // Any incumbent primary deme will be at the front, otherwise
+      // we have to choose one
+      Deme *pd = &deme_list.front();
+      if (!pd->primary) {
+	pd = choose_primary(deme_list);
+      }
+
+      for (auto &&deme: deme_list) {
+	if (&deme == pd)
+	  // don't merge with self
+	  continue;
+
+	if (deme.gene_flow_occurs(pd)) {
+	  // FIXME WIP
+	} else {
+	  // FIXME WIP
+	}
+
+
+      }
+
+
       // FIXME WIP
 
 
@@ -283,7 +320,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
     for (auto &&deme:  deme_cell.second) {
       float abundance = niche_suitability(source_env, deme);
       if (abundance <= 0.0)
-	// FIXME extinction??? check this against spec.
+	// FIXME CHECK extinction??? check this against spec.
 	continue;
 
       // "disperse" into the same cell. This becomes the primary deme
@@ -291,7 +328,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
       // the front of the list. Any primary demes will be at the front.
       (*target)[loc].emplace_front(deme,
 				   dispersal_abundance(abundance,
-						       abundance, // FIXME check this
+						       abundance, // FIXME CHECK
 						       1.0), // same cell, no travel cost
 				   true);
       // Disperse into the area around this cell
@@ -302,7 +339,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	if (new_loc.x < 0 || new_loc.y < 0 ||
 	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
 	  continue;
-	// FIXME check target_abundance for extinction?? (<=0.0). check against spec
+	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
 	(*target)[new_loc].emplace_back(deme,
 					dispersal_abundance(abundance,
 							    niche_suitability(get_env(new_loc),
