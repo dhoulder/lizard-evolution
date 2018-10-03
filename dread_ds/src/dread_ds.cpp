@@ -23,6 +23,25 @@ static const int max_env_dims = 2; // Max environment layers (e.g. 2
 				   // for temperature, precipitation)
 static const int max_genetic_dims= 3; // Max number of abstract genetic axes
 
+
+struct EnvChange {
+  double ramp = 0.0; // linear environment change per time step
+  float sine_period = 4.0f; // wavelength of sinusoidal environment change in time steps
+  float sine_offset = 0.0f; // shift sinusoidal change by this fraction of the
+		     // wavelength. Use 0.25 for cos()
+  float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
+};
+
+
+struct Config {
+  // Parameters for a simulation run.
+  int debug = 0;
+  int env_dims = 1; // must be <= max_env_dims
+  int genetic_dims = max_genetic_dims; // <= max_genetic_dims
+  EnvChange env_change[max_env_dims];
+};
+
+
 struct EnvCell {
   // has to be a class|struct to keep boost::multi_array allocator happy
   float v[max_env_dims];
@@ -34,51 +53,60 @@ typedef EnvMatrix::index EnvIndex;
 
 typedef int Timestep;
 
-struct Niche {
-  /**
-     Describes a niche on an environmental variable for a species.
-  */
-  // mean and sd of niche position of all demes of this species
-  float position_mean = 0.0f;
-  float position_sd = 0.0f;
-  float breadth_mean = 0.0f;
-  float breadth_sd = 0.0f;
-  // max and min values of position - (breadth  /2)
-  float max = 0.0f;
-  float min = 0.0f;
-};
-
-struct Genetics {
-  /**
-     Holds the genetic position (on an abstract genetic trait) and
-     variance of all the demes of a species.
-   */
-  float position = 0.0f;
-  float variance = 0.0f;
-};
-
-struct Range {
-  int cell_count; // number of demes (occupied cells).
-  float population; // total population across all occupied cells
-};
 
 struct Characteristics {
   // Describes a species
+
+  struct Niche {
+    /**
+       Describes a niche on an environmental variable for a species.
+    */
+    // mean and sd of niche position of all demes of this species
+    float position_mean = 0.0f;
+    float position_sd = 0.0f;
+    float breadth_mean = 0.0f;
+    float breadth_sd = 0.0f;
+    // max and min values of position - (breadth  /2)
+    float max = 0.0f;
+    float min = 0.0f;
+  };
+
+  struct Genetics {
+    /**
+       Holds the genetic position (on an abstract genetic trait) and
+       variance of all the demes of a species.
+    */
+    float position = 0.0f;
+    float variance = 0.0f;
+  };
+
+  struct Range {
+    int cell_count; // number of demes (occupied cells).
+    float population; // total population across all occupied cells
+  };
+
 
   Niche niche[max_env_dims];   // Niches derived from all demes of this species.
   Genetics genetics[max_genetic_dims];
   Range range;
 };
 
+
+
 class Deme {
   /**
      Describes a genetically homogeneous population in a cell.
   */
 public:
-  float niche_centre[max_env_dims];
-  float niche_tolerance[max_env_dims];
+
+  struct Genetics {
+    float niche_centre[max_env_dims];
+    float niche_tolerance[max_env_dims];
+    float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+  };
+
+  Genetics genetics;
   float amount; // population per cell
-  float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
   bool primary = false; // indicates incumbency in a cell during dispersal
 
   Deme(const Deme &from, float new_amount, bool new_primary): Deme(from) {
@@ -121,7 +149,30 @@ struct DispersalWeight {
 
 typedef std::vector <DispersalWeight> DispersalKernel;
 
-class Spacies;
+
+class GeneFlowHandler {
+public:
+  GeneFlowHandler(const Deme *d) {
+    // FIXME grab d->genetics scaled by d->amount. . only need to handle env_dims, genetic_dims
+    total_abundance = d->amount;
+  }
+
+  void add(const Deme &d) {
+    // FIXME WIP
+    // FIXME CHECK what to do with niche_tolerance ???
+  }
+
+  struct Deme::Genetics get() {
+    // FIXME WIP
+  }
+
+private:
+  Deme::Genetics g;
+  float total_abundance;
+
+};
+
+
 class Species {
 public:
   /**
@@ -198,44 +249,28 @@ public:
 	pd = choose_primary(deme_list);
       }
 
+      GeneFlowHandler gfh(pd);
       for (auto &&deme: deme_list) {
 	if (&deme == pd)
 	  // don't merge with self
 	  continue;
 
 	if (deme.gene_flow_occurs(pd)) {
-	  // FIXME WIP
+	  gfh.add(deme);
 	} else {
 	  // FIXME WIP
 	}
-
-
       }
 
-
-      // FIXME WIP
+      // FIXME WIP - new deme from gfh. FIXME CHECK what about amount after collapse???
+      ///// Deme combined;
+      ///// combined.genetics = gfh.get(); // FIXME temporaries…
 
 
     }
 
   }
 
-};
-
-struct EnvChange {
-  double ramp = 0.0; // linear environment change per time step
-  float sine_period = 4.0f; // wavelength of sinusoidal environment change in time steps
-  float sine_offset = 0.0f; // shift sinusoidal change by this fraction of the
-		     // wavelength. Use 0.25 for cos()
-  float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
-};
-
-struct Config {
-  // Parameters for a simulation run.
-  int debug = 0;
-  int env_dims = 1; // must be <= max_env_dims
-  int genetic_dims = max_genetic_dims; // <= max_genetic_dims
-  EnvChange env_change[max_env_dims];
 };
 
 class DreadDs::Impl {
@@ -291,10 +326,12 @@ public:
       0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
   }
 
-  float niche_suitability(const EnvCell &cell, const Deme &d) {
+  float niche_suitability(const EnvCell &cell, const Deme::Genetics &g) {
     float v = 1.0f;
     for (int i = 0; i < conf.env_dims; i++)
-      v *= suitability(cell.v[i], d.niche_centre[i], d.niche_tolerance[i]);
+      v *= suitability(cell.v[i],
+		       g.niche_centre[i],
+		       g.niche_tolerance[i]);
     return v;
   }
 
@@ -318,7 +355,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme:  deme_cell.second) {
-      float abundance = niche_suitability(source_env, deme);
+      float abundance = niche_suitability(source_env, deme.genetics);
       if (abundance <= 0.0)
 	// FIXME CHECK extinction??? check this against spec.
 	continue;
@@ -343,7 +380,7 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	(*target)[new_loc].emplace_back(deme,
 					dispersal_abundance(abundance,
 							    niche_suitability(get_env(new_loc),
-									      deme),
+									      deme.genetics),
 							    k.weight),
 					false);
       }
