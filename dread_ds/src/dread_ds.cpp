@@ -5,6 +5,7 @@
 */
 #include <memory>
 #include <vector>
+#include <list>
 #include <map>
 #include <math.h>
 
@@ -78,10 +79,13 @@ public:
   float niche_tolerance[max_env_dims];
   float amount; // population per cell
   float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+  bool primary = false; // indicates incumbency in a cell during dispersal
 
-  Deme(const Deme &from, float new_amount): Deme(from) {
+  Deme(const Deme &from, float new_amount, bool new_primary): Deme(from) {
     // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
     amount = new_amount;
+    primary = new_primary;
+
   }
 };
 
@@ -97,7 +101,7 @@ struct Location {
 
 // Cells occupied by demes of a species, Several demes can occupy a
 // cell, hence std::vector
-typedef std::map <Location, std::vector <Deme>> DemeMap;
+typedef std::map <Location, std::list <Deme>> DemeMap;
 
 struct DispersalWeight {
   // Describes dispersal propensity for (x,y) offset from origin cell
@@ -145,6 +149,9 @@ public:
     int r = (int) (ceil(max_dispersal_radius) + 0.5);
     for (int i = -r; i <= r; ++i)
       for (int j = -r; j <= r; ++j) {
+	if (!(i || j))
+	  // dispersal into same-cell is a special case
+	  continue;
 	float dd = dispersal_distance(i, j);
 	if (dd <= max_dispersal_radius) {
 	  dk.push_back(DispersalWeight {
@@ -161,9 +168,18 @@ public:
 
 
   void collapse(std::shared_ptr<DemeMap> dm) {
-    // TODO STUB
     // Merge demes where gene flow occurs
 
+    for (auto &&deme_cell: *dm) {
+      auto &&deme_v = deme_cell.second;
+      if (deme_v.size() < 2)
+	continue;
+      // Have at least two demes in this cell, so check for gene flow and merge if required.
+      const Location &loc = deme_cell.first;
+      // FIXME WIP
+
+
+    }
 
   }
 
@@ -245,6 +261,13 @@ public:
     return v;
   }
 
+
+  static inline float dispersal_abundance(float source_abundance,
+					  float suitability,
+					  float distance_weight) {
+    // See 3.3 Dispersal, equation 1
+    return source_abundance * suitability * distance_weight;
+  }
 };
 
 
@@ -262,6 +285,15 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
       if (abundance <= 0.0)
 	// FIXME extinction??? check this against spec.
 	continue;
+
+      // "disperse" into the same cell. This becomes the primary deme
+      // after dispersal due to incumbency. Note that this inserts at
+      // the front of the list. Any primary demes will be at the front.
+      (*target)[loc].emplace_front(deme,
+				   dispersal_abundance(abundance,
+						       abundance, // FIXME check this
+						       1.0), // same cell, no travel cost
+				   true);
       // Disperse into the area around this cell
       for (auto &&k: species.dk) {
 	Location new_loc;
@@ -270,15 +302,13 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 	if (new_loc.x < 0 || new_loc.y < 0 ||
 	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
 	  continue;
-
-	EnvCell &&target_env = get_env(new_loc);
-	float target_abundance = abundance * niche_suitability(target_env, deme) * k.weight;
-	std::vector <Deme> &target_dv = (*target)[new_loc]; // new or existing vector at location
-	// Disperse to new deme. Everything except amount in the source deme gets
-	// copied into the target deme.
-
 	// FIXME check target_abundance for extinction?? (<=0.0). check against spec
-	target_dv.emplace_back(deme, target_abundance);
+	(*target)[new_loc].emplace_back(deme,
+					dispersal_abundance(abundance,
+							    niche_suitability(get_env(new_loc),
+									      deme),
+							    k.weight),
+					false);
       }
     }
   }
