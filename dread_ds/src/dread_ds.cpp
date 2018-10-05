@@ -12,6 +12,8 @@
 
 #define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_real_distribution.hpp>
 
 // FIXME for debugging
 #include <iostream>
@@ -22,6 +24,8 @@
 static const int max_env_dims = 2; // Max environment layers (e.g. 2
 				   // for temperature, precipitation)
 static const int max_genetic_dims= 3; // Max number of abstract genetic axes
+
+static boost::random::mt19937 rng; // FIXME seed? appropriate for float 0…1 ??
 
 
 struct EnvChange {
@@ -41,6 +45,9 @@ struct Config {
   int env_dims = 1; // must be <= max_env_dims
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
+
+  float gene_flow_threshold = 0.001f;
+  float gene_flow_zero_distance = 5.0f;
 };
 
 
@@ -119,11 +126,34 @@ public:
     is_primary = new_primary;
   }
 
+  static float gene_flow_probability(const Config &conf, float distance) {
+    // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
+    const float A = 14.0f;
+    const float B = 0.5f;
+    return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
+  }
 
-  bool gene_flow_occurs(const Config &conf, Deme *other) {
-    // FIXME WIP
+  float genetic_distance(const Config &conf, const Deme *other) {
+    // Euclidean distance in gene space
+    float sum = 0.0f;
+    for (int i = 0; i < conf.genetic_dims; ++i) {
+      const float d = other->genetics.genetic_position[i] - genetics.genetic_position[i];
+      sum += d*d;
+    }
+    return sqrt(sum);
+  }
+
+  bool gene_flow_occurs(const Config &conf, const Deme *other) {
     // see 3.4.1 "Does  gene  flow  occur?"
-    return true; // FIXME STUB
+
+    // Choose within [gene_flow_threshold, 1-gene_flow_threshold] to
+    // effectively apply high and low cutoffs when comparing against
+    // probability below.
+    boost::random::uniform_real_distribution<float> dist(conf.gene_flow_threshold,
+							 1.0f - conf.gene_flow_threshold);
+    // FIXME make dist() configurable so it can be deterministic for testing
+    return (gene_flow_probability(conf, genetic_distance(conf, other)) >
+	    dist(rng));
   }
 
 };
