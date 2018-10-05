@@ -160,21 +160,20 @@ class DemeMixer {
    */
 
 private:
-  const int ng, ne;
+  const Config &c;
   Deme::Genetics g = {{0.0f}, {0.0f}, {0.0f}};
   float total_abundance = 0.0f;
 
 public:
   DemeMixer(const Config &conf, const Deme &primary):
-    ng(conf.genetic_dims),
-    ne(conf.env_dims) {
-    add(primary);
+    c(conf) {
+    contribute(primary);
   }
 
-  void add(const Deme &d) {
-    for (int i = 0; i < ng; ++i)
+  void contribute(const Deme &d) {
+    for (int i = 0; i < c.genetic_dims; ++i)
       g.genetic_position[i] += d.genetics.genetic_position[i] * d.amount;
-    for (int i = 0; i < ne; ++i) {
+    for (int i = 0; i < c.env_dims; ++i) {
       g.niche_centre[i] += d.genetics.niche_centre[i] * d.amount;
       g.niche_tolerance[i] += d.genetics.niche_tolerance[i] * d.amount; // FIXME CHECK
     }
@@ -182,14 +181,15 @@ public:
   }
 
   void mix_to(Deme *d, float amount) {
-      for (int i = 0; i < ng; ++i)
-	d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
-      for (int i = 0; i < ne; ++i) {
-	d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
-	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;  // FIXME CHECK
-      }
-      d->amount = amount;
-      d->is_primary = true;
+    // Update d with weighted average of contributing demes
+    for (int i = 0; i < c.genetic_dims; ++i)
+      d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
+    for (int i = 0; i < c.env_dims; ++i) {
+      d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
+      d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;  // FIXME CHECK
+    }
+    d->amount = amount;
+    d->is_primary = true;
   }
 
 };
@@ -285,7 +285,7 @@ public:
 	  continue;
 
 	if (deme.gene_flow_occurs(conf, primary))
-	  mixer.add(deme);
+	  mixer.contribute(deme);
 	// else FIXME CHECK "excluded by competition
       }
 
