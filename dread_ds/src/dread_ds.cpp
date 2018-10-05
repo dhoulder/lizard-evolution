@@ -26,9 +26,11 @@ static const int max_genetic_dims= 3; // Max number of abstract genetic axes
 
 struct EnvChange {
   double ramp = 0.0; // linear environment change per time step
-  float sine_period = 4.0f; // wavelength of sinusoidal environment change in time steps
-  float sine_offset = 0.0f; // shift sinusoidal change by this fraction of the
-		     // wavelength. Use 0.25 for cos()
+  float sine_period = 4.0f; // wavelength of sinusoidal environment
+			    // change in time steps
+  float sine_offset = 0.0f; // shift sinusoidal change by this
+			    // fraction of the wavelength. Use 0.25
+			    // for cos()
   float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
 };
 
@@ -107,16 +109,18 @@ public:
 
   Genetics genetics;
   float amount; // population per cell
-  bool primary = false; // indicates incumbency in a cell during dispersal
+  bool is_primary; // indicates incumbency in a cell during dispersal
+
+  Deme(): amount(0), is_primary(false) {}
 
   Deme(const Deme &from, float new_amount, bool new_primary): Deme(from) {
     // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
     amount = new_amount;
-    primary = new_primary;
+    is_primary = new_primary;
   }
 
 
-  bool gene_flow_occurs(Deme *other) {
+  bool gene_flow_occurs(const Config &conf, Deme *other) {
     // FIXME WIP
     // see 3.4.1 "Does  gene  flow  occur?"
     return true; // FIXME STUB
@@ -150,25 +154,43 @@ struct DispersalWeight {
 typedef std::vector <DispersalWeight> DispersalKernel;
 
 
-class GeneFlowHandler {
+class DemeMixer {
+  /**
+   * For computing weighted average of genetic and niche positions
+   */
+
+private:
+  const int ng, ne;
+  Deme::Genetics g = {{0.0f}, {0.0f}, {0.0f}};
+  float total_abundance = 0.0f;
+
 public:
-  GeneFlowHandler(const Deme *d) {
-    // FIXME grab d->genetics scaled by d->amount. . only need to handle env_dims, genetic_dims
-    total_abundance = d->amount;
+  DemeMixer(const Config &conf, const Deme &primary):
+    ng(conf.genetic_dims),
+    ne(conf.env_dims) {
+    add(primary);
   }
 
   void add(const Deme &d) {
-    // FIXME WIP
-    // FIXME CHECK what to do with niche_tolerance ???
+    for (int i = 0; i < ng; ++i)
+      g.genetic_position[i] += d.genetics.genetic_position[i] * d.amount;
+    for (int i = 0; i < ne; ++i) {
+      g.niche_centre[i] += d.genetics.niche_centre[i] * d.amount;
+      g.niche_tolerance[i] += d.genetics.niche_tolerance[i] * d.amount; // FIXME CHECK
+    }
+    total_abundance += d.amount;
   }
 
-  struct Deme::Genetics get() {
-    // FIXME WIP
+  void mix_to(Deme *d, float amount) {
+      for (int i = 0; i < ng; ++i)
+	d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
+      for (int i = 0; i < ne; ++i) {
+	d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
+	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;  // FIXME CHECK
+      }
+      d->amount = amount;
+      d->is_primary = true;
   }
-
-private:
-  Deme::Genetics g;
-  float total_abundance;
 
 };
 
@@ -227,48 +249,51 @@ public:
 
 
   Deme *choose_primary(DemeList &deme_list) {
-    // FIXME WIP
     // Find "primary" deme at random by probability weighted by abundance
     return &deme_list.back(); // FIXME STUB
   }
 
-  void collapse(std::shared_ptr<DemeMap> dm) {
+  void collapse(const Config &conf, std::shared_ptr<DemeMap> dm) {
     // Merge demes where gene flow occurs
 
     for (auto &&deme_cell: *dm) {
       auto &&deme_list = deme_cell.second;
       if (deme_list.size() < 2)
+	// FIXME adjust abundance? anything else?
 	continue;
-      // Have at least two demes in this cell, so check for gene flow and merge if required.
-      const Location &loc = deme_cell.first;
 
+      // Have at least two demes in this cell, so check for gene flow
+      // and merge if required.
+      const Location &loc = deme_cell.first;
       // Any incumbent primary deme will be at the front, otherwise
       // we have to choose one
-      Deme *pd = &deme_list.front();
-      if (!pd->primary) {
-	pd = choose_primary(deme_list);
-      }
+      Deme *first_deme =  &deme_list.front();
 
-      GeneFlowHandler gfh(pd);
+      // NOTE: we assume there is at most one primary deme. In the
+      // current model, all demes of a species in a cell mix down into
+      // one final primary deme, so this assumption holds.
+      // FIXME CHECK: max 1 primary deme after gene flow?
+
+      Deme *primary = first_deme->is_primary?
+	first_deme:
+	choose_primary(deme_list);
+
+      DemeMixer mixer(conf, *primary);
       for (auto &&deme: deme_list) {
-	if (&deme == pd)
+	if (&deme == primary)
 	  // don't merge with self
 	  continue;
 
-	if (deme.gene_flow_occurs(pd)) {
-	  gfh.add(deme);
-	} else {
-	  // FIXME WIP
-	}
+	if (deme.gene_flow_occurs(conf, primary))
+	  mixer.add(deme);
+	// else FIXME CHECK "excluded by competition
       }
 
-      // FIXME WIP - new deme from gfh. FIXME CHECK what about amount after collapse???
-      ///// Deme combined;
-      ///// combined.genetics = gfh.get(); // FIXME temporaries…
-
-
+      // mix down to first deme
+      float pa = primary->amount;
+      deme_list.resize(1);
+      mixer.mix_to(first_deme, pa); // FIXME CHECK:  amount after collapse
     }
-
   }
 
 };
@@ -346,6 +371,11 @@ public:
 
 
 std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
+  /**
+   * Iterate over all extant demes of a species and disperse to
+   * neighbouring cells, weighted by environmental niche
+   * suitability. This can result in several demes per cell.
+   */
   auto target = std::make_shared <DemeMap>();
   // Iterate over all cells where this species occurs
   for (auto &&deme_cell: *(species.demes)) {
@@ -355,12 +385,12 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme:  deme_cell.second) {
-      float abundance = niche_suitability(source_env, deme.genetics);
+      float abundance = niche_suitability(source_env, deme.genetics); // FIXME CHECK: or do this at end of step in collapse??
       if (abundance <= 0.0)
 	// FIXME CHECK extinction??? check this against spec.
 	continue;
 
-      // "disperse" into the same cell. This becomes the primary deme
+      // "disperse" into the same cell. This becomes a primary deme
       // after dispersal due to incumbency. Note that this inserts at
       // the front of the list. Any primary demes will be at the front.
       (*target)[loc].emplace_front(deme,
@@ -423,7 +453,7 @@ int DreadDs::step() {
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // collapse demes in each cell that are within genetic tolerance.
-    species.collapse(target);
+    species.collapse(impl->conf, target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
