@@ -28,8 +28,8 @@ public:
 
 private:
   int step();
-  class Impl;
-  std::unique_ptr<Impl> impl;
+  class Model;
+  std::unique_ptr<Model> model;
   int current_step;
 };
 

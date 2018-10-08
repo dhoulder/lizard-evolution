@@ -328,14 +328,14 @@ public:
 
 };
 
-class DreadDs::Impl {
+class DreadDs::Model {
 public:
 
-  Impl(EnvIndex rows, EnvIndex cols): env(boost::extents[rows][cols]) {
+  Model(EnvIndex rows, EnvIndex cols): env(boost::extents[rows][cols]) {
     // FIXME WIP
   }
 
-  ~Impl() {
+  ~Model() {
     //FIXME WIP
   }
 
@@ -400,7 +400,7 @@ public:
 };
 
 
-std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
+std::shared_ptr<DemeMap> DreadDs::Model::disperse(Species &species) {
   /**
    * Iterate over all extant demes of a species and disperse to
    * neighbouring cells, weighted by environmental niche
@@ -451,10 +451,10 @@ std::shared_ptr<DemeMap> DreadDs::Impl::disperse(Species &species) {
 
 
 DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env grid
-  current_step(0), impl(new Impl(cols, rows)) {
+  current_step(0), model(new Model(cols, rows)) {
 
   // TODO load config
-  impl->conf.debug = 4;
+  model->conf.debug = 4;
 
   // TODO load env
 
@@ -463,9 +463,9 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
   // TODO initialise roots, tips
   {
     // FIXME STUB
-    impl->roots.push_back(Species {});
-    if (impl->conf.debug > 3) {
-      impl->roots.back().print_kernel();
+    model->roots.push_back(Species {});
+    if (model->conf.debug > 3) {
+      model->roots.back().print_kernel();
     }
   }
 
@@ -475,15 +475,15 @@ DreadDs::~DreadDs() = default;
 
 
 int DreadDs::step() {
-  impl->update_environment(current_step);
+  model->update_environment(current_step);
 
-  for (auto && species: impl->tips) {
-    auto target = impl->disperse(species);
+  for (auto && species: model->tips) {
+    auto target = model->disperse(species);
 
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // collapse demes in each cell that are within genetic tolerance.
-    species.collapse(impl->conf, target);
+    species.collapse(model->conf, target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
