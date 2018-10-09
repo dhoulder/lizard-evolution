@@ -13,7 +13,8 @@
 #define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
 #include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real_distribution.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
 
 // FIXME for debugging
 #include <iostream>
@@ -24,8 +25,6 @@
 static const int max_env_dims = 2; // Max environment layers (e.g. 2
 				   // for temperature, precipitation)
 static const int max_genetic_dims= 3; // Max number of abstract genetic axes
-
-static boost::random::mt19937 rng; // FIXME seed? appropriate for float 0…1 ??
 
 
 struct EnvChange {
@@ -38,6 +37,9 @@ struct EnvChange {
   float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
 };
 
+typedef boost::mt19937 rng_eng_t;
+typedef boost::uniform_real<float> gene_flow_distr_t;
+typedef boost::variate_generator<rng_eng_t&, gene_flow_distr_t> gene_flow_vg_t;
 
 struct Config {
   // Parameters for a simulation run.
@@ -46,8 +48,23 @@ struct Config {
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
 
-  float gene_flow_threshold = 0.001f;
+  const float gene_flow_threshold = 0.001f; // FIXME make this configurable. affects rng
   float gene_flow_zero_distance = 5.0f;
+
+  rng_eng_t rng;
+  gene_flow_distr_t gene_flow_distr;
+  gene_flow_vg_t gene_flow_random;
+  // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
+  // FIXME make rng stuff configurable so it can be deterministic for testing
+
+
+  Config():
+   // FIXME seed rng here???
+    gene_flow_distr(gene_flow_threshold, 1.0f - gene_flow_threshold),
+    gene_flow_random(rng, gene_flow_distr)
+  {
+  }
+
 };
 
 
@@ -143,17 +160,14 @@ public:
     return sqrt(sum);
   }
 
-  bool gene_flow_occurs(const Config &conf, const Deme *other) {
+  bool gene_flow_occurs(Config &conf, const Deme *other) {
     // see 3.4.1 "Does  gene  flow  occur?"
 
     // Choose within [gene_flow_threshold, 1-gene_flow_threshold] to
     // effectively apply high and low cutoffs when comparing against
     // probability below.
-    boost::random::uniform_real_distribution<float> dist(conf.gene_flow_threshold,
-							 1.0f - conf.gene_flow_threshold);
-    // FIXME make dist() configurable so it can be deterministic for testing
     return (gene_flow_probability(conf, genetic_distance(conf, other)) >
-	    dist(rng));
+	    conf.gene_flow_random());
   }
 
 };
@@ -283,7 +297,9 @@ public:
     return &deme_list.back(); // FIXME STUB
   }
 
-  void collapse(const Config &conf, std::shared_ptr<DemeMap> dm) {
+  void merge(Config &conf, std::shared_ptr<DemeMap> dm) {
+    // FIXME? move rng stuff out of const and use const Config &conf
+
     // Merge demes where gene flow occurs
 
     for (auto &&deme_cell: *dm) {
@@ -316,13 +332,13 @@ public:
 
 	if (deme.gene_flow_occurs(conf, primary))
 	  mixer.contribute(deme);
-	// else FIXME CHECK "excluded by competition
+	// otherwsie "excluded by competition
       }
 
       // mix down to first deme
       float pa = primary->amount;
       deme_list.resize(1);
-      mixer.mix_to(first_deme, pa); // FIXME CHECK:  amount after collapse
+      mixer.mix_to(first_deme, pa); // FIXME CHECK:  amount after merge
     }
   }
 
@@ -415,7 +431,7 @@ std::shared_ptr<DemeMap> DreadDs::Model::disperse(Species &species) {
 
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme:  deme_cell.second) {
-      float abundance = niche_suitability(source_env, deme.genetics); // FIXME CHECK: or do this at end of step in collapse??
+      float abundance = niche_suitability(source_env, deme.genetics); // FIXME CHECK: or do this at end of step in merge??
       if (abundance <= 0.0)
 	// FIXME CHECK extinction??? check this against spec.
 	continue;
@@ -482,8 +498,8 @@ int DreadDs::step() {
 
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
-    // collapse demes in each cell that are within genetic tolerance.
-    species.collapse(model->conf, target);
+    // merge demes in each cell that are within genetic tolerance.
+    species.merge(model->conf, target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
@@ -491,6 +507,8 @@ int DreadDs::step() {
 
     // Finished with source demes now - replace with target;
     species.demes = target;
+
+    // TODO competition/co-occurrence. (see 3.5)
 
     // TODO niche evolution. Remove demes with 0 abundance
 
