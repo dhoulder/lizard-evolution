@@ -41,6 +41,9 @@ typedef boost::mt19937 rng_eng_t;
 typedef boost::uniform_real<float> gene_flow_distr_t;
 typedef boost::variate_generator<rng_eng_t&, gene_flow_distr_t> gene_flow_vg_t;
 
+static rng_eng_t rng; // FIXME seed?
+
+
 struct Config {
   // Parameters for a simulation run.
   int debug = 0;
@@ -48,22 +51,8 @@ struct Config {
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
 
-  const float gene_flow_threshold = 0.001f; // FIXME make this configurable. affects rng
+  float gene_flow_threshold = 0.001f;
   float gene_flow_zero_distance = 5.0f;
-
-  rng_eng_t rng;
-  gene_flow_distr_t gene_flow_distr;
-  gene_flow_vg_t gene_flow_random;
-  // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
-  // FIXME make rng stuff configurable so it can be deterministic for testing
-
-
-  Config():
-   // FIXME seed rng here???
-    gene_flow_distr(gene_flow_threshold, 1.0f - gene_flow_threshold),
-    gene_flow_random(rng, gene_flow_distr)
-  {
-  }
 
 };
 
@@ -160,14 +149,14 @@ public:
     return sqrt(sum);
   }
 
-  bool gene_flow_occurs(Config &conf, const Deme *other) {
+  bool gene_flow_occurs(const Config &conf, const Deme *other, gene_flow_vg_t &gene_flow_random) {
     // see 3.4.1 "Does  gene  flow  occur?"
 
     // Choose within [gene_flow_threshold, 1-gene_flow_threshold] to
     // effectively apply high and low cutoffs when comparing against
     // probability below.
     return (gene_flow_probability(conf, genetic_distance(conf, other)) >
-	    conf.gene_flow_random());
+	    gene_flow_random());
   }
 
 };
@@ -244,6 +233,7 @@ public:
   /**
      Describes a species and its phylogeny
    */
+  const Config &conf;
   Species *parent = NULL;
   std::shared_ptr <Species> left_child = NULL;
   std::shared_ptr <Species> right_child = NULL;
@@ -259,7 +249,17 @@ public:
   float dispersal_min = 0.2;
   DispersalKernel dk;
 
-  Species(): demes(new(DemeMap)) {
+  gene_flow_distr_t gene_flow_distr;
+  gene_flow_vg_t gene_flow_random;
+  // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
+  // FIXME make rng stuff configurable so it can be deterministic for testing
+
+  Species(const Config &c):
+    conf(c),
+    demes(new(DemeMap)),
+    gene_flow_distr(c.gene_flow_threshold, 1.0f - c.gene_flow_threshold),
+    gene_flow_random(rng, gene_flow_distr)
+  {
     setup_dispersal();
   }
 
@@ -297,8 +297,7 @@ public:
     return &deme_list.back(); // FIXME STUB
   }
 
-  void merge(Config &conf, std::shared_ptr<DemeMap> dm) {
-    // FIXME? move rng stuff out of const and use const Config &conf
+  void merge(std::shared_ptr<DemeMap> dm) {
 
     // Merge demes where gene flow occurs
 
@@ -330,7 +329,7 @@ public:
 	  // don't merge with self
 	  continue;
 
-	if (deme.gene_flow_occurs(conf, primary))
+	if (deme.gene_flow_occurs(conf, primary, gene_flow_random))
 	  mixer.contribute(deme);
 	// otherwsie "excluded by competition
       }
@@ -476,12 +475,12 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
 
   // TODO initialise env
 
-  // TODO initialise roots, tips
+  // TODO initialise roots
   {
-    // FIXME STUB
-    model->roots.push_back(Species {});
+    // FIXME STUB init tips
+    model->tips.push_back(Species(model->conf));
     if (model->conf.debug > 3) {
-      model->roots.back().print_kernel();
+      model->tips.back().print_kernel();
     }
   }
 
@@ -499,7 +498,7 @@ int DreadDs::step() {
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // merge demes in each cell that are within genetic tolerance.
-    species.merge(model->conf, target);
+    species.merge(target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
