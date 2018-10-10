@@ -46,7 +46,7 @@ static rng_eng_t rng; // FIXME seed?
 
 struct Config {
   // Parameters for a simulation run.
-  int debug = 0;
+  int debug = 4; // FIXME
   int env_dims = 1; // must be <= max_env_dims
   int genetic_dims = max_genetic_dims; // <= max_genetic_dims
   EnvChange env_change[max_env_dims];
@@ -207,7 +207,6 @@ public:
   /**
      Describes a species and its phylogeny
    */
-  const Config &conf;
   const float max_dispersal_radius_;
   const float dispersal_min_;
 
@@ -224,25 +223,11 @@ public:
 
   DispersalKernel dk;
 
-  gene_flow_distr_t gene_flow_distr;
-  gene_flow_vg_t gene_flow_random;
-  // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
-  // FIXME make rng stuff configurable so it can be deterministic for testing
-
-  Species(const Config &c,
-	  float max_dispersal_radius = 1.0f,
+  Species(float max_dispersal_radius,
 	  float dispersal_min = 0.2f):
-    conf(c),
     max_dispersal_radius_(max_dispersal_radius),
     dispersal_min_(dispersal_min),
-    demes(new(DemeMap)),
-    // Generate random values between [gene_flow_threshold,
-    // 1-gene_flow_threshold] to effectively apply high and low
-    // cutoffs when comparing against probability below.
-    gene_flow_distr(
-		    c.gene_flow_threshold,
-		    1.0f - c.gene_flow_threshold),
-    gene_flow_random(rng, gene_flow_distr)
+    demes(new(DemeMap))
   {
     setup_dispersal();
   }
@@ -275,107 +260,45 @@ public:
       std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
   }
 
-
-  Deme *choose_primary(DemeList &deme_list) {
-    // Find "primary" deme at random by probability weighted by abundance
-    return &deme_list.back(); // FIXME STUB
-  }
-
-
-  float gene_flow_probability(float distance) {
-    // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
-    const float A = 14.0f;
-    const float B = 0.5f;
-    return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
-  }
-
-
-  float genetic_distance(const Deme &d1, const Deme &d2) {
-    // Euclidean distance in gene space
-    float sum = 0.0f;
-    for (int i = 0; i < conf.genetic_dims; ++i) {
-      const float d = d2.genetics.genetic_position[i] - d1.genetics.genetic_position[i];
-      sum += d*d;
-    }
-    return sqrt(sum);
-  }
-
-
-  bool gene_flow_occurs(const Deme &d1, const Deme &d2) {
-    // see 3.4.1 "Does  gene  flow  occur?"
-    return (gene_flow_probability(genetic_distance(d1, d2)) >
-	    gene_flow_random());
-  }
-
-
-  void merge(std::shared_ptr<DemeMap> dm) {
-
-    // Merge demes where gene flow occurs
-
-    for (auto &&deme_cell: *dm) {
-      auto &&deme_list = deme_cell.second;
-      if (deme_list.size() < 2)
-	// FIXME adjust abundance? anything else?
-	continue;
-
-      // Have at least two demes in this cell, so check for gene flow
-      // and merge if required.
-      const Location &loc = deme_cell.first;
-      // Any incumbent primary deme will be at the front, otherwise
-      // we have to choose one
-      Deme *first_deme =  &deme_list.front();
-
-      // NOTE: we assume there is at most one primary deme. In the
-      // current model, all demes of a species in a cell mix down into
-      // one final primary deme, so this assumption holds.
-      // FIXME CHECK: max 1 primary deme after gene flow?
-
-      Deme *primary = first_deme->is_primary?
-	first_deme:
-	choose_primary(deme_list);
-
-      DemeMixer mixer(conf, *primary);
-      for (auto &&deme: deme_list) {
-	if (&deme == primary)
-	  // don't merge with self
-	  continue;
-
-	if (gene_flow_occurs(deme, *primary))
-	  mixer.contribute(deme);
-	// otherwise "excluded by competition
-      }
-
-      // mix down to first deme
-      float pa = primary->amount;
-      deme_list.resize(1);
-      mixer.mix_to(first_deme, pa); // FIXME CHECK:  amount after merge
-    }
-  }
-
 };
 
 class DreadDs::Model {
 public:
 
-  Model(EnvIndex rows, EnvIndex cols): env(boost::extents[rows][cols]) {
-    // FIXME WIP
+  Model(const Config &c, EnvIndex rows, EnvIndex cols):
+    conf(c),
+    env(boost::extents[rows][cols]),
+    // Generate random values between [gene_flow_threshold,
+    // 1-gene_flow_threshold] to effectively apply high and low
+    // cutoffs when comparing against probability below.
+    gene_flow_distr(
+		    c.gene_flow_threshold,
+		    1.0f - c.gene_flow_threshold),
+    gene_flow_random(rng, gene_flow_distr)
+  {
   }
 
   ~Model() {
     //FIXME WIP
   }
 
-  Config conf;
+  const Config &conf;
   EnvMatrix env;
   float env_delta[max_env_dims] = {0.0f};
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
+  gene_flow_distr_t gene_flow_distr;
+  gene_flow_vg_t gene_flow_random;
+  // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
+  // FIXME make rng stuff configurable so it can be deterministic for testing
+
+
 
   void update_environment(int time_step) {
     // Set env_delta for the current time step. env_delta gets applied
     // to every cell in env
     float *ed  = env_delta;
-    EnvChange *c = conf.env_change;
+    const EnvChange *c = conf.env_change;
     for (int i = 0; i < conf.env_dims;
 	 ++i, ++c, ++ed) {
       *ed = (time_step * c->ramp) +
@@ -472,15 +395,91 @@ public:
     return target;
   }
 
+
+  Deme *choose_primary(DemeList &deme_list) {
+    // Find "primary" deme at random by probability weighted by abundance
+    return &deme_list.back(); // FIXME STUB
+  }
+
+
+  float gene_flow_probability(float distance) {
+    // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
+    const float A = 14.0f;
+    const float B = 0.5f;
+    return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
+  }
+
+
+  float genetic_distance(const Deme &d1, const Deme &d2) {
+    // Euclidean distance in gene space
+    float sum = 0.0f;
+    for (int i = 0; i < conf.genetic_dims; ++i) {
+      const float d = d2.genetics.genetic_position[i] - d1.genetics.genetic_position[i];
+      sum += d*d;
+    }
+    return sqrt(sum);
+  }
+
+
+  bool gene_flow_occurs(const Deme &d1, const Deme &d2) {
+    // see 3.4.1 "Does  gene  flow  occur?"
+    return (gene_flow_probability(genetic_distance(d1, d2)) >
+	    gene_flow_random());
+  }
+
+
+  void merge(std::shared_ptr<DemeMap> dm) {
+    // Merge demes where gene flow occurs
+
+    for (auto &&deme_cell: *dm) {
+      auto &&deme_list = deme_cell.second;
+      if (deme_list.size() < 2)
+	// FIXME adjust abundance? anything else?
+	continue;
+
+      // Have at least two demes in this cell, so check for gene flow
+      // and merge if required.
+      const Location &loc = deme_cell.first;
+      // Any incumbent primary deme will be at the front, otherwise
+      // we have to choose one
+      Deme *first_deme =  &deme_list.front();
+
+      // NOTE: we assume there is at most one primary deme. In the
+      // current model, all demes of a species in a cell mix down into
+      // one final primary deme, so this assumption holds.
+      // FIXME CHECK: max 1 primary deme after gene flow?
+
+      Deme *primary = first_deme->is_primary?
+	first_deme:
+	choose_primary(deme_list);
+
+      DemeMixer mixer(conf, *primary);
+      for (auto &&deme: deme_list) {
+	if (&deme == primary)
+	  // don't merge with self
+	  continue;
+
+	if (gene_flow_occurs(deme, *primary))
+	  mixer.contribute(deme);
+	// otherwise "excluded by competition
+      }
+
+      // mix down to first deme
+      float pa = primary->amount;
+      deme_list.resize(1);
+      mixer.mix_to(first_deme, pa); // FIXME CHECK:  amount after merge
+    }
+  }
+
 };
 
 
+static const Config default_config;
 
 DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env grid
-  current_step(0), model(new Model(cols, rows)) {
-
+  current_step(0),
   // TODO load config
-  model->conf.debug = 4;
+  model(new Model(default_config, cols, rows)) {
 
   // TODO load env
 
@@ -489,7 +488,7 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
   // TODO initialise roots
   {
     // FIXME STUB init tips
-    model->tips.push_back(Species(model->conf, 1.0f, 0.2f));
+    model->tips.push_back(Species(1.0f, 0.2f));
     if (model->conf.debug > 3) {
       model->tips.back().print_kernel();
     }
@@ -509,7 +508,7 @@ int DreadDs::step() {
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // merge demes in each cell that are within genetic tolerance.
-    species.merge(target);
+    model->merge(target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
