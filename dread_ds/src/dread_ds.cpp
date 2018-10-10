@@ -53,7 +53,6 @@ struct Config {
 
   float gene_flow_threshold = 0.001f;
   float gene_flow_zero_distance = 5.0f;
-
 };
 
 
@@ -126,40 +125,14 @@ public:
 
   Deme(): amount(0), is_primary(false) {}
 
-  Deme(const Deme &from, float new_amount, bool new_primary): Deme(from) {
+  Deme(const Deme &from, float new_amount, bool new_primary):
+    Deme(from) {
     // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
     amount = new_amount;
     is_primary = new_primary;
   }
-
-  static float gene_flow_probability(const Config &conf, float distance) {
-    // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
-    const float A = 14.0f;
-    const float B = 0.5f;
-    return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
-  }
-
-  float genetic_distance(const Config &conf, const Deme *other) {
-    // Euclidean distance in gene space
-    float sum = 0.0f;
-    for (int i = 0; i < conf.genetic_dims; ++i) {
-      const float d = other->genetics.genetic_position[i] - genetics.genetic_position[i];
-      sum += d*d;
-    }
-    return sqrt(sum);
-  }
-
-  bool gene_flow_occurs(const Config &conf, const Deme *other, gene_flow_vg_t &gene_flow_random) {
-    // see 3.4.1 "Does  gene  flow  occur?"
-
-    // Choose within [gene_flow_threshold, 1-gene_flow_threshold] to
-    // effectively apply high and low cutoffs when comparing against
-    // probability below.
-    return (gene_flow_probability(conf, genetic_distance(conf, other)) >
-	    gene_flow_random());
-  }
-
 };
+
 
 struct Location {
   int x;
@@ -170,6 +143,7 @@ struct Location {
     return (a.x < b.x) || (a.x == b.x && a.y < b.y);
   }
 };
+
 
 // Cells occupied by demes of a species, Several demes can occupy a
 // cell, hence std::vector
@@ -257,7 +231,12 @@ public:
   Species(const Config &c):
     conf(c),
     demes(new(DemeMap)),
-    gene_flow_distr(c.gene_flow_threshold, 1.0f - c.gene_flow_threshold),
+    // Generate random values between [gene_flow_threshold,
+    // 1-gene_flow_threshold] to effectively apply high and low
+    // cutoffs when comparing against probability below.
+    gene_flow_distr(
+		    c.gene_flow_threshold,
+		    1.0f - c.gene_flow_threshold),
     gene_flow_random(rng, gene_flow_distr)
   {
     setup_dispersal();
@@ -297,6 +276,33 @@ public:
     return &deme_list.back(); // FIXME STUB
   }
 
+
+  float gene_flow_probability(float distance) {
+    // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
+    const float A = 14.0f;
+    const float B = 0.5f;
+    return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
+  }
+
+
+  float genetic_distance(const Deme &d1, const Deme &d2) {
+    // Euclidean distance in gene space
+    float sum = 0.0f;
+    for (int i = 0; i < conf.genetic_dims; ++i) {
+      const float d = d2.genetics.genetic_position[i] - d1.genetics.genetic_position[i];
+      sum += d*d;
+    }
+    return sqrt(sum);
+  }
+
+
+  bool gene_flow_occurs(const Deme &d1, const Deme &d2) {
+    // see 3.4.1 "Does  gene  flow  occur?"
+    return (gene_flow_probability(genetic_distance(d1, d2)) >
+	    gene_flow_random());
+  }
+
+
   void merge(std::shared_ptr<DemeMap> dm) {
 
     // Merge demes where gene flow occurs
@@ -329,9 +335,9 @@ public:
 	  // don't merge with self
 	  continue;
 
-	if (deme.gene_flow_occurs(conf, primary, gene_flow_random))
+	if (gene_flow_occurs(deme, *primary))
 	  mixer.contribute(deme);
-	// otherwsie "excluded by competition
+	// otherwise "excluded by competition
       }
 
       // mix down to first deme
