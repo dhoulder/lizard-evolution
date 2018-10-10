@@ -365,8 +365,6 @@ public:
     //FIXME WIP
   }
 
-  std::shared_ptr<DemeMap> disperse(Species &species);
-
   Config conf;
   EnvMatrix env;
   float env_delta[max_env_dims] = {0.0f};
@@ -423,57 +421,59 @@ public:
     // See 3.3 Dispersal, equation 1
     return source_abundance * suitability * distance_weight;
   }
-};
 
 
-std::shared_ptr<DemeMap> DreadDs::Model::disperse(Species &species) {
-  /**
-   * Iterate over all extant demes of a species and disperse to
-   * neighbouring cells, weighted by environmental niche
-   * suitability. This can result in several demes per cell.
-   */
-  auto target = std::make_shared <DemeMap>();
-  // Iterate over all cells where this species occurs
-  for (auto &&deme_cell: *(species.demes)) {
+  std::shared_ptr<DemeMap> disperse(Species &species) {
+    /**
+     * Iterate over all extant demes of a species and disperse to
+     * neighbouring cells, weighted by environmental niche
+     * suitability. This can result in several demes per cell.
+     */
+    auto target = std::make_shared <DemeMap>();
+    // Iterate over all cells where this species occurs
+    for (auto &&deme_cell: *(species.demes)) {
 
-    const Location &loc = deme_cell.first;
-    const EnvCell &&source_env = get_env(loc);
+      const Location &loc = deme_cell.first;
+      const EnvCell &&source_env = get_env(loc);
 
-    // Iterate over all demes (sort of "sub species") in the cell
-    for (auto &&deme:  deme_cell.second) {
-      float abundance = niche_suitability(source_env, deme.genetics); // FIXME CHECK: or do this at end of step in merge??
-      if (abundance <= 0.0)
-	// FIXME CHECK extinction??? check this against spec.
-	continue;
-
-      // "disperse" into the same cell. This becomes a primary deme
-      // after dispersal due to incumbency. Note that this inserts at
-      // the front of the list. Any primary demes will be at the front.
-      (*target)[loc].emplace_front(deme,
-				   dispersal_abundance(abundance,
-						       abundance, // FIXME CHECK
-						       1.0), // same cell, no travel cost
-				   true);
-      // Disperse into the area around this cell
-      for (auto &&k: species.dk) {
-	Location new_loc;
-	new_loc.x = loc.x + k.x;
-	new_loc.y = loc.y + k.y;
-	if (new_loc.x < 0 || new_loc.y < 0 ||
-	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
+      // Iterate over all demes (sort of "sub species") in the cell
+      for (auto &&deme:  deme_cell.second) {
+	float abundance = niche_suitability(source_env, deme.genetics); // FIXME CHECK: or do this at end of step in merge??
+	if (abundance <= 0.0)
+	  // FIXME CHECK extinction??? check this against spec.
 	  continue;
-	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
-	(*target)[new_loc].emplace_back(deme,
-					dispersal_abundance(abundance,
-							    niche_suitability(get_env(new_loc),
-									      deme.genetics),
-							    k.weight),
-					false);
+
+	// "disperse" into the same cell. This becomes a primary deme
+	// after dispersal due to incumbency. Note that this inserts at
+	// the front of the list. Any primary demes will be at the front.
+	(*target)[loc].emplace_front(deme,
+				     dispersal_abundance(abundance,
+							 abundance, // FIXME CHECK
+							 1.0), // same cell, no travel cost
+				     true);
+	// Disperse into the area around this cell
+	for (auto &&k: species.dk) {
+	  Location new_loc;
+	  new_loc.x = loc.x + k.x;
+	  new_loc.y = loc.y + k.y;
+	  if (new_loc.x < 0 || new_loc.y < 0 ||
+	      new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
+	    continue;
+	  // FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
+	  (*target)[new_loc].emplace_back(deme,
+					  dispersal_abundance(abundance,
+							      niche_suitability(get_env(new_loc),
+										deme.genetics),
+							      k.weight),
+					  false);
+	}
       }
     }
+    return target;
   }
-  return target;
-}
+
+};
+
 
 
 DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env grid
