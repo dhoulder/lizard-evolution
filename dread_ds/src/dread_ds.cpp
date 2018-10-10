@@ -322,7 +322,7 @@ public:
   }
 
   static float suitability(float env_value, float niche_centre, float niche_tolerance) {
-    // The suitability function is cos() from -pi to pi, scaled to the
+    // The suitability function is cos() from -π to π, scaled to the
     // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
     // 0 at niche_centre±niche_tolerance
     return
@@ -332,12 +332,14 @@ public:
   }
 
   float niche_suitability(const EnvCell &cell, const Deme::Genetics &g) {
+    // compute geometric mean of all niche suitabilities
     float v = 1.0f;
     for (int i = 0; i < conf.env_dims; i++)
       v *= suitability(cell.v[i],
 		       g.niche_centre[i],
 		       g.niche_tolerance[i]);
-    return v;
+    return pow(v,
+	       1.0f / (float)conf.env_dims);
   }
 
 
@@ -362,6 +364,14 @@ public:
 
       // Iterate over all demes (sort of "sub species") in the cell
       for (auto &&deme:  deme_cell.second) {
+
+
+	// TODO niche evolution.
+
+	// TODO check for extinction. Remove from DemeMap
+
+	// TODO genetic drift
+
 	// "disperse" into the same cell. This becomes a primary deme
 	// after dispersal due to incumbency. Note that this inserts at
 	// the front of the list. Any primary demes will be at the front.
@@ -518,12 +528,6 @@ int DreadDs::step() {
   model->update_environment(current_step);
 
   for (auto && species: model->tips) {
-
-    // TODO niche evolution. Remove demes with 0 abundance
-
-    // TODO check for extinction. Remove from DemeMap
-
-    // TODO genetic drift
 
     auto target = model->disperse(species);
 
