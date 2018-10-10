@@ -3,7 +3,7 @@ library(raster)
 
 raster_dir    <- "/short/ka2/dfr805/simulation/test_runs/real225_nicherate0.02_dispersal1.5_200gens/raster/"
 
-summary.time  <- 150
+summary.time  <- 100
 
 file_template <- paste("*time", summary.time, ".asc", sep="")
 
