@@ -208,6 +208,9 @@ public:
      Describes a species and its phylogeny
    */
   const Config &conf;
+  const float max_dispersal_radius_;
+  const float dispersal_min_;
+
   Species *parent = NULL;
   std::shared_ptr <Species> left_child = NULL;
   std::shared_ptr <Species> right_child = NULL;
@@ -219,8 +222,6 @@ public:
   Characteristics latest; // Updated at each time step. Frozen after speciation.
   std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
 
-  float max_dispersal_radius = 1.0f;
-  float dispersal_min = 0.2;
   DispersalKernel dk;
 
   gene_flow_distr_t gene_flow_distr;
@@ -228,8 +229,12 @@ public:
   // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
   // FIXME make rng stuff configurable so it can be deterministic for testing
 
-  Species(const Config &c):
+  Species(const Config &c,
+	  float max_dispersal_radius = 1.0f,
+	  float dispersal_min = 0.2f):
     conf(c),
+    max_dispersal_radius_(max_dispersal_radius),
+    dispersal_min_(dispersal_min),
     demes(new(DemeMap)),
     // Generate random values between [gene_flow_threshold,
     // 1-gene_flow_threshold] to effectively apply high and low
@@ -250,17 +255,17 @@ public:
   void setup_dispersal() {
     // Calculate dispersal kernel
     // TODO only really have to store one quadrant (perhaps only one octant)
-    int r = (int) (ceil(max_dispersal_radius) + 0.5);
+    int r = (int) (ceil(max_dispersal_radius_) + 0.5);
     for (int i = -r; i <= r; ++i)
       for (int j = -r; j <= r; ++j) {
 	if (!(i || j))
 	  // dispersal into same-cell is a special case
 	  continue;
 	float dd = dispersal_distance(i, j);
-	if (dd <= max_dispersal_radius) {
+	if (dd <= max_dispersal_radius_) {
 	  dk.push_back(DispersalWeight {
 	      i, j,
-		1.0f - ((1.0f - dispersal_min) * dd/max_dispersal_radius)});
+		1.0f - ((1.0f - dispersal_min_) * dd/max_dispersal_radius_)});
 	}
       }
   }
@@ -484,7 +489,7 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
   // TODO initialise roots
   {
     // FIXME STUB init tips
-    model->tips.push_back(Species(model->conf));
+    model->tips.push_back(Species(model->conf, 1.0f, 0.2f));
     if (model->conf.debug > 3) {
       model->tips.back().print_kernel();
     }
