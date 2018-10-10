@@ -3,6 +3,7 @@
 /**
    Implementation of DREaD_ds model. See ./README.md
 */
+
 #include <memory>
 #include <vector>
 #include <list>
@@ -38,8 +39,8 @@ struct EnvChange {
 };
 
 typedef boost::mt19937 rng_eng_t;
-typedef boost::uniform_real<float> gene_flow_distr_t;
-typedef boost::variate_generator<rng_eng_t&, gene_flow_distr_t> gene_flow_vg_t;
+typedef boost::uniform_real<float> uniform_distr_t;
+typedef boost::variate_generator<rng_eng_t&, uniform_distr_t> gene_flow_vg_t;
 
 static rng_eng_t rng; // FIXME seed?
 
@@ -274,7 +275,8 @@ public:
     gene_flow_distr(
 		    c.gene_flow_threshold,
 		    1.0f - c.gene_flow_threshold),
-    gene_flow_random(rng, gene_flow_distr)
+    gene_flow_random(rng, gene_flow_distr),
+    deme_choice_distr(0.0f, 1.0f)
   {
   }
 
@@ -287,11 +289,12 @@ public:
   float env_delta[max_env_dims] = {0.0f};
   std::vector <Species> roots; // Initial species
   std::vector <Species> tips; // extant leaf species
-  gene_flow_distr_t gene_flow_distr;
+  uniform_distr_t gene_flow_distr;
   gene_flow_vg_t gene_flow_random;
+  uniform_distr_t deme_choice_distr;
+
   // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
   // FIXME make rng stuff configurable so it can be deterministic for testing
-
 
 
   void update_environment(int time_step) {
@@ -397,8 +400,19 @@ public:
 
 
   Deme *choose_primary(DemeList &deme_list) {
-    // Find "primary" deme at random by probability weighted by abundance
-    return &deme_list.back(); // FIXME STUB
+    // Find "primary" deme at random by abundance-weighted probability
+    // Do not call on mepty list
+    float sum = 0.0f;;
+    for (auto &&d: deme_list)
+      sum += d.amount;
+    float rv = deme_choice_distr(rng) * sum;
+    for (auto &&d: deme_list) {
+      if (rv <= d.amount )
+	return &d;
+      rv -= d.amount;
+    }
+    // fp precision effects may leave us here
+    return &deme_list.back();
   }
 
 
