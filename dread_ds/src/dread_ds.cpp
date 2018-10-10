@@ -54,6 +54,7 @@ struct Config {
 
   float gene_flow_threshold = 0.001f;
   float gene_flow_zero_distance = 5.0f;
+  float niche_evolution_rate = 0.1;
 };
 
 
@@ -351,6 +352,19 @@ public:
   }
 
 
+  void evovle_towards_niche(Deme &deme, const EnvCell &env) {
+    // TODO STUB
+    // apply niche selection
+
+
+  }
+
+  void do_genetc_drift(Deme &deme) {
+    // TODO STUB
+    // genetic drift
+  }
+
+
   std::shared_ptr<DemeMap> disperse(Species &species) {
     /**
      * Iterate over all extant demes of a species and disperse to
@@ -361,23 +375,20 @@ public:
     // Iterate over all cells where this species occurs
     for (auto &&deme_cell: *(species.demes)) {
       const Location &loc = deme_cell.first;
+      const EnvCell &&source_env = get_env(loc);
 
       // Iterate over all demes (sort of "sub species") in the cell
       for (auto &&deme:  deme_cell.second) {
-
-
-	// TODO niche evolution.
-
+	evovle_towards_niche(deme, source_env);
 	// TODO check for extinction. Remove from DemeMap
-
-	// TODO genetic drift
+	do_genetc_drift(deme);
 
 	// "disperse" into the same cell. This becomes a primary deme
 	// after dispersal due to incumbency. Note that this inserts at
 	// the front of the list. Any primary demes will be at the front.
 	(*target)[loc].emplace_front(deme,
 				     dispersal_abundance(deme.amount,
-							 niche_suitability(get_env(loc),
+							 niche_suitability(source_env,
 									   deme.genetics),
 							 1.0), // same cell, no travel cost
 				     true);
