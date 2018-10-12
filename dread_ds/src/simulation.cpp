@@ -31,194 +31,193 @@ using DreadDs::Simulation;
 using DreadDs::Config;
 using DreadDs::SpeciesParameters;
 
-typedef boost::random::mt19937 rng_eng_t;
-typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
-typedef boost::random::variate_generator<rng_eng_t&, uniform_distr_t> uniform_vg_t;
-typedef boost::random::normal_distribution<float> normal_distr_t;
-typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
+namespace {
+  typedef int Timestep;
 
-static rng_eng_t rng; // FIXME seed?
+  typedef boost::random::mt19937 rng_eng_t;
+  typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
+  typedef boost::random::variate_generator<rng_eng_t&, uniform_distr_t> uniform_vg_t;
+  typedef boost::random::normal_distribution<float> normal_distr_t;
+  typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
 
-struct EnvCell {
-  // has to be a class|struct to keep boost::multi_array allocator happy
-  float v[max_env_dims];
-};
+  static rng_eng_t rng; // FIXME seed?
 
-
-typedef boost::multi_array<EnvCell, 2> EnvMatrix;
-typedef EnvMatrix::index EnvIndex;
-
-typedef int Timestep;
-
-
-class Deme {
-  /**
-     Describes a genetically homogeneous population in a cell.
-  */
-public:
-
-  struct Genetics {
-    float niche_centre[max_env_dims];
-    float niche_tolerance[max_env_dims];
-    float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+  struct EnvCell {
+    // has to be a class|struct to keep boost::multi_array allocator happy
+    float v[max_env_dims];
   };
 
-  Genetics genetics;
-  float amount; // population per cell
-  bool is_primary; // indicates incumbency in a cell during dispersal
+  typedef boost::multi_array<EnvCell, 2> EnvMatrix;
+  typedef EnvMatrix::index EnvIndex;
 
-  Deme(): amount(0), is_primary(false) {}
+  class Deme {
+    /**
+       Describes a genetically homogeneous population in a cell.
+    */
+  public:
 
-  Deme(const Deme &from, float new_amount, bool new_primary):
-    Deme(from) {
-    // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
-    amount = new_amount;
-    is_primary = new_primary;
-  }
-};
+    struct Genetics {
+      float niche_centre[max_env_dims];
+      float niche_tolerance[max_env_dims];
+      float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+    };
 
+    Genetics genetics;
+    float amount; // population per cell
+    bool is_primary; // indicates incumbency in a cell during dispersal
 
-struct Location {
-  int x;
-  int y;
+    Deme(): amount(0), is_primary(false) {}
 
-  // Used as key in a map, so needs an ordering
-  friend bool operator< (const Location &a, const Location &b) {
-    return (a.x < b.x) || (a.x == b.x && a.y < b.y);
-  }
-};
-
-
-// Cells occupied by demes of a species, Several demes can occupy a
-// cell, hence std::vector
-typedef std::list <Deme> DemeList;
-typedef std::map <Location, DemeList> DemeMap;
-
-struct DispersalWeight {
-  // Describes dispersal propensity for (x,y) offset from origin cell
-  // at (0,0) due to distance cost.
-  int x;
-  int y;
-  float weight; // 0 to 1.0
-};
-
-typedef std::vector <DispersalWeight> DispersalKernel;
-
-
-class DemeMixer {
-  /**
-   * For computing weighted average of genetic and niche positions
-   */
-
-private:
-  const Config &c;
-  Deme::Genetics g = {{0.0f}, {0.0f}, {0.0f}};
-  float total_abundance = 0.0f;
-
-public:
-  DemeMixer(const Config &conf, const Deme &primary):
-    c(conf) {
-    contribute(primary);
-  }
-
-  void contribute(const Deme &d) {
-    for (int i = 0; i < c.genetic_dims; ++i)
-      g.genetic_position[i] += d.genetics.genetic_position[i] * d.amount;
-    for (int i = 0; i < c.env_dims; ++i) {
-      g.niche_centre[i] += d.genetics.niche_centre[i] * d.amount;
-      g.niche_tolerance[i] += d.genetics.niche_tolerance[i] * d.amount;
+    Deme(const Deme &from, float new_amount, bool new_primary):
+      Deme(from) {
+      // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
+      amount = new_amount;
+      is_primary = new_primary;
     }
-    total_abundance += d.amount;
-  }
-
-  void mix_to(Deme *d) {
-    // Update d with weighted average of contributing demes
-    // FIXME handle / 0.0
-    for (int i = 0; i < c.genetic_dims; ++i)
-      d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
-    for (int i = 0; i < c.env_dims; ++i) {
-      d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
-      d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;
-    }
-    d->is_primary = true;
-  }
-
-};
-
-
-class Species {
-public:
-  /**
-     Describes a species and its phylogeny
-   */
-
-  struct Range {
-    int cell_count; // number of demes (occupied cells).
-    float population; // total population across all occupied cells
   };
 
-  const float max_dispersal_radius_;
-  const float dispersal_min_;
 
-  Species *parent = NULL;
-  std::shared_ptr <Species> left_child = NULL;
-  std::shared_ptr <Species> right_child = NULL;
+  struct Location {
+    int x;
+    int y;
 
-  Timestep extinction = -1; // Time step of extinction, or -1 if extant
-  Timestep split = -1; // Time of speciation. parent->split is species
-		  // origin time. -1 if not speciated
-  struct {
-    SpeciesParameters params;
-    Range range;
-  } initial, // At species origin (i.e. split from parent)
-    latest; // Updated at each time step. Frozen after speciation.
+    // Used as key in a map, so needs an ordering
+    friend bool operator< (const Location &a, const Location &b) {
+      return (a.x < b.x) || (a.x == b.x && a.y < b.y);
+    }
+  };
 
-  std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
 
-  DispersalKernel dk;
+  // Cells occupied by demes of a species, Several demes can occupy a
+  // cell, hence std::vector
+  typedef std::list <Deme> DemeList;
+  typedef std::map <Location, DemeList> DemeMap;
 
-  Species(float max_dispersal_radius,
-	  float dispersal_min = 0.2f):
-    max_dispersal_radius_(max_dispersal_radius),
-    dispersal_min_(dispersal_min),
-    demes(new(DemeMap))
-  {
-    setup_dispersal();
-  }
+  struct DispersalWeight {
+    // Describes dispersal propensity for (x,y) offset from origin cell
+    // at (0,0) due to distance cost.
+    int x;
+    int y;
+    float weight; // 0 to 1.0
+  };
 
-  static float dispersal_distance(int x, int y) {
-    // Replace with some other distance metric if required.
-    return sqrt(x*x + y*y);
-  }
+  typedef std::vector <DispersalWeight> DispersalKernel;
 
-  void setup_dispersal() {
-    // Calculate dispersal kernel
-    // TODO only really have to store one quadrant (perhaps only one octant)
-    int r = (int) (ceil(max_dispersal_radius_) + 0.5);
-    for (int i = -r; i <= r; ++i)
-      for (int j = -r; j <= r; ++j) {
-	if (!(i || j))
-	  // dispersal into same-cell is a special case
-	  continue;
-	float dd = dispersal_distance(i, j);
-	if (dd <= max_dispersal_radius_) {
-	  dk.push_back(DispersalWeight {
-	      i, j,
-		1.0f - ((1.0f - dispersal_min_) * dd/max_dispersal_radius_)});
-	}
+  class DemeMixer {
+    /**
+     * For computing weighted average of genetic and niche positions
+     */
+  private:
+    const Config &c;
+    Deme::Genetics g = {{0.0f}, {0.0f}, {0.0f}};
+    float total_abundance = 0.0f;
+
+  public:
+    DemeMixer(const Config &conf, const Deme &primary):
+      c(conf) {
+      contribute(primary);
+    }
+
+    void contribute(const Deme &d) {
+      for (int i = 0; i < c.genetic_dims; ++i)
+	g.genetic_position[i] += d.genetics.genetic_position[i] * d.amount;
+      for (int i = 0; i < c.env_dims; ++i) {
+	g.niche_centre[i] += d.genetics.niche_centre[i] * d.amount;
+	g.niche_tolerance[i] += d.genetics.niche_tolerance[i] * d.amount;
       }
-  }
+      total_abundance += d.amount;
+    }
 
-  void print_kernel() {
-    for (auto &&v: dk)
-      std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
-  }
+    void mix_to(Deme *d) {
+      // Update d with weighted average of contributing demes
+      // FIXME handle / 0.0
+      for (int i = 0; i < c.genetic_dims; ++i)
+	d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
+      for (int i = 0; i < c.env_dims; ++i) {
+	d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
+	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;
+      }
+      d->is_primary = true;
+    }
+  };
 
-};
+
+  class Species {
+  public:
+    /**
+       Describes a species and its phylogeny
+    */
+
+    struct Range {
+      int cell_count; // number of demes (occupied cells).
+      float population; // total population across all occupied cells
+    };
+
+    const float max_dispersal_radius_;
+    const float dispersal_min_;
+
+    Species *parent = NULL;
+    std::shared_ptr <Species> left_child = NULL;
+    std::shared_ptr <Species> right_child = NULL;
+
+    Timestep extinction = -1; // Time step of extinction, or -1 if extant
+    Timestep split = -1; // Time of speciation. parent->split is species
+    // origin time. -1 if not speciated
+    struct {
+      SpeciesParameters params;
+      Range range;
+    } initial, // At species origin (i.e. split from parent)
+      latest; // Updated at each time step. Frozen after speciation.
+
+    std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
+
+    DispersalKernel dk;
+
+    Species(float max_dispersal_radius,
+	    float dispersal_min = 0.2f):
+      max_dispersal_radius_(max_dispersal_radius),
+      dispersal_min_(dispersal_min),
+      demes(new(DemeMap))
+    {
+      setup_dispersal();
+    }
+
+    static float dispersal_distance(int x, int y) {
+      // Replace with some other distance metric if required.
+      return sqrt(x*x + y*y);
+    }
+
+    void setup_dispersal() {
+      // Calculate dispersal kernel
+      // TODO only really have to store one quadrant (perhaps only one octant)
+      int r = (int) (ceil(max_dispersal_radius_) + 0.5);
+      for (int i = -r; i <= r; ++i)
+	for (int j = -r; j <= r; ++j) {
+	  if (!(i || j))
+	    // dispersal into same-cell is a special case
+	    continue;
+	  float dd = dispersal_distance(i, j);
+	  if (dd <= max_dispersal_radius_) {
+	    dk.push_back(DispersalWeight {
+		i, j,
+		  1.0f - ((1.0f - dispersal_min_) * dd/max_dispersal_radius_)});
+	  }
+	}
+    }
+
+    void print_kernel() {
+      for (auto &&v: dk)
+	std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
+    }
+
+  };
+
+  static const Config default_config;
+}
+
 
 class Simulation::Model {
 public:
-
   const Config &conf;
   EnvMatrix env;
   float env_delta[max_env_dims] = {0.0f};
@@ -229,7 +228,6 @@ public:
   uniform_distr_t deme_choice_distr;
   normal_distr_t gene_drift_distr;
   normal_vg_t gene_drift_random;
-
 
   Model(const Config &c, EnvIndex rows, EnvIndex cols):
     conf(c),
@@ -470,8 +468,6 @@ public:
 
 };
 
-
-static const Config default_config;
 
 Simulation::Simulation(int cols, int rows): // FIXME rows cols should come from env grid
   current_step(0),
