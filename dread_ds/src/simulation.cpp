@@ -25,10 +25,11 @@
 #include "simulation.h"
 #include "model-config.h"
 
-using DreadDs::Simulation;
-using DreadDs::Config;
 using DreadDs::max_env_dims;
 using DreadDs::max_genetic_dims;
+using DreadDs::Simulation;
+using DreadDs::Config;
+using DreadDs::SpeciesParameters;
 
 typedef boost::random::mt19937 rng_eng_t;
 typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
@@ -48,45 +49,6 @@ typedef boost::multi_array<EnvCell, 2> EnvMatrix;
 typedef EnvMatrix::index EnvIndex;
 
 typedef int Timestep;
-
-
-struct Characteristics {
-  // Describes a species
-
-  struct Niche {
-    /**
-       Describes a niche on an environmental variable for a species.
-    */
-    // mean and sd of niche position of all demes of this species
-    float position_mean = 0.0f;
-    float position_sd = 0.0f;
-    float breadth_mean = 0.0f;
-    float breadth_sd = 0.0f;
-    // max and min values of position - (breadth  /2)
-    float max = 0.0f;
-    float min = 0.0f;
-  };
-
-  struct Genetics {
-    /**
-       Holds the genetic position (on an abstract genetic trait) and
-       variance of all the demes of a species.
-    */
-    float position = 0.0f;
-    float variance = 0.0f;
-  };
-
-  struct Range {
-    int cell_count; // number of demes (occupied cells).
-    float population; // total population across all occupied cells
-  };
-
-
-  Niche niche[max_env_dims];   // Niches derived from all demes of this species.
-  Genetics genetics[max_genetic_dims];
-  Range range;
-};
-
 
 
 class Deme {
@@ -189,6 +151,12 @@ public:
   /**
      Describes a species and its phylogeny
    */
+
+  struct Range {
+    int cell_count; // number of demes (occupied cells).
+    float population; // total population across all occupied cells
+  };
+
   const float max_dispersal_radius_;
   const float dispersal_min_;
 
@@ -199,8 +167,12 @@ public:
   Timestep extinction = -1; // Time step of extinction, or -1 if extant
   Timestep split = -1; // Time of speciation. parent->split is species
 		  // origin time. -1 if not speciated
-  Characteristics initial; // At species origin (i.e. split from parent)
-  Characteristics latest; // Updated at each time step. Frozen after speciation.
+  struct {
+    SpeciesParameters params;
+    Range range;
+  } initial, // At species origin (i.e. split from parent)
+    latest; // Updated at each time step. Frozen after speciation.
+
   std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
 
   DispersalKernel dk;
