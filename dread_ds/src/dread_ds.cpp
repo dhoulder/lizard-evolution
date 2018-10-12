@@ -15,6 +15,7 @@
 #include "boost/multi_array.hpp"
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
+#include <boost/random/normal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
 // FIXME for debugging
@@ -38,12 +39,13 @@ struct EnvChange {
   float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
 };
 
-typedef boost::mt19937 rng_eng_t;
-typedef boost::uniform_real<float> uniform_distr_t;
-typedef boost::variate_generator<rng_eng_t&, uniform_distr_t> gene_flow_vg_t;
+typedef boost::random::mt19937 rng_eng_t;
+typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
+typedef boost::random::variate_generator<rng_eng_t&, uniform_distr_t> uniform_vg_t;
+typedef boost::random::normal_distribution<float> normal_distr_t;
+typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
 
 static rng_eng_t rng; // FIXME seed?
-
 
 struct Config {
   // Parameters for a simulation run.
@@ -55,6 +57,7 @@ struct Config {
   float gene_flow_threshold = 0.001f;
   float gene_flow_zero_distance = 5.0f;
   float niche_evolution_rate = 0.1;
+  float gene_drift_sd = 1.0f; // FIXME use timestep size
 };
 
 
@@ -267,6 +270,18 @@ public:
 class DreadDs::Model {
 public:
 
+  const Config &conf;
+  EnvMatrix env;
+  float env_delta[max_env_dims] = {0.0f};
+  std::vector <Species> roots; // Initial species
+  std::vector <Species> tips; // extant leaf species
+  uniform_distr_t gene_flow_distr;
+  uniform_vg_t gene_flow_random;
+  uniform_distr_t deme_choice_distr;
+  normal_distr_t gene_drift_distr;
+  normal_vg_t gene_drift_random;
+
+
   Model(const Config &c, EnvIndex rows, EnvIndex cols):
     conf(c),
     env(boost::extents[rows][cols]),
@@ -277,7 +292,10 @@ public:
 		    c.gene_flow_threshold,
 		    1.0f - c.gene_flow_threshold),
     gene_flow_random(rng, gene_flow_distr),
-    deme_choice_distr(0.0f, 1.0f)
+    deme_choice_distr(0.0f, 1.0f),
+    gene_drift_distr(0.0f,
+		     c.gene_drift_sd),
+    gene_drift_random(rng, gene_drift_distr)
   {
   }
 
@@ -285,14 +303,6 @@ public:
     //FIXME WIP
   }
 
-  const Config &conf;
-  EnvMatrix env;
-  float env_delta[max_env_dims] = {0.0f};
-  std::vector <Species> roots; // Initial species
-  std::vector <Species> tips; // extant leaf species
-  uniform_distr_t gene_flow_distr;
-  gene_flow_vg_t gene_flow_random;
-  uniform_distr_t deme_choice_distr;
 
   // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
   // FIXME make rng stuff configurable so it can be deterministic for testing
@@ -360,8 +370,9 @@ public:
   }
 
   void do_genetc_drift(Deme &deme) {
-    // TODO STUB
-    // genetic drift
+    float * gp = deme.genetics.genetic_position;
+    for (int i=0; i < conf.genetic_dims; gp++, i++)
+      *gp += gene_drift_random();
   }
 
 
