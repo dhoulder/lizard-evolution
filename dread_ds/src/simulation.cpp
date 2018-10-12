@@ -23,23 +23,12 @@
 #include <iomanip>
 
 #include "simulation.h"
+#include "model-config.h"
 
 using DreadDs::Simulation;
-
-static const int max_env_dims = 2; // Max environment layers (e.g. 2
-				   // for temperature, precipitation)
-static const int max_genetic_dims= 3; // Max number of abstract genetic axes
-
-
-struct EnvChange {
-  double ramp = 0.0; // linear environment change per time step
-  float sine_period = 4.0f; // wavelength of sinusoidal environment
-			    // change in time steps
-  float sine_offset = 0.0f; // shift sinusoidal change by this
-			    // fraction of the wavelength. Use 0.25
-			    // for cos()
-  float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
-};
+using DreadDs::Config;
+using DreadDs::max_env_dims;
+using DreadDs::max_genetic_dims;
 
 typedef boost::random::mt19937 rng_eng_t;
 typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
@@ -48,20 +37,6 @@ typedef boost::random::normal_distribution<float> normal_distr_t;
 typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
 
 static rng_eng_t rng; // FIXME seed?
-
-struct Config {
-  // Parameters for a simulation run.
-  int debug = 4; // FIXME
-  int env_dims = 1; // must be <= max_env_dims
-  int genetic_dims = max_genetic_dims; // <= max_genetic_dims
-  EnvChange env_change[max_env_dims];
-
-  float gene_flow_threshold = 0.001f;
-  float gene_flow_zero_distance = 5.0f;
-  float niche_evolution_rate = 0.1;
-  float gene_drift_sd = 1.0f; // FIXME use timestep size
-};
-
 
 struct EnvCell {
   // has to be a class|struct to keep boost::multi_array allocator happy

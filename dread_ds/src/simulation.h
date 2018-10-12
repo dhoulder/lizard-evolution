@@ -4,8 +4,8 @@
    DREaD_ds model API
  */
 
-#ifndef DREADDS_H
-#define DREADDS_H
+#ifndef DREADDS_SIMULATION_H
+#define DREADDS_SIMULATION_H
 
 #include <memory>
 
