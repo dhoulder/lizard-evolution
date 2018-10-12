@@ -24,6 +24,8 @@
 
 #include "dread_ds.h"
 
+using DreadDs::Simulation;
+
 static const int max_env_dims = 2; // Max environment layers (e.g. 2
 				   // for temperature, precipitation)
 static const int max_genetic_dims= 3; // Max number of abstract genetic axes
@@ -267,7 +269,7 @@ public:
 
 };
 
-class DreadDs::Model {
+class Simulation::Model {
 public:
 
   const Config &conf;
@@ -524,16 +526,17 @@ public:
 
 static const Config default_config;
 
-DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env grid
+Simulation::Simulation(int cols, int rows): // FIXME rows cols should come from env grid
   current_step(0),
   // TODO load config
   model(new Model(default_config, cols, rows)) {
 
   // TODO load env
 
-  // TODO initialise env
+  // TODO load initial species and  locations
 
-  // TODO initialise roots
+  // TODO initialise roots, tips
+
   {
     // FIXME STUB init tips
     model->tips.push_back(Species(1.0f, 0.2f));
@@ -544,10 +547,10 @@ DreadDs::DreadDs(int cols, int rows): // FIXME rows cols should come from env gr
 
 }
 
-DreadDs::~DreadDs() = default;
+Simulation::~Simulation() = default;
 
 
-int DreadDs::step() {
+int Simulation::step() {
   model->update_environment(current_step);
 
   for (auto && species: model->tips) {
@@ -577,7 +580,7 @@ int DreadDs::step() {
 }
 
 
-int DreadDs::run(int n_steps) {
+int Simulation::run(int n_steps) {
   for (int final = current_step + n_steps;
        current_step < final; ) {
     // FIXME STUB. needs some way to stop when done
