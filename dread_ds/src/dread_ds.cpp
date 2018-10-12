@@ -352,11 +352,11 @@ public:
   }
 
 
-  void evovle_towards_niche(Deme &deme, const EnvCell &env) {
-    // TODO STUB
-    // apply niche selection
-
-
+  void evolve_towards_niche(Deme &deme, const EnvCell &env) {
+    // apply niche selection pressure
+    float *nc =  deme.genetics.niche_centre;
+    for (int i=0; i < conf.env_dims; nc++, i++)
+      *nc += (env.v[i] - *nc) * conf.niche_evolution_rate;
   }
 
   void do_genetc_drift(Deme &deme) {
@@ -379,8 +379,9 @@ public:
 
       // Iterate over all demes (sort of "sub species") in the cell
       for (auto &&deme:  deme_cell.second) {
-	evovle_towards_niche(deme, source_env);
+	evolve_towards_niche(deme, source_env);
 	// TODO check for extinction. Remove from DemeMap
+	// CHECK update abundance?
 	do_genetc_drift(deme);
 
 	// "disperse" into the same cell. This becomes a primary deme
