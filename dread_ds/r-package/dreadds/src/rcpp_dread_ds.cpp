@@ -1,7 +1,7 @@
 
 #include <Rcpp.h>
 
-#include <dread_ds.h>
+#include <simulation.h>
 
 using namespace Rcpp;
 

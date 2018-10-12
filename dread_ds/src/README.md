@@ -3,7 +3,7 @@
 This directory contains C++ source code that implements the DREaD_ds
 evolution model and provides an API in the form of a runtime library.
 
-See ./dread_ds.h for API usage.
+See ./simulation.h for API usage.
 
 ### Prerequisites
 

@@ -22,7 +22,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include "dread_ds.h"
+#include "simulation.h"
 
 using DreadDs::Simulation;
 

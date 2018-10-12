@@ -3,7 +3,7 @@ project(dread_ds)
 find_package (Boost 1.65 REQUIRED)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_library(dread_ds dread_ds.cpp)
+add_library(dread_ds simulation.cpp)
 target_link_libraries(dread_ds ${Boost_LIBRARIES})
 
 add_executable(test_dd test.cpp)
