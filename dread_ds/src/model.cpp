@@ -330,3 +330,34 @@ void Model::merge(std::shared_ptr<DemeMap> dm) {
     // FIXME CHECK extinction??? check this against spec.
   }
 }
+
+
+int Model::do_step() {
+  /**
+   * Execute one time step of the model
+   */
+
+  update_environment(step);
+  for (auto && species: tips) {
+    auto target = disperse(species);
+    // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
+
+    // merge demes in each cell that are within genetic tolerance.
+    merge(target);
+
+    // TODO? can do this row-lagged in the dispersal loop, providing we
+    // stay far enough behind the dispersal area
+    // TODO?? do this in another thread?
+
+    // Finished with source demes now - replace with target;
+    species.demes = target;
+
+    // TODO competition/co-occurrence. (see 3.5)
+
+    // TODO speciate.
+    // Make sure iterator doesn't see this.
+  }
+
+  ++step;
+  return step;
+}

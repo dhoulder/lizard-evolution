@@ -139,14 +139,8 @@ namespace DreadDs {
   public:
     const Config &conf;
     EnvMatrix env;
-    float env_delta[max_env_dims] = {0.0f};
     std::vector <Species> roots; // Initial species
     std::vector <Species> tips; // extant leaf species
-    uniform_distr_t gene_flow_distr;
-    uniform_vg_t gene_flow_random;
-    uniform_distr_t deme_choice_distr;
-    normal_distr_t gene_drift_distr;
-    normal_vg_t gene_drift_random;
 
     Model(const Config &c, EnvIndex rows, EnvIndex cols);
 
@@ -154,13 +148,21 @@ namespace DreadDs {
     //FIXME WIP
     }
 
-    void update_environment(int time_step);
-
-    std::shared_ptr<DemeMap> disperse(Species &species);
-
-    void merge(std::shared_ptr<DemeMap> dm);
+    /**
+     * Execute one time step of the model.
+     * Returns: time step just executed. First step is 1.
+     */
+    int do_step();
 
   private:
+    int step = 0;
+    float env_delta[max_env_dims] = {0.0f};
+    uniform_distr_t gene_flow_distr;
+    uniform_vg_t gene_flow_random;
+    uniform_distr_t deme_choice_distr;
+    normal_distr_t gene_drift_distr;
+    normal_vg_t gene_drift_random;
+
     EnvCell get_env(const Location &loc);
     float niche_suitability(const EnvCell &cell, const Deme::Genetics &g);
     void evolve_towards_niche(Deme &deme, const EnvCell &env);
@@ -169,6 +171,9 @@ namespace DreadDs {
     float gene_flow_probability(float distance);
     float genetic_distance(const Deme &d1, const Deme &d2);
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
+    void update_environment(int time_step);
+    std::shared_ptr<DemeMap> disperse(Species &species);
+    void merge(std::shared_ptr<DemeMap> dm);
   };
 }
 #endif

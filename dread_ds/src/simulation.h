@@ -30,9 +30,7 @@ namespace DreadDs {
     int run(int n_steps);
 
   private:
-    int step();
     std::unique_ptr<Model> model;
-    int current_step;
   };
 }
 
