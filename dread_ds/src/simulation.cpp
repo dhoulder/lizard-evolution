@@ -4,35 +4,18 @@
  *  Implementation of DREaD_ds model API. See ./README.md
  */
 
-#include <memory>
-
-#include "model-config.h"
 #include "model.h"
 #include "simulation.h"
 
 using DreadDs::Simulation;
-using DreadDs::Config;
-using DreadDs::Species;
 using DreadDs::Model;
 
-static const Config default_config;
-
-Simulation::Simulation(const char *config_file) {
-
-  // TODO load config
-
-  // TODO load env
-
-  // TODO load initial species and  locations
-
-
-  model =  std::unique_ptr<Model>(new Model(default_config, 9, 9)); // FIXME STUB
-
-  // TODO initialise roots, tips
+Simulation::Simulation(const char *config_file):
+  model(new Model(config_file))
+{
 
   {
-    // FIXME STUB init tips
-    model->tips.push_back(Species(1.0f, 0.2f));
+    // FIXME STUB
     if (model->conf.debug > 3) {
       model->tips.back().print_kernel();
     }

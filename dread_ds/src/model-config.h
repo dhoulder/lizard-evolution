@@ -61,6 +61,20 @@ namespace DreadDs {
     float gene_flow_zero_distance = 5.0f;
     float niche_evolution_rate = 0.1;
     float gene_drift_sd = 1.0f; // FIXME use timestep size
+
+    int rows = 0; // FIXME set these from env
+    int cols = 0;
+
+
+    Config(const char *filename) {
+      // FIXME STUB
+      // TODO load config
+
+
+      rows =3;
+      cols = 4;
+
+    }
   };
 
 }

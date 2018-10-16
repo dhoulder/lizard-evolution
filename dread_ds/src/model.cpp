@@ -100,21 +100,29 @@ Species::Species(float max_dispersal_radius,
 }
 
 
-Model::Model(const Config &c, EnvIndex rows, EnvIndex cols):
-  conf(c),
-  env(boost::extents[rows][cols]),
+Model::Model(const char *config_file):
+  conf(Config(config_file)),
+  env(boost::extents[conf.rows][conf.cols]),
   // Generate random values between [gene_flow_threshold,
   // 1-gene_flow_threshold] to effectively apply high and low
   // cutoffs when comparing against probability below.
   gene_flow_distr(
-		  c.gene_flow_threshold,
-		  1.0f - c.gene_flow_threshold),
+		  conf.gene_flow_threshold,
+		  1.0f - conf.gene_flow_threshold),
   gene_flow_random(rng, gene_flow_distr),
   deme_choice_distr(0.0f, 1.0f),
   gene_drift_distr(0.0f,
-		   c.gene_drift_sd),
+		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
+      // TODO load env
+
+      // FIXME setup env
+      // TODO load initial species and  locations
+
+      // TODO initialise roots, tips from stuff in conf
+      tips.push_back(Species(1.0f, 0.2f));       // FIXME STUB
+
 }
 
 // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html

@@ -137,12 +137,12 @@ namespace DreadDs {
 
   class Model {
   public:
-    const Config &conf;
+    const Config conf;
     EnvMatrix env;
     std::vector <Species> roots; // Initial species
     std::vector <Species> tips; // extant leaf species
 
-    Model(const Config &c, EnvIndex rows, EnvIndex cols);
+    Model(const char *config_file);
 
     ~Model() {
     //FIXME WIP

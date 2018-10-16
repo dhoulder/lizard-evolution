@@ -26,7 +26,7 @@ namespace DreadDs {
     //
     // Arguments: n_steps: number of time steps to run for.
     //
-    // Returns: time step step of final iteration.
+    // Returns: time step of final iteration.
     int run(int n_steps);
 
   private:
