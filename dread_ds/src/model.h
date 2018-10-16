@@ -20,7 +20,9 @@
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
+#include "model-limits.h"
 #include "model-config.h"
+#include "species-params.h"
 
 namespace DreadDs {
 
