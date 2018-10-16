@@ -1,4 +1,4 @@
-// -*-c++-*-
+// -*- coding: utf-8; Mode: c++  -*-
 
 #ifndef DREADDS_MODEL_CONFIG_H
 #define DREADDS_MODEL_CONFIG_H

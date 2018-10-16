@@ -9,7 +9,7 @@ using namespace Rcpp;
 List dreadds() {
   // FIXME STUB
 
-  DreadDs::Simulation model(3, 5);
+  DreadDs::Simulation model("FIXME");
 
   int final_step = model.run(7);
 
