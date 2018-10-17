@@ -5,13 +5,20 @@
  */
 
 #include "model.h"
+#include "model-args.h"
 #include "simulation.h"
 
 using DreadDs::Simulation;
 using DreadDs::Model;
 
-Simulation::Simulation(const char *config_file):
-  model(new Model(config_file))
+Simulation::Simulation(const char *config_path,
+		       const filename_vec &env_inputs,
+		       const filename_vec &species_inputs,
+		       const char *output_path):
+  model(new Model(config_path,
+		  env_inputs,
+		  species_inputs,
+		  output_path))
 {
 
   {

@@ -4,25 +4,17 @@
  *  Implementation of DREaD_ds model. See ./README.md
  */
 #include <memory>
-#include <vector>
-#include <list>
-#include <map>
 #include <math.h>
 
 // FIXME for debugging
 #include <iostream>
 #include <iomanip>
 
+#include "model-args.h"
 #include "model-config.h"
 #include "model.h"
 
-using DreadDs::Species;
-using DreadDs::Model;
-using DreadDs::Config;
-using DreadDs::EnvCell;
-using DreadDs::Deme;
-using DreadDs::DemeList;
-using DreadDs::DemeMap;
+using namespace DreadDs;
 
 namespace  DreadDs  {
 
@@ -100,9 +92,17 @@ Species::Species(float max_dispersal_radius,
 }
 
 
-Model::Model(const char *config_file):
-  conf(Config(config_file)),
-  env(boost::extents[conf.rows][conf.cols]),
+static std::unique_ptr <EnvMatrix> load_env(const filename_vec &env_inputs) {
+  int rows = 5, cols = 6; // FIXME STUB
+  return std::unique_ptr<EnvMatrix> (new EnvMatrix(boost::extents[rows][cols]));
+}
+
+Model::Model(const char *config_path,
+	     const filename_vec &env_inputs,
+	     const filename_vec &species_inputs,
+	     const char *output_path):
+  conf(Config(config_path)),
+  env(load_env(env_inputs)),
   // Generate random values between [gene_flow_threshold,
   // 1-gene_flow_threshold] to effectively apply high and low
   // cutoffs when comparing against probability below.
@@ -115,13 +115,14 @@ Model::Model(const char *config_file):
 		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
-      // TODO load env
 
-      // FIXME setup env
-      // TODO load initial species and  locations
-
-      // TODO initialise roots, tips from stuff in conf
-      tips.push_back(Species(1.0f, 0.2f));       // FIXME STUB
+  // TODO load initial species and  locations
+  for (const char *filename: species_inputs) {
+    // TODO load species from file(s). may need access to env
+    tips.push_back(Species(1.0f, 0.2f));       // FIXME STUB. emplace_back ???
+    // FIXME roots too
+  }
+  // TODO open outpuit dir|file
 
 }
 
@@ -140,13 +141,13 @@ void Model::update_environment(int time_step) {
 			       ((double)c->sine_offset +
 				(double)time_step/c->sine_period)));
     if (conf.debug > 3)
-      std::cout << time_step << " env " << *ed << std::endl;
+      std::cout << time_step << " env delta " << *ed << std::endl;
   }
 }
 
 EnvCell Model::get_env(const Location &loc) {
   EnvCell ec;
-  const EnvCell &base_env =  env[loc.y][loc.x];
+  const EnvCell &base_env =  (*env)[loc.y][loc.x];
   for (int i =0; i < conf.env_dims; i++)
     ec.v[i] =  base_env.v[i] + env_delta[i];
   return ec;
@@ -182,11 +183,11 @@ static inline float dispersal_abundance(float source_abundance,
 }
 
 
-void Model::evolve_towards_niche(Deme &deme, const EnvCell &env) {
+void Model::evolve_towards_niche(Deme &deme, const EnvCell &ec) {
   // apply niche selection pressure
   float *nc =  deme.genetics.niche_centre;
   for (int i=0; i < conf.env_dims; nc++, i++)
-    *nc += (env.v[i] - *nc) * conf.niche_evolution_rate;
+    *nc += (ec.v[i] - *nc) * conf.niche_evolution_rate;
 }
 
 void Model::do_genetc_drift(Deme &deme) {
@@ -230,7 +231,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 	new_loc.x = loc.x + k.x;
 	new_loc.y = loc.y + k.y;
 	if (new_loc.x < 0 || new_loc.y < 0 ||
-	    new_loc.x >= env.shape()[1] || new_loc.y >= env.shape()[0])
+	    new_loc.x >= env->shape()[1] || new_loc.y >= env->shape()[0])
 	  continue;
 	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
 	(*target)[new_loc].emplace_back(deme,

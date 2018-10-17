@@ -8,6 +8,9 @@
 #define DREADDS_SIMULATION_H
 
 #include <memory>
+#include <vector>
+
+#include "model-args.h"
 
 namespace DreadDs {
 
@@ -19,7 +22,10 @@ namespace DreadDs {
     const char *const version = "0.01";
 
     // Configure and initialise the simulation.
-    Simulation(const char *config_file);
+    Simulation(const char *config_path,
+	       const filename_vec &env_inputs,
+	       const filename_vec &species_inputs,
+	       const char *output_path);
     ~Simulation();
 
     // Run the simulation for a number of time steps.

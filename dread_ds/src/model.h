@@ -23,6 +23,7 @@
 #include "model-limits.h"
 #include "model-config.h"
 #include "species-params.h"
+#include "model-args.h"
 
 namespace DreadDs {
 
@@ -140,11 +141,14 @@ namespace DreadDs {
   class Model {
   public:
     const Config conf;
-    EnvMatrix env;
+    std::unique_ptr <EnvMatrix> env;
     std::vector <Species> roots; // Initial species
     std::vector <Species> tips; // extant leaf species
 
-    Model(const char *config_file);
+    Model(const char *config_path,
+	  const filename_vec &env_inputs,
+	  const filename_vec &species_inputs,
+	  const char *output_path);
 
     ~Model() {
     //FIXME WIP

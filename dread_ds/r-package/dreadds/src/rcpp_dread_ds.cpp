@@ -9,11 +9,16 @@ using namespace Rcpp;
 List dreadds() {
   // FIXME STUB
 
-  DreadDs::Simulation model("FIXME");
+  DreadDs::filename_vec env_inputs(1, "JUNK");
+  DreadDs::filename_vec species_inputs(1, "JUNK");
 
-  int final_step = model.run(7);
+  DreadDs::Simulation sim("config.yml",
+			    env_inputs,  species_inputs,
+			    "model-test-out.junk");
 
-  CharacterVector x = CharacterVector::create("dreadds STUB", model.version);
+  int final_step = sim.run(7);
+
+  CharacterVector x = CharacterVector::create("dreadds STUB", sim.version);
   List z            = List::create(final_step) ;
 
   return z ;
