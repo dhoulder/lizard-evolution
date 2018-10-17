@@ -33,8 +33,6 @@ namespace DreadDs {
     float niche_evolution_rate = 0.1;
     float gene_drift_sd = 1.0f; // FIXME use timestep size
 
-    std::vector<SpeciesParameters> initial_species;
-
     Config(const char *filename) {
       // FIXME STUB
       // TODO load config

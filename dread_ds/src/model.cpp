@@ -59,48 +59,10 @@ namespace  DreadDs  {
   };
 }
 
-static float dispersal_distance(int x, int y) {
-  // Replace with some other distance metric if required.
-  return sqrt(x*x + y*y);
-}
-
-void Species::setup_dispersal() {
-  // Calculate dispersal kernel
-  // TODO only really have to store one quadrant (perhaps only one octant)
-  int r = (int) (ceil(max_dispersal_radius_) + 0.5);
-  for (int i = -r; i <= r; ++i)
-    for (int j = -r; j <= r; ++j) {
-      if (!(i || j))
-	// dispersal into same-cell is a special case
-	continue;
-      float dd = dispersal_distance(i, j);
-      if (dd <= max_dispersal_radius_) {
-	dk.push_back(DispersalWeight {
-	    i, j,
-	      1.0f - ((1.0f - dispersal_min_) * dd/max_dispersal_radius_)});
-      }
-    }
-}
-
-Species::Species(float max_dispersal_radius,
-		 float dispersal_min):
-  max_dispersal_radius_(max_dispersal_radius),
-  dispersal_min_(dispersal_min),
-  demes(new(DemeMap))
-{
-  setup_dispersal();
-}
-
-
-static std::unique_ptr <EnvMatrix> load_env(const filename_vec &env_inputs) {
-  int rows = 5, cols = 6; // FIXME STUB
-  return std::unique_ptr<EnvMatrix> (new EnvMatrix(boost::extents[rows][cols]));
-}
-
 Model::Model(const char *config_path,
 	     const filename_vec &env_inputs,
 	     const filename_vec &species_inputs,
-	     const char *output_path):
+	     const char *output_path_arg):
   conf(Config(config_path)),
   env(load_env(env_inputs)),
   // Generate random values between [gene_flow_threshold,
@@ -115,15 +77,11 @@ Model::Model(const char *config_path,
 		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
-
-  // TODO load initial species and  locations
   for (const char *filename: species_inputs) {
-    // TODO load species from file(s). may need access to env
-    tips.push_back(Species(1.0f, 0.2f));       // FIXME STUB. emplace_back ???
+    tips.emplace_back(filename, env.get());
     // FIXME roots too
   }
-  // TODO open outpuit dir|file
-
+  output_path = output_path_arg;
 }
 
 // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
@@ -203,7 +161,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
    * neighbouring cells, weighted by environmental niche
    * suitability. This can result in several demes per cell.
    */
-  auto target = std::make_shared <DemeMap>();
+  auto target = std::make_shared <DemeMap>(); // FIXME not C++11
   // Iterate over all cells where this species occurs
   for (auto &&deme_cell: *(species.demes)) {
     const Location &loc = deme_cell.first;

@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <list>
+#include <string>
 
 #include "boost/multi_array.hpp"
 #include <boost/random/mersenne_twister.hpp>
@@ -41,6 +42,8 @@ namespace DreadDs {
   typedef int Timestep;
   typedef boost::multi_array<EnvCell, 2> EnvMatrix;
   typedef EnvMatrix::index EnvIndex;
+
+  std::unique_ptr <EnvMatrix> load_env(const filename_vec &env_inputs);
 
   struct Location {
     int x;
@@ -105,8 +108,8 @@ namespace DreadDs {
       float population; // total population across all occupied cells
     };
 
-    const float max_dispersal_radius_;
-    const float dispersal_min_;
+    float max_dispersal_radius;
+    float dispersal_min;
 
     Species *parent = NULL;
     std::shared_ptr <Species> left_child = NULL;
@@ -125,8 +128,7 @@ namespace DreadDs {
 
     DispersalKernel dk;
 
-    Species(float max_dispersal_radius,
-	    float dispersal_min = 0.2f);
+    Species(const char *filename, EnvMatrix *env);
 
     void print_kernel() { // FIXME debugging
       for (auto &&v: dk)
@@ -144,6 +146,7 @@ namespace DreadDs {
     std::unique_ptr <EnvMatrix> env;
     std::vector <Species> roots; // Initial species
     std::vector <Species> tips; // extant leaf species
+    std::string output_path;
 
     Model(const char *config_path,
 	  const filename_vec &env_inputs,
