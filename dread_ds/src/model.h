@@ -144,8 +144,8 @@ namespace DreadDs {
   public:
     const Config conf;
     std::unique_ptr <EnvMatrix> env;
-    std::vector <Species> roots; // Initial species
-    std::vector <Species> tips; // extant leaf species
+    std::vector <std::shared_ptr <Species>> roots; // Initial species
+    std::vector <std::shared_ptr <Species>> tips; // extant leaf species
     std::string output_path;
 
     Model(const char *config_path,

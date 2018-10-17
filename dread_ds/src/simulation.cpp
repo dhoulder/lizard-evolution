@@ -24,7 +24,7 @@ Simulation::Simulation(const char *config_path,
   {
     // FIXME STUB
     if (model->conf.debug > 3) {
-      model->tips.back().print_kernel();
+      model->tips.back()->print_kernel();
     }
   }
 

@@ -78,9 +78,10 @@ Model::Model(const char *config_path,
   gene_drift_random(rng, gene_drift_distr)
 {
   for (const char *filename: species_inputs) {
-    tips.emplace_back(filename, env.get());
-    // FIXME roots too
+    tips.push_back(std::shared_ptr <Species>(new Species(filename,
+							 env.get())));
   }
+  roots = tips;
   output_path = output_path_arg;
 }
 
@@ -306,7 +307,7 @@ int Model::do_step() {
 
   update_environment(step);
   for (auto && species: tips) {
-    auto target = disperse(species);
+    auto target = disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // merge demes in each cell that are within genetic tolerance.
@@ -317,7 +318,7 @@ int Model::do_step() {
     // TODO?? do this in another thread?
 
     // Finished with source demes now - replace with target;
-    species.demes = target;
+    species->demes = target;
 
     // TODO competition/co-occurrence. (see 3.5)
 

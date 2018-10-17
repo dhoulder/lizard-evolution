@@ -30,13 +30,24 @@ void Species::setup_dispersal() {
 
 Species::Species(const char *filename, EnvMatrix *env):
   demes(new(DemeMap))
+
+  /**
+   * Load initial species characteristics, locations and abundance.
+   */
+
 {
 
+  // FIXME STUB load from file (initial species and  locations)
+
+
+  // FIXME get these from file
   max_dispersal_radius = 1.0f;
   dispersal_min = 0.2f;
-
   setup_dispersal();
 
-  // FIXME STUB load from file (initial species and  locations)
+  // FIXME get niche params from file
+  // FIXME get bounding box from file
+  // FIXME create demes according to suitability.
+  // FIXME initial genetic pos = 0,0,0
 
 }
