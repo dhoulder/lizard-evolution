@@ -249,10 +249,10 @@ bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
 }
 
 
-void Model::merge(std::shared_ptr<DemeMap> dm) {
+void Model::merge(DemeMap &dm) {
   // Merge demes where gene flow occurs
 
-  for (auto &&deme_cell: *dm) {
+  for (auto &&deme_cell: dm) {
     auto &&deme_list = deme_cell.second;
     if (deme_list.size() < 1)
       continue;
@@ -311,7 +311,7 @@ int Model::do_step() {
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // merge demes in each cell that are within genetic tolerance.
-    merge(target);
+    merge(*target);
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area

@@ -111,9 +111,9 @@ namespace DreadDs {
     float max_dispersal_radius;
     float dispersal_min;
 
-    Species *parent = NULL;
     std::shared_ptr <Species> left_child = NULL;
     std::shared_ptr <Species> right_child = NULL;
+    std::weak_ptr <Species> parent;
 
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
     Timestep split = -1; // Time of speciation. parent->split is species
@@ -182,7 +182,7 @@ namespace DreadDs {
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
     void update_environment(int time_step);
     std::shared_ptr<DemeMap> disperse(Species &species);
-    void merge(std::shared_ptr<DemeMap> dm);
+    void merge(DemeMap &dm);
   };
 }
 #endif
