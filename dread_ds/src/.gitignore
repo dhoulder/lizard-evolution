@@ -5,3 +5,10 @@ cmake_install.cmake
 *.o
 *.so
 *.a
+test[-_]*
+!*.h
+!*.hpp
+!*.cpp
+!*.c
+!*.cc
+!*.cxx
