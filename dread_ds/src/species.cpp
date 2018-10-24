@@ -1,5 +1,6 @@
 // -*- coding: utf-8 -*-
 
+#include "model-config.h"
 #include "model.h"
 
 using namespace DreadDs;
@@ -9,30 +10,30 @@ static float dispersal_distance(int x, int y) {
   return sqrt(x*x + y*y);
 }
 
-void Species::setup_dispersal() {
+void Species::setup_dispersal(const SpeciesParameters &sp) {
   // Calculate dispersal kernel
   // TODO only really have to store one quadrant (perhaps only one octant)
-  int r = (int) (ceil(max_dispersal_radius) + 0.5);
+  int r = (int) (ceil(sp.max_dispersal_radius) + 0.5);
   for (int i = -r; i <= r; ++i)
     for (int j = -r; j <= r; ++j) {
       if (!(i || j))
 	// dispersal into same-cell is a special case
 	continue;
       float dd = dispersal_distance(i, j);
-      if (dd <= max_dispersal_radius) {
+      if (dd <= sp.max_dispersal_radius) {
 	dk.push_back(DispersalWeight {
 	    i, j,
-	      1.0f - ((1.0f - dispersal_min) * dd/max_dispersal_radius)});
+	      1.0f - ((1.0f - sp.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
 }
 
 
-Species::Species(const char *filename, EnvMatrix *env):
+Species::Species(const SpeciesParameters &sp, Environment *env):
   demes(new(DemeMap))
 
   /**
-   * Load initial species characteristics, locations and abundance.
+   * Load initial species values, locations and abundance.
    */
 
 {
@@ -40,14 +41,11 @@ Species::Species(const char *filename, EnvMatrix *env):
   // FIXME STUB load from file (initial species and  locations)
 
 
-  // FIXME get these from file
-  max_dispersal_radius = 1.0f;
-  dispersal_min = 0.2f;
-  setup_dispersal();
+  setup_dispersal(sp);
 
-  // FIXME get niche params from file
-  // FIXME get bounding box from file
+  // FIXME get niche params, bb, genetics,  from sp
+
   // FIXME create demes according to suitability.
-  // FIXME initial genetic pos = 0,0,0
+
 
 }

@@ -1,3 +1,2 @@
 PKG_CPPFLAGS=-I$(DREAD_DS_SRC)
-PKG_LIBS=-L$(DREAD_DS_SRC) -ldread_ds
-
+PKG_LIBS=-L$(DREAD_DS_SRC) -ldread_ds -lboost_program_options

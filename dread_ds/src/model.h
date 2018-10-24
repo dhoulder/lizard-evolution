@@ -14,6 +14,7 @@
 #include <map>
 #include <list>
 #include <string>
+#include <cmath>
 
 #include "boost/multi_array.hpp"
 #include <boost/random/mersenne_twister.hpp>
@@ -23,7 +24,6 @@
 
 #include "model-limits.h"
 #include "model-config.h"
-#include "species-params.h"
 #include "model-args.h"
 
 namespace DreadDs {
@@ -43,7 +43,20 @@ namespace DreadDs {
   typedef boost::multi_array<EnvCell, 2> EnvMatrix;
   typedef EnvMatrix::index EnvIndex;
 
-  std::unique_ptr <EnvMatrix> load_env(const filename_vec &env_inputs);
+  class Environment {
+  public:
+    EnvMatrix values;
+    // See https://en.wikipedia.org/wiki/Esri_grid
+    float xllcorner;
+    float yllcorner;
+    float cellsize;
+    float nodata_value = NAN;
+
+    Environment(int rows, int cols):
+      values(boost::extents[rows][cols]) {}
+  };
+
+  std::unique_ptr <Environment> load_env(const filename_vec &env_inputs);
 
   struct Location {
     int x;
@@ -108,8 +121,34 @@ namespace DreadDs {
       float population; // total population across all occupied cells
     };
 
-    float max_dispersal_radius;
-    float dispersal_min;
+
+    struct Characteristics {
+      struct Niche {
+	/**
+	   Describes a niche on an environmental variable for a species.
+	*/
+	// mean and sd of niche position of all demes of this species
+	float position_mean = 0.0f;
+	float position_sd = 0.0f;
+	float breadth_mean = 0.0f;
+	float breadth_sd = 0.0f;
+	// max and min values of position - (breadth  /2)
+	float max = 0.0f;
+	float min = 0.0f;
+      };
+
+      struct Genetics {
+	/**
+	   Holds the genetic position (on an abstract genetic trait) and
+	   variance of all the demes of a species.
+	*/
+	float position = 0.0f;
+	float variance = 0.0f;
+      };
+
+      Niche niche[max_env_dims];   // Niches derived from all demes of this species.
+      Genetics genetics[max_genetic_dims];
+    };
 
     std::shared_ptr <Species> left_child = NULL;
     std::shared_ptr <Species> right_child = NULL;
@@ -119,7 +158,7 @@ namespace DreadDs {
     Timestep split = -1; // Time of speciation. parent->split is species
     // origin time. -1 if not speciated
     struct {
-      SpeciesParameters params;
+      Characteristics stats;
       Range range;
     } initial, // At species origin (i.e. split from parent)
       latest; // Updated at each time step. Frozen after speciation.
@@ -128,7 +167,7 @@ namespace DreadDs {
 
     DispersalKernel dk;
 
-    Species(const char *filename, EnvMatrix *env);
+    Species(const SpeciesParameters &sp, Environment *env);
 
     void print_kernel() { // FIXME debugging
       for (auto &&v: dk)
@@ -136,22 +175,26 @@ namespace DreadDs {
     }
 
   private:
-    void setup_dispersal();
+    void setup_dispersal(const SpeciesParameters &sp);
   };
 
 
   class Model {
   public:
     const Config conf;
-    std::unique_ptr <EnvMatrix> env;
+    std::unique_ptr <Environment> env;
     std::vector <std::shared_ptr <Species>> roots; // Initial species
     std::vector <std::shared_ptr <Species>> tips; // extant leaf species
     std::string output_path;
 
     Model(const char *config_path,
 	  const filename_vec &env_inputs,
-	  const filename_vec &species_inputs,
 	  const char *output_path);
+
+    Model(const Config &conf,
+	  const filename_vec &env_inputs, // FIXME OBSOLETE. now in config
+	  const char *output_path);
+
 
     ~Model() {
     //FIXME WIP

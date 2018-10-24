@@ -7,6 +7,8 @@ See ./simulation.h for API usage.
 
 ### Prerequisites
 
+* C++11 compiler. For gcc, version 4.8 or later
+
 * Boost C++ library. See https://www.boost.org/
   See `./CMakeLists.txt` for version information.
 
@@ -18,7 +20,7 @@ See ./simulation.h for API usage.
 
 On Ubuntu these prerequisites can be installed with:
 
-  `sudo apt-get install libboost-dev cmake build-essential`
+  `sudo apt-get install libboost-dev libboost-program-options-dev cmake build-essential`
 
 
 ### Building
