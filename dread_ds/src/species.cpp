@@ -29,7 +29,7 @@ void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) 
 }
 
 
-Species::Species(const Config &conf, const SpeciesParameters &sp, Environment *env):
+Species::Species(const Config &conf, const SpeciesParameters &sp, const Environment &env):
   demes(new(DemeMap))
 
   /**

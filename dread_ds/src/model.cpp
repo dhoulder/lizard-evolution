@@ -11,6 +11,7 @@
 #include <iomanip>
 
 #include "model-config.h"
+#include "environment.h"
 #include "model.h"
 
 using namespace DreadDs;
@@ -67,7 +68,7 @@ Model::Model(const char *config_path,
 Model::Model(const Config &conf_,
 	     const char *output_path_arg):
   conf(conf_),
-  env(load_env(conf_.env_params)),
+  env(Environment(conf_.env_params)),
   // Generate random values between [gene_flow_clip,
   // 1-gene_flow_clip] to effectively apply high and low
   // cutoffs when comparing against probability below.
@@ -81,8 +82,7 @@ Model::Model(const Config &conf_,
   gene_drift_random(rng, gene_drift_distr)
 {
   for (const auto &sp: conf.initial_species) {
-    tips.push_back(std::shared_ptr <Species>(new Species(conf, sp,
-							 env.get())));
+    tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
   }
   roots = tips;
   output_path = output_path_arg;
@@ -109,7 +109,7 @@ void Model::update_environment(int time_step) {
 
 inline EnvCell Model::get_env(const Location &loc) {
   EnvCell ec;
-  const EnvCell &base_env =  (env->values)[loc.y][loc.x];
+  const EnvCell &base_env =  (env.values)[loc.y][loc.x];
   for (int i =0; i < conf.env_dims; i++)
     ec.v[i] =  base_env.v[i] + env_delta[i];
   return ec;
@@ -166,7 +166,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
    * suitability. This can result in several demes per cell.
    */
   auto target = std::make_shared <DemeMap>(); // FIXME not C++11
-  auto &&env_shape = env->values.shape();
+  auto &&env_shape = env.values.shape();
 
   // Iterate over all cells where this species occurs
   for (auto &&deme_cell: *(species.demes)) {

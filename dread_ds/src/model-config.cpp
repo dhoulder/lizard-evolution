@@ -5,7 +5,6 @@
 #include <string>
 #include <stdexcept>
 #include <utility>
-#include <sstream>
 
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
@@ -212,9 +211,7 @@ Config::Config(const char *filename) {
 
   catch(po::error & e)
     {
-      ostringstream msg;
-      msg << "Configuration parsing error: " << e.what();
-      throw ConfigError(msg.str());
+      throw ConfigError("Configuration parsing error: " + string(e.what()));
     }
 
 

@@ -16,7 +16,6 @@
 #include <string>
 #include <cmath>
 
-#include "boost/multi_array.hpp"
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/normal_distribution.hpp>
@@ -24,6 +23,7 @@
 
 #include "model-limits.h"
 #include "model-config.h"
+#include "environment.h"
 
 namespace DreadDs {
 
@@ -33,29 +33,7 @@ namespace DreadDs {
   typedef boost::random::normal_distribution<float> normal_distr_t;
   typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
 
-  struct EnvCell {
-    // has to be a class|struct to keep boost::multi_array allocator happy
-    float v[max_env_dims];
-  };
-
   typedef int Timestep;
-  typedef boost::multi_array<EnvCell, 2> EnvMatrix;
-  typedef EnvMatrix::index EnvIndex;
-
-  class Environment {
-  public:
-    EnvMatrix values;
-    // See https://en.wikipedia.org/wiki/Esri_grid
-    float xllcorner;
-    float yllcorner;
-    float cellsize;
-    float nodata_value = NAN;
-
-    Environment(int rows, int cols):
-      values(boost::extents[rows][cols]) {}
-  };
-
-  std::unique_ptr <Environment> load_env(const EnvParamsVec &env_inputs);
 
   struct Location {
     int x;
@@ -166,7 +144,7 @@ namespace DreadDs {
 
     DispersalKernel dk;
 
-    Species(const Config &conf, const SpeciesParameters &sp, Environment *env);
+    Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
 
     void print_kernel() { // FIXME debugging
       for (auto &&v: dk)
@@ -181,7 +159,7 @@ namespace DreadDs {
   class Model {
   public:
     const Config conf;
-    std::unique_ptr <Environment> env;
+    Environment env;
     std::vector <std::shared_ptr <Species>> roots; // Initial species
     std::vector <std::shared_ptr <Species>> tips; // extant leaf species
     std::string output_path;
