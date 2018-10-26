@@ -1,6 +1,8 @@
 // -*- coding: utf-8 -*-
 
 #include <fstream>
+#include <string>
+#include <iostream> // FIXME debugging
 
 #include "boost/multi_array.hpp"
 
@@ -8,18 +10,40 @@
 #include "model-config.h"
 #include "environment.h"
 
+// GDAL
+#include "gdal_priv.h"
+#include "cpl_conv.h"
+
+
+static bool gdal_reg = false;
+
 using namespace DreadDs;
 
+class Reader {
+public:
 
-static void process_header(Environment *env,
-			   std::ifstream &ifs) {
-  int rows = 5;
-  int cols = 6; // FIXME STUB
+  GDALDataset *poDataset;
+
+  Reader(const std::string &filename) {
+    if (!gdal_reg) {
+      GDALAllRegister();
+      gdal_reg = true;
+    }
+    poDataset = (GDALDataset *) GDALOpen(filename.c_str(), GA_ReadOnly);
+    if (poDataset == NULL)
+      // ~GDALDataset() should clean up everyhting
+      throw ConfigError(std::string("Cannot read environment input file ") + filename);
+  }
 
 
-  // first file determines
-  env->values.resize(boost::extents[rows][cols]);
-}
+  ~Reader() {
+    if (poDataset)
+      GDALClose(poDataset); // FIXME necessary?
+  }
+
+
+};
+
 
 Environment::Environment(const EnvParamsVec &env_inputs) {
 
@@ -31,18 +55,30 @@ Environment::Environment(const EnvParamsVec &env_inputs) {
     // first file creates env and v[0], subsequent files fill in v[1], v[2], ...
 
 
-    std::ifstream ifs(ep.grid_filename);
-    if(ifs.fail())
-      throw ConfigError("Can't open environment input file " + ep.grid_filename);
+    Reader er(ep.grid_filename);
+
 
     if (first) {
       first = false;
-      process_header(this, ifs);
+
+      values.resize(boost::extents
+		    [er.poDataset->GetRasterYSize()]
+		    [er.poDataset->GetRasterXSize()]);
+
+      std::cout << "Env dimensions rows=" << values.shape()[0] <<", cols=" << values.shape()[1] << std::endl; // FIXME
+
+      if (er.poDataset->GetGeoTransform(adfGeoTransform) != CE_None)
+	throw ConfigError("Cannot determine coordinates of cells in " + ep.grid_filename);
+
 
 
     } else {
       // FIXME WIP
     }
+
+
+    // FIXME WIP see https://gis.stackexchange.com/questions/186190/reading-1-3-arcsecond-dem-data-using-c
+
   }
 
   // FIXME WIP fail if empty (first still true)
