@@ -10,8 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include "model-args.h"
-
 namespace DreadDs {
 
   class Model; // for opaque pointer below
@@ -23,7 +21,6 @@ namespace DreadDs {
 
     // Configure and initialise the simulation.
     Simulation(const char *config_path,
-	       const filename_vec &env_inputs,
 	       const char *output_path);
     ~Simulation();
 

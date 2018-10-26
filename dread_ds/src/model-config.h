@@ -27,6 +27,8 @@ namespace DreadDs {
     float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
   };
 
+  typedef std::vector<EnvParams> EnvParamsVec;
+
   struct NicheSpec {
     float centre;
     float tolerance;
@@ -34,7 +36,6 @@ namespace DreadDs {
 
   struct SpeciesParameters {
     float max_dispersal_radius;
-    float dispersal_min;
     std::vector<NicheSpec> niche;
     float genetics[max_genetic_dims] = {0.0f};
 
@@ -53,8 +54,9 @@ namespace DreadDs {
     float gene_flow_zero_distance = 5.0f;
     float gene_drift_sd = 1.0f; // FIXME use timestep size
     float niche_evolution_rate = 0.1;
+    float dispersal_min = 0.02;
 
-    EnvParams env_params[max_env_dims];
+    EnvParamsVec env_params;
 
     std::vector<SpeciesParameters> initial_species;
 

@@ -10,7 +10,6 @@
 #include <iostream>
 #include <iomanip>
 
-#include "model-args.h"
 #include "model-config.h"
 #include "model.h"
 
@@ -60,18 +59,15 @@ namespace  DreadDs  {
 }
 
 Model::Model(const char *config_path,
-	     const filename_vec &env_inputs,
 	     const char *output_path_arg):
   Model(Config(config_path),
-	env_inputs,
 	output_path_arg) {}
 
 
 Model::Model(const Config &conf_,
-	     const filename_vec &env_inputs,
 	     const char *output_path_arg):
   conf(conf_),
-  env(load_env(env_inputs)),
+  env(load_env(conf_.env_params)),
   // Generate random values between [gene_flow_clip,
   // 1-gene_flow_clip] to effectively apply high and low
   // cutoffs when comparing against probability below.
@@ -85,7 +81,7 @@ Model::Model(const Config &conf_,
   gene_drift_random(rng, gene_drift_distr)
 {
   for (const auto &sp: conf.initial_species) {
-    tips.push_back(std::shared_ptr <Species>(new Species(sp,
+    tips.push_back(std::shared_ptr <Species>(new Species(conf, sp,
 							 env.get())));
   }
   roots = tips;
@@ -99,7 +95,7 @@ void Model::update_environment(int time_step) {
   // Set env_delta for the current time step. env_delta gets applied
   // to every cell in env
   float *ed  = env_delta;
-  const EnvParams *p = conf.env_params;
+  auto p = conf.env_params.begin();
   for (int i = 0; i < conf.env_dims;
        ++i, ++p, ++ed) {
     *ed = (time_step * p->ramp) +
@@ -107,11 +103,11 @@ void Model::update_environment(int time_step) {
 			       ((double)p->sine_offset +
 				(double)time_step/p->sine_period)));
     if (conf.debug > 3)
-      std::cout << time_step << " env delta " << *ed << std::endl;
+      std::cout << "env " << i << " step " << time_step << " delta " << *ed << std::endl;
   }
 }
 
-EnvCell Model::get_env(const Location &loc) {
+inline EnvCell Model::get_env(const Location &loc) {
   EnvCell ec;
   const EnvCell &base_env =  (env->values)[loc.y][loc.x];
   for (int i =0; i < conf.env_dims; i++)

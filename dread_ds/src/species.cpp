@@ -10,7 +10,7 @@ static float dispersal_distance(int x, int y) {
   return sqrt(x*x + y*y);
 }
 
-void Species::setup_dispersal(const SpeciesParameters &sp) {
+void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) {
   // Calculate dispersal kernel
   // TODO only really have to store one quadrant (perhaps only one octant)
   int r = (int) (ceil(sp.max_dispersal_radius) + 0.5);
@@ -23,13 +23,13 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
       if (dd <= sp.max_dispersal_radius) {
 	dk.push_back(DispersalWeight {
 	    i, j,
-	      1.0f - ((1.0f - sp.dispersal_min) * dd/sp.max_dispersal_radius)});
+	      1.0f - ((1.0f - dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
 }
 
 
-Species::Species(const SpeciesParameters &sp, Environment *env):
+Species::Species(const Config &conf, const SpeciesParameters &sp, Environment *env):
   demes(new(DemeMap))
 
   /**
@@ -41,7 +41,7 @@ Species::Species(const SpeciesParameters &sp, Environment *env):
   // FIXME STUB load from file (initial species and  locations)
 
 
-  setup_dispersal(sp);
+  setup_dispersal(conf.dispersal_min, sp);
 
   // FIXME get niche params, bb, genetics,  from sp
 

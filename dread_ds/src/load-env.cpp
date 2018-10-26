@@ -1,15 +1,16 @@
 // -*- coding: utf-8 -*-
 
+#include "model-config.h"
 #include "model.h"
 
 using namespace DreadDs;
 namespace DreadDs {
 
-  std::unique_ptr <Environment> load_env(const filename_vec &env_inputs) {
+  std::unique_ptr <Environment> load_env(const EnvParamsVec &env_inputs) {
 
     bool first = true;
     std::unique_ptr<Environment> env;
-    for (const char *filename: env_inputs) {
+    for (const auto &ep: env_inputs) {
       // FIXME WIP load cells from file
 
       // first file defines bb. subsequent files must match

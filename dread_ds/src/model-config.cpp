@@ -46,8 +46,7 @@ Config::Config(const char *filename) {
     vector <float>
       env_sine_period, env_sine_offset, env_sine_amplitude,
       species_north, species_east, species_south, species_west,
-      species_max_dispersal_radius,
-      species_dispersal_min;
+      species_max_dispersal_radius;
 
     po::options_description config("Configuration");
     config.add_options()
@@ -70,6 +69,8 @@ Config::Config(const char *filename) {
       ("niche_evolution_rate", po::value<float>(&niche_evolution_rate)->required(),
        "Speed of adaptation to niche as a fraction of the distance to niche centre per timestep")
 
+      ("dispersal_min", po::value<float>(&dispersal_min)->required(),
+       "Minimum dispersal amount (0…1)")
 
       // Environment input. One or more sets of these are supported.
 
@@ -101,9 +102,6 @@ Config::Config(const char *filename) {
       ("species.max_dispersal_radius", po::value<vector<float>>(&species_max_dispersal_radius)->required(),
        "Maximum dispersal radius in grid cells")
 
-      ("species.dispersal_min", po::value<vector<float>>(&species_dispersal_min)->required(),
-       "Minimum dispersal amount (0…1)") // FIXME global, not per-species
-
       ("species.north", po::value<vector<float>>(&species_north)->required(),
        "Northern boundary of initial species bounding rectangle in grid coordinates")
 
@@ -133,15 +131,19 @@ Config::Config(const char *filename) {
     if (env_dims < 0)
       throw ConfigError("No environment grids");
 
+    if (dispersal_min < 0.0 || dispersal_min > 1.0)
+      throw ConfigError("dispersal_min must be between 0 and 1");
+
     try {
-      EnvParams *ep = env_params;
-      for (int i = 0; i < env_dims; ++i, ++ep) {
-	ep->grid_filename = env_grids[i];
+      for (int i = 0; i < env_dims; ++i) {
+	EnvParams ep;
+	ep.grid_filename = env_grids[i];
 	// vector.at(i) will throw std::out_of_range when required
-	ep->ramp = env_ramp.at(i);
-	ep->sine_period = env_sine_period.at(i);
-	ep->sine_offset = env_sine_offset.at(i);
-	ep->sine_amplitude = env_sine_amplitude.at(i);
+	ep.ramp = env_ramp.at(i);
+	ep.sine_period = env_sine_period.at(i);
+	ep.sine_offset = env_sine_offset.at(i);
+	ep.sine_amplitude = env_sine_amplitude.at(i);
+	env_params.push_back(ep);
       }
     }
     catch (const out_of_range& oor) {
@@ -160,9 +162,6 @@ Config::Config(const char *filename) {
 	sp.max_dispersal_radius = species_max_dispersal_radius.at(i);
 	if (sp.max_dispersal_radius < 0.0)
 	  throw ConfigError("species.max_dispersal_radius must not be negative");
-	sp.dispersal_min = species_dispersal_min.at(i);
-	if (sp.dispersal_min < 0.0 || sp.dispersal_min > 1.0)
-	  throw ConfigError("species.dispersal_min must be between 0 and 1");
 
 	// Need species niche for each environment dimension, so
 	// they're supplied as CSV in the config file
@@ -188,7 +187,7 @@ Config::Config(const char *filename) {
     }
     catch (const out_of_range &e) {
       throw ConfigError("Each species.niche needs a corresponding "
-			"species.niche_breadth, species.max_dispersal_radius, species.dispersal_min, "
+			"species.niche_breadth, species.max_dispersal_radius, "
 			"species.north, species.east, species.south, species.west");
     }
 

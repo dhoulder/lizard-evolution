@@ -24,7 +24,6 @@
 
 #include "model-limits.h"
 #include "model-config.h"
-#include "model-args.h"
 
 namespace DreadDs {
 
@@ -56,7 +55,7 @@ namespace DreadDs {
       values(boost::extents[rows][cols]) {}
   };
 
-  std::unique_ptr <Environment> load_env(const filename_vec &env_inputs);
+  std::unique_ptr <Environment> load_env(const EnvParamsVec &env_inputs);
 
   struct Location {
     int x;
@@ -167,7 +166,7 @@ namespace DreadDs {
 
     DispersalKernel dk;
 
-    Species(const SpeciesParameters &sp, Environment *env);
+    Species(const Config &conf, const SpeciesParameters &sp, Environment *env);
 
     void print_kernel() { // FIXME debugging
       for (auto &&v: dk)
@@ -175,7 +174,7 @@ namespace DreadDs {
     }
 
   private:
-    void setup_dispersal(const SpeciesParameters &sp);
+    void setup_dispersal(float dispersal_min, const SpeciesParameters &sp);
   };
 
 
@@ -188,11 +187,9 @@ namespace DreadDs {
     std::string output_path;
 
     Model(const char *config_path,
-	  const filename_vec &env_inputs,
 	  const char *output_path);
 
     Model(const Config &conf,
-	  const filename_vec &env_inputs, // FIXME OBSOLETE. now in config
 	  const char *output_path);
 
 
