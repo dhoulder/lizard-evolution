@@ -6,10 +6,14 @@
  * A "deme" is a population in a cell
  */
 
+
+#include <iostream> // FIXME debugging
+
 #include <list>
 #include <map>
 
 #include "model-limits.h"
+#include "model-config.h"
 
 namespace DreadDs {
 
@@ -30,10 +34,27 @@ namespace DreadDs {
     */
   public:
 
-    struct Genetics {
+    class Genetics {
+    public:
       float niche_centre[max_env_dims];
       float niche_tolerance[max_env_dims];
       float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+
+      Genetics() {}
+      Genetics(float v):
+	niche_centre {v},
+	niche_tolerance {0.0f},
+	genetic_position {0.0f} {
+
+	  // FIXME debugging - just checking brace init ok for these arrays
+	  std::cout << "\n\ngenetics:\n";
+	  for (int i=0; i<max_env_dims; ++i)
+	    std::cout << niche_centre[i] << " " << niche_tolerance[i] << " " << genetic_position[i] << std::endl;
+
+
+	}
+      Genetics(const SpeciesParameters &sp);
+      float niche_suitability(const Config &conf, const float *env);
     };
 
     Genetics genetics;
@@ -48,6 +69,8 @@ namespace DreadDs {
       amount = new_amount;
       is_primary = new_primary;
     }
+
+
   };
 
   // Cells occupied by demes of a species, Several demes can occupy a

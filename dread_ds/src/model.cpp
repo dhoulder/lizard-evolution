@@ -28,12 +28,15 @@ namespace  DreadDs  {
      */
   private:
     const Config &c;
-    Deme::Genetics g = {{0.0f}, {0.0f}, {0.0f}};
-    float total_abundance = 0.0f;
+    Deme::Genetics g;
+    float total_abundance;
 
   public:
     DemeMixer(const Config &conf, const Deme &primary):
-      c(conf) {
+      c {conf},
+      g {0.0f},
+      total_abundance {0.0f}
+    {
       contribute(primary);
     }
 
@@ -117,28 +120,6 @@ inline EnvCell Model::get_env(const Location &loc) {
   return ec;
 }
 
-static float suitability(float env_value, float niche_centre, float niche_tolerance) {
-  // The suitability function is cos() from -π to π, scaled to the
-  // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
-  // 0 at niche_centre±niche_tolerance
-    return
-      (fabs(niche_centre - env_value) > niche_tolerance)?
-      0.0f:
-      0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
-}
-
-float Model::niche_suitability(const EnvCell &cell, const Deme::Genetics &g) {
-  // compute geometric mean of all niche suitabilities
-  float v = 1.0f;
-  for (int i = 0; i < conf.env_dims; i++)
-    v *= suitability(cell.v[i],
-		     g.niche_centre[i],
-		     g.niche_tolerance[i]);
-  return pow(v,
-	     1.0f / (float)conf.env_dims);
-}
-
-
 static inline float dispersal_abundance(float source_abundance,
 					float suitability,
 					float distance_weight) {
@@ -185,12 +166,14 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
       // "disperse" into the same cell. This becomes a primary deme
       // after dispersal due to incumbency. Note that this inserts at
       // the front of the list. Any primary demes will be at the front.
-      (*target)[loc].emplace_front(deme,
-				   dispersal_abundance(deme.amount,
-						       niche_suitability(source_env,
-									 deme.genetics),
-						       1.0), // same cell, no travel cost
-				   true);
+      (*target)[loc].emplace_front(
+	      deme,
+	      dispersal_abundance(
+		      deme.amount,
+		      deme.genetics.niche_suitability(
+			      conf, source_env.v),
+		      1.0), // same cell, no travel cost
+	      true);
       // Disperse into the area around this cell
       for (auto &&k: species.dk) {
 	Location new_loc;
@@ -200,12 +183,14 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 	    new_loc.x >= env_shape[1] || new_loc.y >= env_shape[0])
 	  continue;
 	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
-	(*target)[new_loc].emplace_back(deme,
-					dispersal_abundance(deme.amount,
-							    niche_suitability(get_env(new_loc),
-									      deme.genetics),
-							    k.weight),
-					false);
+	(*target)[new_loc].emplace_back(
+		deme,
+		dispersal_abundance(
+			deme.amount,
+			deme.genetics.niche_suitability(
+				conf, get_env(new_loc).v),
+			k.weight),
+		false);
       }
     }
   }
@@ -299,8 +284,9 @@ void Model::merge(DemeMap &dm) {
       mixer.mix_to(first_deme);
     }
     // update abundance according to current environment
-    first_deme->amount = niche_suitability(get_env(loc),
-					   first_deme->genetics);
+    first_deme->amount = first_deme->genetics.niche_suitability(
+	    conf, get_env(loc).v);
+
 
     // FIXME CHECK extinction??? check this against spec.
   }

@@ -67,7 +67,6 @@ namespace DreadDs {
     normal_vg_t gene_drift_random;
 
     EnvCell get_env(const Location &loc);
-    float niche_suitability(const EnvCell &cell, const Deme::Genetics &g);
     void evolve_towards_niche(Deme &deme, const EnvCell &env);
     void do_genetc_drift(Deme &deme);
     Deme *choose_primary(DemeList &deme_list);
