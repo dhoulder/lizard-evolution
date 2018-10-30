@@ -20,7 +20,7 @@ namespace DreadDs {
   class Environment {
   public:
     EnvMatrix values;
-    double adfGeoTransform[6]; // See https://www.gdal.org/classGDALDataset.html#a5101119705f5fa2bc1344ab26f66fd1d
+    double geo_transform[6]; // See https://www.gdal.org/classGDALDataset.html#a5101119705f5fa2bc1344ab26f66fd1d
 
     Environment(const EnvParamsVec &env_inputs);
   };
