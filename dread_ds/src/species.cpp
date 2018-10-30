@@ -1,7 +1,11 @@
 // -*- coding: utf-8 -*-
 
+#include <cmath>
+
+#include "model-limits.h"
 #include "model-config.h"
-#include "model.h"
+#include "species.h"
+//#include "model.h"
 
 using namespace DreadDs;
 
@@ -29,6 +33,13 @@ void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) 
 }
 
 
+void Species::load_initial(const Config &conf, const SpeciesParameters &sp, const Environment &env) {
+
+  // FIXME STUB load from file (initial species and  locations)
+
+}
+
+
 Species::Species(const Config &conf, const SpeciesParameters &sp, const Environment &env):
   demes(new(DemeMap))
 
@@ -38,10 +49,8 @@ Species::Species(const Config &conf, const SpeciesParameters &sp, const Environm
 
 {
 
-  // FIXME STUB load from file (initial species and  locations)
-
-
   setup_dispersal(conf.dispersal_min, sp);
+  load_initial(conf, sp, env);
 
   // FIXME get niche params, bb, genetics,  from sp
 

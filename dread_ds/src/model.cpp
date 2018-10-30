@@ -12,6 +12,8 @@
 
 #include "model-config.h"
 #include "environment.h"
+#include "deme.h"
+#include "species.h"
 #include "model.h"
 
 using namespace DreadDs;

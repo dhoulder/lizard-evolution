@@ -11,10 +11,7 @@
 
 #include <memory>
 #include <vector>
-#include <map>
-#include <list>
 #include <string>
-#include <cmath>
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
@@ -24,6 +21,8 @@
 #include "model-limits.h"
 #include "model-config.h"
 #include "environment.h"
+#include "deme.h"
+#include "species.h"
 
 namespace DreadDs {
 
@@ -32,129 +31,6 @@ namespace DreadDs {
   typedef boost::random::variate_generator<rng_eng_t&, uniform_distr_t> uniform_vg_t;
   typedef boost::random::normal_distribution<float> normal_distr_t;
   typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
-
-  typedef int Timestep;
-
-  struct Location {
-    int x;
-    int y;
-
-    // Used as key in a map, so needs an ordering
-    friend bool operator< (const Location &a, const Location &b) {
-      return (a.x < b.x) || (a.x == b.x && a.y < b.y);
-    }
-  };
-
-  class Deme {
-    /**
-       Describes a genetically homogeneous population in a cell.
-    */
-  public:
-
-    struct Genetics {
-      float niche_centre[max_env_dims];
-      float niche_tolerance[max_env_dims];
-      float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
-    };
-
-    Genetics genetics;
-    float amount; // population per cell
-    bool is_primary; // indicates incumbency in a cell during dispersal
-
-    Deme(): amount(0), is_primary(false) {}
-
-    Deme(const Deme &from, float new_amount, bool new_primary):
-      Deme(from) {
-      // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
-      amount = new_amount;
-      is_primary = new_primary;
-    }
-  };
-
-
-  // Cells occupied by demes of a species, Several demes can occupy a
-  // cell, hence std::vector
-  typedef std::list <Deme> DemeList;
-  typedef std::map <Location, DemeList> DemeMap;
-
-  struct DispersalWeight {
-    // Describes dispersal propensity for (x,y) offset from origin cell
-    // at (0,0) due to distance cost.
-    int x;
-    int y;
-    float weight; // 0 to 1.0
-  };
-
-  typedef std::vector <DispersalWeight> DispersalKernel;
-
-  class Species {
-  public:
-    /**
-       Describes a species and its phylogeny
-    */
-
-    struct Range {
-      int cell_count; // number of demes (occupied cells).
-      float population; // total population across all occupied cells
-    };
-
-
-    struct Characteristics {
-      struct Niche {
-	/**
-	   Describes a niche on an environmental variable for a species.
-	*/
-	// mean and sd of niche position of all demes of this species
-	float position_mean = 0.0f;
-	float position_sd = 0.0f;
-	float breadth_mean = 0.0f;
-	float breadth_sd = 0.0f;
-	// max and min values of position - (breadth  /2)
-	float max = 0.0f;
-	float min = 0.0f;
-      };
-
-      struct Genetics {
-	/**
-	   Holds the genetic position (on an abstract genetic trait) and
-	   variance of all the demes of a species.
-	*/
-	float position = 0.0f;
-	float variance = 0.0f;
-      };
-
-      Niche niche[max_env_dims];   // Niches derived from all demes of this species.
-      Genetics genetics[max_genetic_dims];
-    };
-
-    std::shared_ptr <Species> left_child = NULL;
-    std::shared_ptr <Species> right_child = NULL;
-    std::weak_ptr <Species> parent;
-
-    Timestep extinction = -1; // Time step of extinction, or -1 if extant
-    Timestep split = -1; // Time of speciation. parent->split is species
-    // origin time. -1 if not speciated
-    struct {
-      Characteristics stats;
-      Range range;
-    } initial, // At species origin (i.e. split from parent)
-      latest; // Updated at each time step. Frozen after speciation.
-
-    std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
-
-    DispersalKernel dk;
-
-    Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
-
-    void print_kernel() { // FIXME debugging
-      for (auto &&v: dk)
-	std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
-    }
-
-  private:
-    void setup_dispersal(float dispersal_min, const SpeciesParameters &sp);
-  };
-
 
   class Model {
   public:
