@@ -127,7 +127,7 @@ Config::Config(const char *filename) {
     env_dims = env_grids.size();
     if (env_dims > max_env_dims)
       throw ConfigError("Too many environment grids");
-    if (env_dims < 0)
+    if (env_dims < 1)
       throw ConfigError("No environment grids");
 
     if (dispersal_min < 0.0 || dispersal_min > 1.0)

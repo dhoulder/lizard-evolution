@@ -34,17 +34,19 @@ namespace DreadDs {
        Describes a species and its phylogeny
     */
 
-    struct Range {
-      int cell_count; // number of demes (occupied cells).
-      float population; // total population across all occupied cells
-    };
+    class Characteristics {
+    public:
+      // Derived from demes of this species.
 
+      struct Range {
+	int cell_count; // number of demes (occupied cells).
+	float population; // total population across all occupied cells
+      };
 
-    struct Characteristics {
       struct Niche {
 	/**
-	   Describes a niche on an environmental variable for a species.
-	*/
+	 * Describes a niche on an environmental variable for a species.
+	 */
 	// mean and sd of niche position of all demes of this species
 	float position_mean = 0.0f;
 	float position_sd = 0.0f;
@@ -64,8 +66,11 @@ namespace DreadDs {
 	float variance = 0.0f;
       };
 
-      Niche niche[max_env_dims];  // Niches derived from all demes of this species.
+      Niche niche[max_env_dims];
       Genetics genetics[max_genetic_dims];
+      Range range;
+
+      void update(const Config &conf, const DemeMap &demes);
     };
 
     std::shared_ptr <Species> left_child = NULL;
@@ -75,11 +80,9 @@ namespace DreadDs {
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
     Timestep split = -1; // Time of speciation. parent->split is species
     // origin time. -1 if not speciated
-    struct {
-      Characteristics stats;
-      Range range;
-    } initial, // At species origin (i.e. split from parent)
-      latest; // Updated at each time step. Frozen after speciation.
+
+    Characteristics initial_stats; // At species origin (i.e. split from parent)
+    Characteristics latest_stats;  // Updated after each time step.
 
     std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
 
@@ -88,15 +91,19 @@ namespace DreadDs {
     Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
 
     void print_kernel() { // FIXME debugging
+      std::cout << "Dispersal kernel" << std::endl;
       for (auto &&v: dk)
 	std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
     }
 
+    inline void update_stats(const Config &conf) {
+      latest_stats.update(conf, *demes);
+    }
+
+
   private:
     void setup_dispersal(float dispersal_min, const SpeciesParameters &sp);
     void load_initial(const Config &conf, const SpeciesParameters &sp, const Environment &env);
-
-
   };
 
 }

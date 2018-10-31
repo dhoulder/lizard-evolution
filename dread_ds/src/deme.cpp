@@ -11,7 +11,7 @@ using namespace DreadDs;
 static float suitability(float env_value, float niche_centre, float niche_tolerance) {
   // The suitability function is cos() from -π to π, scaled to the
   // range 0…1.0. This gives 1.0 at niche_centre, and 0 and dy/dx ==
-  // 0 at niche_centre±niche_tolerance
+  // 0 at niche_centre ± niche_tolerance
     return
       (fabs(niche_centre - env_value) > niche_tolerance)?
       0.0f:
@@ -29,7 +29,6 @@ float Deme::Genetics::niche_suitability(const Config &conf, const EnvCell &env) 
   return pow(v,
 	     1.0f / (float)conf.env_dims);
 }
-
 
 
 Deme::Genetics::Genetics(const SpeciesParameters &sp) {

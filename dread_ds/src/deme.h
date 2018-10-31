@@ -6,9 +6,6 @@
  * A "deme" is a population in a cell
  */
 
-
-#include <iostream> // FIXME debugging
-
 #include <list>
 #include <map>
 
@@ -17,17 +14,6 @@
 #include "environment.h"
 
 namespace DreadDs {
-
-  struct Location {
-    int x;
-    int y;
-
-    // Used as key in a map, so needs an ordering
-    friend bool operator< (const Location &a, const Location &b) {
-      return (a.x < b.x) || (a.x == b.x && a.y < b.y);
-    }
-  };
-
 
   class Deme {
     /**
@@ -41,19 +27,11 @@ namespace DreadDs {
       float niche_tolerance[max_env_dims];
       float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
 
-      Genetics() {}
-      Genetics(float v):
-	niche_centre {v},
-	niche_tolerance {0.0f},
-	genetic_position {0.0f} {
-
-	  // FIXME debugging - just checking brace init ok for these arrays
-	  std::cout << "\n\ngenetics:\n";
-	  for (int i=0; i<max_env_dims; ++i)
-	    std::cout << niche_centre[i] << " " << niche_tolerance[i] << " " << genetic_position[i] << std::endl;
-
-
-	}
+      Genetics():
+	// zero everything
+	niche_centre {},
+	niche_tolerance {},
+	genetic_position {} {}
       Genetics(const SpeciesParameters &sp);
       float niche_suitability(const Config &conf, const EnvCell &env);
     };
@@ -62,7 +40,11 @@ namespace DreadDs {
     float amount; // population per cell
     bool is_primary; // indicates incumbency in a cell during dispersal
 
-    Deme(): amount(0), is_primary(false) {}
+    Deme(): amount(0.0f), is_primary(false) {}
+
+    Deme(const SpeciesParameters &sp):
+      amount(0.0f), is_primary(false),
+      genetics(sp) {}
 
     Deme(const Deme &from, float new_amount, bool new_primary):
       Deme(from) {
@@ -71,11 +53,10 @@ namespace DreadDs {
       is_primary = new_primary;
     }
 
-
   };
 
   // Cells occupied by demes of a species, Several demes can occupy a
-  // cell, hence std::vector
+  // cell, hence std::list
   typedef std::list <Deme> DemeList;
   typedef std::map <Location, DemeList> DemeMap;
 }

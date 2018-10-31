@@ -6,10 +6,6 @@
 #include <memory>
 #include <math.h>
 
-// FIXME for debugging
-#include <iostream>
-#include <iomanip>
-
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"
@@ -34,8 +30,8 @@ namespace DreadDs {
   public:
     DemeMixer(const Config &conf, const Deme &primary):
       c {conf},
-      g {0.0f},
-      total_abundance {0.0f}
+      g {},
+      total_abundance {}
     {
       contribute(primary);
     }
@@ -96,30 +92,6 @@ Model::Model(const Config &conf_,
 // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
 // FIXME make rng stuff configurable so it can be deterministic for testing
 
-void Model::update_environment(int time_step) {
-  // Set env_delta for the current time step. env_delta gets applied
-  // to every cell in env
-  float *ed = env_delta;
-  auto p = conf.env_params.begin();
-  for (int i = 0; i < conf.env_dims;
-       ++i, ++p, ++ed) {
-    *ed = (time_step * p->ramp) +
-      (p->sine_amplitude * sin(2 * M_PI *
-			       ((double)p->sine_offset +
-				(double)time_step/p->sine_period)));
-    if (conf.debug > 3)
-      std::cout << "env " << i << " step " << time_step << " delta " << *ed << std::endl;
-  }
-}
-
-inline EnvCell Model::get_env(const Location &loc) {
-  EnvCell ec;
-  const auto &&base_env = (env.values)[loc.y][loc.x];
-  for (int i =0; i < conf.env_dims; i++)
-    ec.v[i] = base_env[i] + env_delta[i];
-  return ec;
-}
-
 static inline float dispersal_abundance(float source_abundance,
 					float suitability,
 					float distance_weight) {
@@ -154,7 +126,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
   // Iterate over all cells where this species occurs
   for (auto &&deme_cell: *(species.demes)) {
     const Location &loc = deme_cell.first;
-    const EnvCell &&source_env = get_env(loc);
+    const EnvCell &&source_env = env.get(loc);
 
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme: deme_cell.second) {
@@ -188,7 +160,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 		dispersal_abundance(
 			deme.amount,
 			deme.genetics.niche_suitability(
-				conf, get_env(new_loc)),
+				conf, env.get(new_loc)),
 			k.weight),
 		false);
       }
@@ -285,11 +257,17 @@ void Model::merge(DemeMap &dm) {
     }
     // update abundance according to current environment
     first_deme->amount = first_deme->genetics.niche_suitability(
-	    conf, get_env(loc));
+	    conf, env.get(loc));
 
 
     // FIXME CHECK extinction??? check this against spec.
   }
+}
+
+
+void Model::save() {
+  // FIXME STUB
+  // dump required state to files
 }
 
 
@@ -298,7 +276,7 @@ int Model::do_step() {
    * Execute one time step of the model
    */
 
-  update_environment(step);
+  env.update(conf, step);
   for (auto && species: tips) {
     auto target = disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
@@ -315,9 +293,13 @@ int Model::do_step() {
 
     // TODO competition/co-occurrence. (see 3.5)
 
-    // TODO speciate.
-    // Make sure iterator doesn't see this.
+    // TODO speciate. (make sure auto && species iterator doesn't visit new species)
+
+    species->update_stats(conf);
+
   }
+
+  save();
 
   ++step;
   return step;

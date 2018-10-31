@@ -59,23 +59,21 @@ namespace DreadDs {
 
   private:
     int step = 0;
-    float env_delta[max_env_dims] = {0.0f};
     uniform_distr_t gene_flow_distr;
     uniform_vg_t gene_flow_random;
     uniform_distr_t deme_choice_distr;
     normal_distr_t gene_drift_distr;
     normal_vg_t gene_drift_random;
 
-    EnvCell get_env(const Location &loc);
     void evolve_towards_niche(Deme &deme, const EnvCell &env);
     void do_genetc_drift(Deme &deme);
     Deme *choose_primary(DemeList &deme_list);
     float gene_flow_probability(float distance);
     float genetic_distance(const Deme &d1, const Deme &d2);
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
-    void update_environment(int time_step);
     std::shared_ptr<DemeMap> disperse(Species &species);
     void merge(DemeMap &dm);
+    void save();
   };
 }
 #endif

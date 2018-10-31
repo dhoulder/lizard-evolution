@@ -1,6 +1,5 @@
 // -*- coding: utf-8 -*-
 
-
 /**
  * Read environment values from grid files using GDAL See
  * https://www.gdal.org
@@ -9,6 +8,7 @@
 
 
 #include <string>
+#include <iostream> // FIXME debugging
 
 #include "boost/multi_array.hpp"
 #include <boost/math/special_functions/next.hpp>
@@ -73,6 +73,23 @@ public:
 };
 
 
+void Environment::update(const Config &conf, int time_step) {
+  // Set env_delta for the current time step. env_delta gets applied
+  // to every cell in env
+  float *ed = env_delta;
+  auto p = conf.env_params.begin();
+  for (int i = 0; i < conf.env_dims;
+       ++i, ++p, ++ed) {
+    *ed = (time_step * p->ramp) +
+      (p->sine_amplitude * sin(2 * M_PI *
+			       ((double)p->sine_offset +
+				(double)time_step/p->sine_period)));
+    if (conf.debug > 3)
+      std::cout << "env " << i << " step " << time_step << " delta " << *ed << std::endl;
+  }
+}
+
+
 Environment::Environment(const EnvParamsVec &env_inputs) {
 
   int layer = 0;
@@ -84,6 +101,13 @@ Environment::Environment(const EnvParamsVec &env_inputs) {
       // First file defines bounding box, allocates space and fills in first layer
       values.resize(boost::extents[env_reader.nrow][env_reader.ncol][env_inputs.size()]);
       env_reader.get_coordinates(geo_transform);
+
+      // FIXME debugging
+      std::cout << "geo_transform: ";
+      for (int i=0; i < 6; i++)
+	std::cout << geo_transform[i] << " ";
+      std::cout << std::endl;
+
     } else {
       // subsequent files fill in 2nd, 3rd, … layers
       assert(layer < max_env_dims);
