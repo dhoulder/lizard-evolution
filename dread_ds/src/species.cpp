@@ -35,7 +35,7 @@ void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) 
 
 void Species::load_initial(const Config &conf, const SpeciesParameters &sp, const Environment &env) {
 
-  // FIXME STUB load from file (initial species and  locations)
+  // FIXME STUB load from file (initial species and locations)
 
 }
 
@@ -52,7 +52,7 @@ Species::Species(const Config &conf, const SpeciesParameters &sp, const Environm
   setup_dispersal(conf.dispersal_min, sp);
   load_initial(conf, sp, env);
 
-  // FIXME get niche params, bb, genetics,  from sp
+  // FIXME get niche params, bb, genetics, from sp
 
   // FIXME create demes according to suitability.
 

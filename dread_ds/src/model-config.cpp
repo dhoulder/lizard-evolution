@@ -90,7 +90,7 @@ Config::Config(const char *filename) {
        "Peak amplitude of sinusoidal environmental change")
 
 
-      // Initial species.  One or more sets of these are supported.
+      // Initial species. One or more sets of these are supported.
 
       ("species.niche", po::value<vector<string>>(&species_niche)->required(),
        "Species niche as comma-separated values, one per environment dimension") // CSV, one value for each environment dimension

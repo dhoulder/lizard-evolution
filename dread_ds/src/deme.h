@@ -1,4 +1,4 @@
-// -*- coding: utf-8; Mode: c++  -*-
+// -*- coding: utf-8; Mode: c++ -*-
 #ifndef DREADDS_DEME_H
 #define DREADDS_DEME_H
 
@@ -14,6 +14,7 @@
 
 #include "model-limits.h"
 #include "model-config.h"
+#include "environment.h"
 
 namespace DreadDs {
 
@@ -54,7 +55,7 @@ namespace DreadDs {
 
 	}
       Genetics(const SpeciesParameters &sp);
-      float niche_suitability(const Config &conf, const float *env);
+      float niche_suitability(const Config &conf, const EnvCell &env);
     };
 
     Genetics genetics;

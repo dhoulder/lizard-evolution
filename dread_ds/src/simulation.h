@@ -1,4 +1,4 @@
-// -*- coding: utf-8; Mode: c++  -*-
+// -*- coding: utf-8; Mode: c++ -*-
 
 /**
    DREaD_ds model API. See ./README.md
@@ -15,7 +15,7 @@ namespace DreadDs {
   class Model; // for opaque pointer below
 
   // Represents a DREaD_ds evolution model. See ./README.md
-  class Simulation  {
+  class Simulation {
   public:
     const char *const version = "0.01";
 

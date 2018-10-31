@@ -41,13 +41,12 @@ public:
     }
     dataset = (GDALDataset *) GDALOpen(filename.c_str(), GA_ReadOnly);
     if (dataset == NULL)
-      // ~GDALDataset() should clean up everything
       throw ConfigError("Cannot read environment input file " + filename);
 
     band = dataset->GetRasterBand(1);
     assert(band);
     ncol = band->GetXSize();
-    nrow =  band->GetYSize();
+    nrow = band->GetYSize();
     row_buffer = (float *) CPLMalloc(sizeof(float)*ncol);
     assert(row_buffer);
   }
@@ -82,11 +81,11 @@ Environment::Environment(const EnvParamsVec &env_inputs) {
     Reader env_reader(ep.grid_filename);
 
     if (0 == layer) {
-      // First file defines bounding box, allocates space and fills in v[0]
-      values.resize(boost::extents[env_reader.nrow][env_reader.ncol]);
+      // First file defines bounding box, allocates space and fills in first layer
+      values.resize(boost::extents[env_reader.nrow][env_reader.ncol][env_inputs.size()]);
       env_reader.get_coordinates(geo_transform);
     } else {
-      // subsequent files fill in v[1], v[2], ...
+      // subsequent files fill in 2nd, 3rd, … layers
       assert(layer < max_env_dims);
       if (env_reader.nrow != values.shape()[0] || env_reader.ncol != values.shape()[1])
 	throw ConfigError("Dimensions of " + ep.grid_filename + "don't match those of first grid file");
@@ -94,13 +93,13 @@ Environment::Environment(const EnvParamsVec &env_inputs) {
       env_reader.get_coordinates(gt);
       for (int j=0; j<6; j++)
 	if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
-	  throw ConfigError("Coordinates of " +  ep.grid_filename + " don't match those of first grid file");
+	  throw ConfigError("Coordinates of " + ep.grid_filename + " don't match those of first grid file");
     }
 
     for (int row=0; row < env_reader.nrow; ++row) {
       env_reader.read_row();
       for (int col=0; col < env_reader.ncol; ++col)
-	values[row][col].v[layer] = env_reader.row_buffer[col];
+	values[row][col][layer] = env_reader.row_buffer[col];
     }
 
     ++layer;

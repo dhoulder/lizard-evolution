@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "model-config.h"
+#include "environment.h"
 #include "deme.h"
 
 using namespace DreadDs;
@@ -17,11 +18,12 @@ static float suitability(float env_value, float niche_centre, float niche_tolera
       0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
 }
 
-float Deme::Genetics::niche_suitability(const Config &conf, const float *env) {
+float Deme::Genetics::niche_suitability(const Config &conf, const EnvCell &env) {
   // compute geometric mean of all niche suitabilities
   float v = 1.0f;
-  for (int i = 0; i < conf.env_dims; i++)
-    v *= suitability(env[i],
+  const float *e = &(env.v[0]);
+  for (int i = 0; i < conf.env_dims; ++i, ++e)
+    v *= suitability(*e,
 		     niche_centre[i],
 		     niche_tolerance[i]);
   return pow(v,

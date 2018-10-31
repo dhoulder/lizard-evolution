@@ -1,4 +1,4 @@
-// -*- coding: utf-8; Mode: c++  -*-
+// -*- coding: utf-8; Mode: c++ -*-
 
 #ifndef DREADDS_SPECIES_H
 #define DREADDS_SPECIES_H
@@ -10,8 +10,8 @@
 
 #include "model-limits.h"
 #include "model-config.h"
-#include "deme.h"
 #include "environment.h"
+#include "deme.h"
 
 
 namespace DreadDs {
@@ -50,7 +50,7 @@ namespace DreadDs {
 	float position_sd = 0.0f;
 	float breadth_mean = 0.0f;
 	float breadth_sd = 0.0f;
-	// max and min values of position - (breadth  /2)
+	// max and min values of position - (breadth /2)
 	float max = 0.0f;
 	float min = 0.0f;
       };
@@ -64,7 +64,7 @@ namespace DreadDs {
 	float variance = 0.0f;
       };
 
-      Niche niche[max_env_dims];   // Niches derived from all demes of this species.
+      Niche niche[max_env_dims];  // Niches derived from all demes of this species.
       Genetics genetics[max_genetic_dims];
     };
 
@@ -89,7 +89,7 @@ namespace DreadDs {
 
     void print_kernel() { // FIXME debugging
       for (auto &&v: dk)
-	std::cout <<  v.x << ", " << v.y <<  " " << v.weight << std::endl;
+	std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
     }
 
   private:

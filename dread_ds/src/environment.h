@@ -1,4 +1,4 @@
-// -*- coding: utf-8; Mode: c++  -*-
+// -*- coding: utf-8; Mode: c++ -*-
 
 #ifndef DREADDS_ENVIRONMENT_H
 #define DREADDS_ENVIRONMENT_H
@@ -12,10 +12,10 @@
 namespace DreadDs {
 
   struct EnvCell {
-    // has to be a class|struct to keep boost::multi_array allocator happy
+    // array wrapped in struct so we we can return it by value
     float v[max_env_dims];
   };
-  typedef boost::multi_array<EnvCell, 2> EnvMatrix;
+  typedef boost::multi_array<float, 3> EnvMatrix; // [rows][columns][layers]
 
   class Environment {
   public:

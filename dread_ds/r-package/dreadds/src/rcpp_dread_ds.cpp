@@ -15,7 +15,7 @@ List dreadds() {
   int final_step = sim.run(7);
 
   CharacterVector x = CharacterVector::create("dreadds STUB", sim.version);
-  List z            = List::create(final_step) ;
+  List z = List::create(final_step) ;
 
   return z ;
 }

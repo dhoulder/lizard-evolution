@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 /**
- *  Implementation of DREaD_ds model API. See ./README.md
+ * Implementation of DREaD_ds model API. See ./README.md
  */
 
 #include "model.h"

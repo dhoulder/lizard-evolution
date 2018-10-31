@@ -1,4 +1,4 @@
-// -*- coding: utf-8; Mode: c++  -*-
+// -*- coding: utf-8; Mode: c++ -*-
 
 #ifndef DREADDS_MODEL_LIMITS_H
 #define DREADDS_MODEL_LIMITS_H

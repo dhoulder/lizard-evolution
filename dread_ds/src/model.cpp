@@ -1,7 +1,7 @@
 // -*- coding: utf-8 -*-
 
 /**
- *  Implementation of DREaD_ds model. See ./README.md
+ * Implementation of DREaD_ds model. See ./README.md
  */
 #include <memory>
 #include <math.h>
@@ -18,7 +18,7 @@
 
 using namespace DreadDs;
 
-namespace  DreadDs  {
+namespace DreadDs {
 
   static rng_eng_t rng; // FIXME seed?
 
@@ -56,7 +56,7 @@ namespace  DreadDs  {
       for (int i = 0; i < c.genetic_dims; ++i)
 	d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
       for (int i = 0; i < c.env_dims; ++i) {
-	d->genetics.niche_centre[i] = g.niche_centre[i] /  total_abundance;
+	d->genetics.niche_centre[i] = g.niche_centre[i] / total_abundance;
 	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;
       }
       d->is_primary = true;
@@ -99,7 +99,7 @@ Model::Model(const Config &conf_,
 void Model::update_environment(int time_step) {
   // Set env_delta for the current time step. env_delta gets applied
   // to every cell in env
-  float *ed  = env_delta;
+  float *ed = env_delta;
   auto p = conf.env_params.begin();
   for (int i = 0; i < conf.env_dims;
        ++i, ++p, ++ed) {
@@ -114,9 +114,9 @@ void Model::update_environment(int time_step) {
 
 inline EnvCell Model::get_env(const Location &loc) {
   EnvCell ec;
-  const EnvCell &base_env =  (env.values)[loc.y][loc.x];
+  const auto &&base_env = (env.values)[loc.y][loc.x];
   for (int i =0; i < conf.env_dims; i++)
-    ec.v[i] =  base_env.v[i] + env_delta[i];
+    ec.v[i] = base_env[i] + env_delta[i];
   return ec;
 }
 
@@ -130,7 +130,7 @@ static inline float dispersal_abundance(float source_abundance,
 
 void Model::evolve_towards_niche(Deme &deme, const EnvCell &ec) {
   // apply niche selection pressure
-  float *nc =  deme.genetics.niche_centre;
+  float *nc = deme.genetics.niche_centre;
   for (int i=0; i < conf.env_dims; nc++, i++)
     *nc += (ec.v[i] - *nc) * conf.niche_evolution_rate;
 }
@@ -157,7 +157,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
     const EnvCell &&source_env = get_env(loc);
 
     // Iterate over all demes (sort of "sub species") in the cell
-    for (auto &&deme:  deme_cell.second) {
+    for (auto &&deme: deme_cell.second) {
       evolve_towards_niche(deme, source_env);
       // TODO check for extinction. Remove from DemeMap
       // CHECK update abundance?
@@ -171,7 +171,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 	      dispersal_abundance(
 		      deme.amount,
 		      deme.genetics.niche_suitability(
-			      conf, source_env.v),
+			      conf, source_env),
 		      1.0), // same cell, no travel cost
 	      true);
       // Disperse into the area around this cell
@@ -188,7 +188,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 		dispersal_abundance(
 			deme.amount,
 			deme.genetics.niche_suitability(
-				conf, get_env(new_loc).v),
+				conf, get_env(new_loc)),
 			k.weight),
 		false);
       }
@@ -235,7 +235,7 @@ float Model::genetic_distance(const Deme &d1, const Deme &d2) {
 
 
 bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
-  // see 3.4.1 "Does  gene  flow  occur?"
+  // see 3.4.1 "Does gene flow occur?"
   return (gene_flow_probability(genetic_distance(d1, d2)) >
 	  gene_flow_random());
 }
@@ -250,7 +250,7 @@ void Model::merge(DemeMap &dm) {
       continue;
 
     const Location &loc = deme_cell.first;
-    Deme *first_deme =  &deme_list.front();
+    Deme *first_deme = &deme_list.front();
 
     if (deme_list.size() >1) {
       // Have at least two demes in this cell, so check for gene flow
@@ -285,7 +285,7 @@ void Model::merge(DemeMap &dm) {
     }
     // update abundance according to current environment
     first_deme->amount = first_deme->genetics.niche_suitability(
-	    conf, get_env(loc).v);
+	    conf, get_env(loc));
 
 
     // FIXME CHECK extinction??? check this against spec.

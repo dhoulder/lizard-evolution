@@ -3,7 +3,7 @@ project(dread_ds)
 find_package (Boost 1.65 COMPONENTS program_options REQUIRED)
 find_package (GDAL REQUIRED)
 
-include_directories(${Boost_INCLUDE_DIR}  ${GDAL_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR} ${GDAL_INCLUDE_DIR})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(dread_ds STATIC
