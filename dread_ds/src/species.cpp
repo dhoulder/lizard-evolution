@@ -1,15 +1,21 @@
 // -*- coding: utf-8 -*-
 
+#include <limits>
 #include <cmath>
 #include <algorithm>
 #include <iostream> // FIXME debugging
 #include <cassert>
+
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
 
 #include "model-limits.h"
 #include "model-config.h"
 #include "species.h"
 
 using namespace DreadDs;
+namespace ba = boost::accumulators;
 
 static float dispersal_distance(int x, int y) {
   // Replace with some other distance metric if required.
@@ -71,18 +77,85 @@ void Species::load_initial(const SpeciesParameters &sp,
     }
 }
 
+typedef ba::accumulator_set<float,
+			    ba::stats<ba::tag::mean,
+				      ba::tag::variance>> Accumulator;
+
 void Species::update_stats(Characteristics &ch) {
-  ch.range.cell_count = demes->size(); // FIXME assumes no demes with amount == 0
+  Accumulator niche_pos_acc[conf.env_dims],
+    niche_tol_acc[conf.env_dims],
+    genetic_acc[conf.genetic_dims];
 
-  // FIXME WIP STUB
+  ch.cell_count = 0;
+  ch.population = 0.0f;
 
-  std::cout << "Species cell count " << ch.range.cell_count << std::endl;
+  for (int i=0; i < conf.env_dims; i++) {
+    auto &n = ch.niche_stats[i];
+    n.max = std::numeric_limits<float>::lowest();
+    n.min = std::numeric_limits<float>::max();
+  }
+
+  // FIXME do this in merge() instead of separate loops here?
+  for (auto &&kv: *demes)
+    for (auto &&d: kv.second) {
+      if (d.amount <-0.0f)
+	continue; // FIXME flag these cases???
+      ++ch.cell_count;
+      ch.population += d.amount;
+
+      for (int i=0; i < conf.env_dims; i++) {
+	auto &ns = ch.niche_stats[i];
+	float nc = d.genetics.niche_centre[i];
+	float nt = d.genetics.niche_tolerance[i];
+	ns.max = std::max(ns.max, nc + nt);
+	ns.min = std::min(ns.min, nc - nt);
+	niche_pos_acc[i](nc);
+	niche_tol_acc[i](nt);
+      }
+
+      for (int i=0; i < conf.genetic_dims; i++)
+	genetic_acc[i](d.genetics.genetic_position[i]);
+    }
+
+  for (int i=0; i < conf.env_dims; i++) {
+    auto &ns = ch.niche_stats[i];
+    ns.position_mean = ba::mean(niche_pos_acc[i]);
+    ns.position_sd = sqrt(ba::variance(niche_pos_acc[i]));
+    // breadth is 2 * tolerance
+    ns.breadth_mean = 2.0 * ba::mean(niche_tol_acc[i]);
+    ns.breadth_sd = 2.0 * sqrt(ba::variance(niche_tol_acc[i]));
+  }
+
+  for (int i=0; i < conf.genetic_dims; i++) {
+    auto &gs = ch.genetic_stats[i];
+    gs.mean = ba::mean(genetic_acc[i]);
+    gs.sd = sqrt(ba::variance(genetic_acc[i]));
+  }
+
+  if (conf.debug > 3) {
+    std::cout <<
+      "Species cell count " << ch.cell_count <<
+      ", population =" << ch.population <<
+      std::endl;
+    for (int i=0; i < conf.env_dims; ++i) {
+      const auto &ns = ch.niche_stats[i];
+      std::cout << "Niche " << i <<
+	" min=" << ns.min <<
+	", max=" << ns.max <<
+	", mean=" << ns.position_mean <<
+	", sd=" << ns.position_sd <<
+	std::endl <<
+	"  breadth: mean=" << ns.breadth_mean <<
+	" sd=" << ns.breadth_sd <<
+	std::endl;
+    }
+  }
 }
 
-Species::Species(const Config &conf_,
+Species::Species(const Config &c,
 		 const SpeciesParameters &sp,
 		 const Environment &env):
-  conf(conf_),
+  conf(c),
   demes(new(DemeMap))
   /**
    * Load initial species values, locations and abundance.

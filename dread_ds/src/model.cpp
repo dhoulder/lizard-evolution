@@ -102,7 +102,7 @@ static inline float dispersal_abundance(float source_abundance,
 void Model::evolve_towards_niche(Deme &deme, const EnvCell &ec) {
   // apply niche selection pressure
   float *nc = deme.genetics.niche_centre;
-  for (int i=0; i < conf.env_dims; nc++, i++)
+  for (int i=0; i < conf.env_dims; ++nc, ++i)
     *nc += (ec.v[i] - *nc) * conf.niche_evolution_rate;
 }
 

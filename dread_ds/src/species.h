@@ -37,13 +37,7 @@ namespace DreadDs {
     class Characteristics {
     public:
       // Derived from demes of this species.
-
-      struct Range {
-	int cell_count; // number of demes (occupied cells).
-	float population; // total population across all occupied cells
-      };
-
-      struct Niche {
+      struct NicheStats {
 	/**
 	 * Describes a niche on an environmental variable for a species.
 	 */
@@ -52,23 +46,25 @@ namespace DreadDs {
 	float position_sd = 0.0f;
 	float breadth_mean = 0.0f;
 	float breadth_sd = 0.0f;
-	// max and min values of position - (breadth /2)
+	// max and min values of position ± tolerance
 	float max = 0.0f;
 	float min = 0.0f;
       };
 
-      struct Genetics {
+      struct GeneticStats {
 	/**
 	   Holds the genetic position (on an abstract genetic trait) and
 	   variance of all the demes of a species.
 	*/
-	float position = 0.0f;
-	float variance = 0.0f;
+	float mean = 0.0f;
+	float sd = 0.0f;
       };
 
-      Niche niche[max_env_dims];
-      Genetics genetics[max_genetic_dims];
-      Range range;
+      NicheStats niche_stats[max_env_dims];
+      GeneticStats genetic_stats[max_genetic_dims];
+
+      int cell_count; // number of demes (occupied cells).
+      float population; // total population across all occupied cells
     };
 
     const Config &conf;
