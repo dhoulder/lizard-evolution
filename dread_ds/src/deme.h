@@ -33,7 +33,6 @@ namespace DreadDs {
 	niche_tolerance {},
 	genetic_position {} {}
       Genetics(const SpeciesParameters &sp);
-      float niche_suitability(const Config &conf, const EnvCell &env);
     };
 
     Genetics genetics;
@@ -52,6 +51,8 @@ namespace DreadDs {
       amount = new_amount;
       is_primary = new_primary;
     }
+
+    float niche_suitability(const Config &conf, const EnvCell &env);
 
   };
 

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream> // FIXME debugging
+#include <cassert>
 
 #include "model-limits.h"
 #include "model-config.h"
@@ -15,7 +16,7 @@ static float dispersal_distance(int x, int y) {
   return sqrt(x*x + y*y);
 }
 
-void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) {
+void Species::setup_dispersal(const SpeciesParameters &sp) {
   // Calculate dispersal kernel (TODO? we could probably store just
   // one quadrant (perhaps only one octant). Probably little gain
   // though)
@@ -29,67 +30,67 @@ void Species::setup_dispersal(float dispersal_min, const SpeciesParameters &sp) 
       if (dd <= sp.max_dispersal_radius) {
 	dk.push_back(DispersalWeight {
 	    i, j,
-	      1.0f - ((1.0f - dispersal_min) * dd/sp.max_dispersal_radius)});
+	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
 }
 
 
-void Species::load_initial(const Config &conf,
-			   const SpeciesParameters &sp,
+static inline unsigned long clip(long v, unsigned long hi) {
+  assert(hi);
+  return std::min(hi-1, (unsigned long) std::max(0L, v));
+}
+
+void Species::load_initial(const SpeciesParameters &sp,
 			   const Environment &env) {
 
   auto &&env_shape = env.values.shape();
-
-  // FIXME check overflow, zero cases
-
-  std::cout << "species cell bounds (NSEW) " << // FIXME debugging
-    env.row(sp.north) << " " << sp.north << ", " <<
-    env.row(sp.south) <<  " " << sp.south << ", " <<
-    env.col(sp.east) << " " << sp.east << ", " <<
-    env.col(sp.west) << " " << sp.west << std::endl;
-
-  long n = std::max(0L, env.row(sp.north));
-  long s = std::min((long)(env_shape[0] - 1),
-		    env.row(sp.south));
-  long e = std::min((long)(env_shape[1] -1),
-		    env.col(sp.east));
-  long w = std::max(0L, env.col(sp.west));
-  // FIXME enforce n <s, e < w
+  long n = clip(env.row(sp.north), env_shape[0]);
+  long s = clip(env.row(sp.south), env_shape[0]);
+  long e = clip(env.col(sp.east), env_shape[1]);
+  long w = clip(env.col(sp.west),  env_shape[1]);
+  assert(n <= s && w <= e);
 
   Deme d(sp);
   Location loc;
-  std::cout << "Loading species " << n << " " << s <<  " " << e << " " << w << std::endl;
+
+  if (conf.debug > 3)
+    std::cout << "Loading species. north=" <<
+      sp.north << " row " << n <<
+      ", south=" << sp.south << " row " << s <<
+      ", west=" << sp.west << " col " << w <<
+      ", east=" << sp.east << " col " << e <<
+      std::endl;
+
   for (loc.y = n; loc.y <= s; ++loc.y)
     for (loc.x = w; loc.x <= e; ++loc.x) {
-      d.amount = d.genetics.niche_suitability(conf,
-					      env.get(loc));
+      d.amount = d.niche_suitability(conf,
+				     env.get(loc));
       if (d.amount > 0.0f)
 	(*demes)[loc] = DemeList(1, d);
     }
 }
 
-void Species::Characteristics::update(const Config &conf, const DemeMap &demes) {
-  range.cell_count = demes.size(); // FIXME assumes no demes with amount == 0
+void Species::update_stats(Characteristics &ch) {
+  ch.range.cell_count = demes->size(); // FIXME assumes no demes with amount == 0
 
   // FIXME WIP STUB
 
-  std::cout << "Species cell count " << range.cell_count << std::endl;
+  std::cout << "Species cell count " << ch.range.cell_count << std::endl;
 }
 
-
-
-Species::Species(const Config &conf,
+Species::Species(const Config &conf_,
 		 const SpeciesParameters &sp,
 		 const Environment &env):
+  conf(conf_),
   demes(new(DemeMap))
   /**
    * Load initial species values, locations and abundance.
    */
 {
-  setup_dispersal(conf.dispersal_min, sp);
-  load_initial(conf, sp, env);
+  setup_dispersal(sp);
+  load_initial(sp, env);
 
-  initial_stats.update(conf, *demes);
+  update_stats(initial_stats);
   latest_stats = initial_stats;
 }

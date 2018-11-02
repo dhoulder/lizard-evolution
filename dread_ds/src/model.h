@@ -7,12 +7,11 @@
 #ifndef DREADDS_MODEL_H
 #define DREADDS_MODEL_H
 
-#define BOOST_DISABLE_ASSERTS
-
 #include <memory>
 #include <vector>
 #include <string>
 
+#define BOOST_DISABLE_ASSERTS
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/normal_distribution.hpp>
@@ -34,7 +33,7 @@ namespace DreadDs {
 
   class Model {
   public:
-    const Config conf;
+    const Config conf; // must be first (initialisation order)
     Environment env;
     std::vector <std::shared_ptr <Species>> roots; // Initial species
     std::vector <std::shared_ptr <Species>> tips; // extant leaf species

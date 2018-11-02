@@ -18,14 +18,14 @@ static float suitability(float env_value, float niche_centre, float niche_tolera
       0.5f + 0.5f * cos(M_PI * (env_value - niche_centre) / niche_tolerance);
 }
 
-float Deme::Genetics::niche_suitability(const Config &conf, const EnvCell &env) {
+float Deme::niche_suitability(const Config &conf, const EnvCell &env) {
   // compute geometric mean of all niche suitabilities
   float v = 1.0f;
   const float *e = &(env.v[0]);
   for (int i = 0; i < conf.env_dims; ++i, ++e)
     v *= suitability(*e,
-		     niche_centre[i],
-		     niche_tolerance[i]);
+		     genetics.niche_centre[i],
+		     genetics.niche_tolerance[i]);
   return pow(v,
 	     1.0f / (float)conf.env_dims);
 }

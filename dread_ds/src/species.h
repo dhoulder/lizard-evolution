@@ -69,10 +69,9 @@ namespace DreadDs {
       Niche niche[max_env_dims];
       Genetics genetics[max_genetic_dims];
       Range range;
-
-      void update(const Config &conf, const DemeMap &demes);
     };
 
+    const Config &conf;
     std::shared_ptr <Species> left_child = NULL;
     std::shared_ptr <Species> right_child = NULL;
     std::weak_ptr <Species> parent;
@@ -96,14 +95,11 @@ namespace DreadDs {
 	std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
     }
 
-    inline void update_stats(const Config &conf) {
-      latest_stats.update(conf, *demes);
-    }
-
+    void update_stats(Characteristics &ch);
 
   private:
-    void setup_dispersal(float dispersal_min, const SpeciesParameters &sp);
-    void load_initial(const Config &conf, const SpeciesParameters &sp, const Environment &env);
+    void setup_dispersal(const SpeciesParameters &sp);
+    void load_initial(const SpeciesParameters &sp, const Environment &env);
   };
 
 }

@@ -9,6 +9,9 @@
 
 #include <string>
 #include <iostream> // FIXME debugging
+#include <cassert>
+
+#define BOOST_DISABLE_ASSERTS
 
 #include "boost/multi_array.hpp"
 #include <boost/math/special_functions/next.hpp>
@@ -73,7 +76,7 @@ public:
 };
 
 
-void Environment::update(const Config &conf, int time_step) {
+void Environment::update(int time_step) {
   // Set env_delta for the current time step. env_delta gets applied
   // to every cell in env
   float *ed = env_delta;
@@ -90,24 +93,22 @@ void Environment::update(const Config &conf, int time_step) {
 }
 
 
-Environment::Environment(const EnvParamsVec &env_inputs) {
+Environment::Environment(const Config &conf_):
+  conf(conf_)
+{
 
   int layer = 0;
-  for (const auto &ep: env_inputs) {
+  for (const auto &ep: conf.env_params) {
 
     Reader env_reader(ep.grid_filename);
 
     if (0 == layer) {
       // First file defines bounding box, allocates space and fills in first layer
-      values.resize(boost::extents[env_reader.nrow][env_reader.ncol][env_inputs.size()]);
+      values.resize(boost::extents
+		    [env_reader.nrow]
+		    [env_reader.ncol]
+		    [conf.env_params.size()]);
       env_reader.get_coordinates(geo_transform);
-
-      // FIXME debugging
-      std::cout << "geo_transform: ";
-      for (int i=0; i < 6; i++)
-	std::cout << geo_transform[i] << " ";
-      std::cout << std::endl;
-
     } else {
       // subsequent files fill in 2nd, 3rd, … layers
       assert(layer < max_env_dims);

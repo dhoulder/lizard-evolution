@@ -11,6 +11,8 @@ greater computational performance and efficiency.
 Source code for the C++ implementation of the model can be found in
 `./src/`
 
+Sample configuration and input files can be found in `./examples/`.
+
 Files in `./r-package/` provide an R API that allows input data, model
 configuration, output and visualisation to be handled in R.
 

@@ -28,13 +28,11 @@ namespace DreadDs {
     float total_abundance;
 
   public:
-    DemeMixer(const Config &conf, const Deme &primary):
+    DemeMixer(const Config &conf):
       c {conf},
       g {},
       total_abundance {}
-    {
-      contribute(primary);
-    }
+    {}
 
     void contribute(const Deme &d) {
       for (int i = 0; i < c.genetic_dims; ++i)
@@ -66,27 +64,28 @@ Model::Model(const char *config_path,
 	output_path_arg) {}
 
 
-Model::Model(const Config &conf_,
+Model::Model(const Config &c,
 	     const char *output_path_arg):
-  conf(conf_),
-  env(Environment(conf_.env_params)),
+  conf(c),
+  env(Environment(conf)), // must use conf member, not arg
+  output_path(output_path_arg),
+
   // Generate random values between [gene_flow_clip,
   // 1-gene_flow_clip] to effectively apply high and low
   // cutoffs when comparing against probability below.
   gene_flow_distr(
-		  conf_.gene_flow_clip,
-		  1.0f - conf_.gene_flow_clip),
+		  conf.gene_flow_clip,
+		  1.0f - conf.gene_flow_clip),
   gene_flow_random(rng, gene_flow_distr),
   deme_choice_distr(0.0f, 1.0f),
   gene_drift_distr(0.0f,
-		   conf_.gene_drift_sd),
+		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
   for (const auto &sp: conf.initial_species) {
     tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
   }
   roots = tips;
-  output_path = output_path_arg;
 }
 
 // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
@@ -142,8 +141,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 	      deme,
 	      dispersal_abundance(
 		      deme.amount,
-		      deme.genetics.niche_suitability(
-			      conf, source_env),
+		      deme.niche_suitability(conf, source_env),
 		      1.0), // same cell, no travel cost
 	      true);
       // Disperse into the area around this cell
@@ -159,8 +157,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
 		deme,
 		dispersal_abundance(
 			deme.amount,
-			deme.genetics.niche_suitability(
-				conf, env.get(new_loc)),
+			deme.niche_suitability(conf, env.get(new_loc)),
 			k.weight),
 		false);
       }
@@ -240,23 +237,18 @@ void Model::merge(DemeMap &dm) {
 	first_deme:
 	choose_primary(deme_list);
 
-      DemeMixer mixer(conf, *primary);
-      for (auto &&deme: deme_list) {
-	if (&deme == primary)
-	  // don't merge with self
-	  continue;
-
-	if (gene_flow_occurs(deme, *primary))
+      DemeMixer mixer(conf);
+      for (auto &&deme: deme_list)
+	if ((&deme == primary) || gene_flow_occurs(deme, *primary))
 	  mixer.contribute(deme);
 	// otherwise "excluded by competition
-      }
 
       // mix down to first deme
       deme_list.resize(1);
       mixer.mix_to(first_deme);
     }
     // update abundance according to current environment
-    first_deme->amount = first_deme->genetics.niche_suitability(
+    first_deme->amount = first_deme->niche_suitability(
 	    conf, env.get(loc));
 
 
@@ -276,7 +268,7 @@ int Model::do_step() {
    * Execute one time step of the model
    */
 
-  env.update(conf, step);
+  env.update(step);
   for (auto && species: tips) {
     auto target = disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
@@ -295,7 +287,7 @@ int Model::do_step() {
 
     // TODO speciate. (make sure auto && species iterator doesn't visit new species)
 
-    species->update_stats(conf);
+    species->update_stats(species->latest_stats);
 
   }
 

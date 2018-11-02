@@ -3,6 +3,7 @@
 #ifndef DREADDS_ENVIRONMENT_H
 #define DREADDS_ENVIRONMENT_H
 
+#define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
 
 #include "model-limits.h"
@@ -27,6 +28,8 @@ namespace DreadDs {
   typedef boost::multi_array<float, 3> EnvMatrix; // [rows][columns][layers]
 
   class Environment {
+  private:
+    const Config &conf;
   public:
     EnvMatrix values;
     float env_delta[max_env_dims] = {0.0f};
@@ -45,11 +48,11 @@ namespace DreadDs {
     // geo_transform[4] /* 0 */
     // geo_transform[5] /* n-s pixel resolution (negative value) */
 
-    Environment(const EnvParamsVec &env_inputs);
-    void update(const Config &conf, int time_step);
+    Environment(const Config &conf);
+    void update(int time_step);
 
     inline long row(double ns) const {
-      return  long((geo_transform[3] - ns) / -geo_transform[5]);
+      return  long((ns - geo_transform[3]) / geo_transform[5]);
     }
 
     inline long col(double ew) const {
