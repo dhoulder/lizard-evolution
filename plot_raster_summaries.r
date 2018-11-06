@@ -1,19 +1,19 @@
 # this file combines and summarises output rasters from the simulations
+rm(list=ls())
+
 library(raster)
+model_name       <- c("real225_nicherate0.02_disp2_amp1_freq40_200gens_1r",
+                      "real225_nicherate0.02_disp2_amp1_freq40_200gens_2r")
 
-model_name[1]    <- "real225_nicherate0.02_dispersal1.5_200gens_v1"
-model_name[2]    <- "real225_nicherate0.02_dispersal1.5_200gens_v2"
-
-output_image
-
-summary.time  <- 50
+summary.time  <- 200
 layer.count   <- 100
 
-output_image     <- paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_", summary.time, ".pdf", sep="")
+output_image     <- paste("C:/Work/Simulation/test_runs_Sept/real225_nicherate0.02_dispersal1.5_", summary.time, ".png", sep="")
 
-pdf(file=output_image, width=8.27, height=10, onefile = T)
+png(filename = output_image, width=960, height=960)
 
-for (name in model_name) {
+#for (name in model_name) {
+name <- model_name[1]
 
   raster_dir      <- paste("C:/Work/Simulation/test_runs_Sept/", name, "/raster/", sep="")
   abund.ras       <- raster(paste(raster_dir, "abundance_at_", summary.time ,".asc", sep=""))
@@ -21,7 +21,7 @@ for (name in model_name) {
   speciesEnd.ras  <- raster(paste(raster_dir, "speciesEnd_at_", summary.time ,".asc", sep=""))
   abundEnd.ras    <- raster(paste(raster_dir, "abundanceEnd_at_", summary.time ,".asc", sep=""))
 
-  #windows(10,10)
+  windows(10,10)
   par(mfcol=c(2,2))
 
   main_header <- paste("Species richness after", summary.time, "steps")
@@ -38,7 +38,7 @@ for (name in model_name) {
 
   mtext(name, side = 3, line = -1, outer = TRUE, cex=0.6)
 
-}
+#}
 
 # and now look at the relationship between separate sets of runs
 raster_dir    <- paste("C:/Work/Simulation/test_runs_Sept/", model_name[1], "/raster/", sep="")
@@ -53,7 +53,7 @@ richness2.ras    <- raster(paste(raster_dir, "richness_at_", summary.time ,".asc
 speciesEnd2.ras  <- raster(paste(raster_dir, "speciesEnd_at_", summary.time ,".asc", sep=""))
 abundEnd2.ras    <- raster(paste(raster_dir, "abundanceEnd_at_", summary.time ,".asc", sep=""))
 
-#windows(10,10)
+windows(10,10)
 par(mfcol=c(2,2))
 
 main_header <- paste("Sp. richness @", summary.time, "steps Diff between runs")
@@ -79,7 +79,7 @@ r2 <- round(summary(abund.lm)$r.squared, 3)
 text(18, 3, paste("r-squared:", r2), pos=4, font=2)
 
 # now compare endemism results
-#windows(10,10)
+windows(10,10)
 par(mfcol=c(2,2))
 
 main_header <- paste("Sp. endemism @", summary.time, "steps Diff between runs")

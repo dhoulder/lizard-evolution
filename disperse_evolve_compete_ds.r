@@ -1,8 +1,8 @@
 # this file contains functions for dispersal, competition, niche evolution and drift
 
 # env = current environmental layer
-# position = niche position of species
-# breadth = niche breadth of species
+# position = niche position of deme
+# breadth = niche breadth of deme
 
 disperse_ds <- function (demetable.species,
                          env,
