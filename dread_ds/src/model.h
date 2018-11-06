@@ -34,6 +34,7 @@ namespace DreadDs {
   class Model {
   public:
     const Config conf; // must be first (initialisation order)
+    int step = 0;
     Environment env;
     std::vector <std::shared_ptr <Species>> roots; // Initial species
     std::vector <std::shared_ptr <Species>> tips; // extant leaf species
@@ -45,19 +46,13 @@ namespace DreadDs {
     Model(const Config &conf,
 	  const char *output_path);
 
-
-    ~Model() {
-    //FIXME WIP
-    }
-
     /**
      * Execute one time step of the model.
-     * Returns: time step just executed. First step is 1.
+     * Returns: total number of occupied cells across all species.
      */
     int do_step();
 
   private:
-    int step = 0;
     uniform_distr_t gene_flow_distr;
     uniform_vg_t gene_flow_random;
     uniform_distr_t deme_choice_distr;

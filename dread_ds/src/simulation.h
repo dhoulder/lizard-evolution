@@ -26,7 +26,8 @@ namespace DreadDs {
 
     // Run the simulation for a number of time steps.
     //
-    // Arguments: n_steps: number of time steps to run for.
+    // Arguments: n_steps: number of time steps to run for. Will stop
+    // prematurely if all cells become empty.
     //
     // Returns: time step of final iteration.
     int run(int n_steps);

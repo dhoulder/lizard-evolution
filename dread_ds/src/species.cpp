@@ -1,9 +1,8 @@
 // -*- coding: utf-8 -*-
 
-#include <limits>
 #include <cmath>
 #include <algorithm>
-#include <iostream> // FIXME debugging
+#include <iostream>
 #include <cassert>
 
 #include <boost/accumulators/accumulators.hpp>
@@ -39,6 +38,11 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
+  if (conf.debug > 3) {
+    std::cout << "Dispersal kernel" << std::endl;
+    for (auto &&v: dk)
+      std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
+  }
 }
 
 
@@ -60,7 +64,7 @@ void Species::load_initial(const SpeciesParameters &sp,
   Deme d(sp);
   Location loc;
 
-  if (conf.debug > 3)
+  if (conf.debug > 1)
     std::cout << "Loading species. north=" <<
       sp.north << " row " << n <<
       ", south=" << sp.south << " row " << s <<
@@ -77,23 +81,25 @@ void Species::load_initial(const SpeciesParameters &sp,
     }
 }
 
-typedef ba::accumulator_set<float,
-			    ba::stats<ba::tag::mean,
-				      ba::tag::variance>> Accumulator;
 
-void Species::update_stats(Characteristics &ch) {
-  Accumulator niche_pos_acc[conf.env_dims],
+template <class ...Types>
+using Acc = ba::accumulator_set<float,
+			    ba::stats<Types...>>;
+
+void Species::update_stats(Characteristics &ch, int current_step) {
+  if (extinction > -1)
+    // went extinct in earlier time step. Leave the stats alone
+    return;
+
+  Acc <ba::tag::mean, ba::tag::variance>
+    niche_pos_acc[conf.env_dims],
     niche_tol_acc[conf.env_dims],
     genetic_acc[conf.genetic_dims];
+  Acc <ba::tag::min> niche_min[conf.env_dims];
+  Acc <ba::tag::max> niche_max[conf.env_dims];
 
   ch.cell_count = 0;
   ch.population = 0.0f;
-
-  for (int i=0; i < conf.env_dims; i++) {
-    auto &n = ch.niche_stats[i];
-    n.max = std::numeric_limits<float>::lowest();
-    n.min = std::numeric_limits<float>::max();
-  }
 
   // FIXME do this in merge() instead of separate loops here?
   for (auto &&kv: *demes)
@@ -104,21 +110,29 @@ void Species::update_stats(Characteristics &ch) {
       ch.population += d.amount;
 
       for (int i=0; i < conf.env_dims; i++) {
-	auto &ns = ch.niche_stats[i];
 	float nc = d.genetics.niche_centre[i];
 	float nt = d.genetics.niche_tolerance[i];
-	ns.max = std::max(ns.max, nc + nt);
-	ns.min = std::min(ns.min, nc - nt);
+	niche_min[i]( nc - nt);
+	niche_max[i](nc + nt);
 	niche_pos_acc[i](nc);
 	niche_tol_acc[i](nt);
       }
-
       for (int i=0; i < conf.genetic_dims; i++)
 	genetic_acc[i](d.genetics.genetic_position[i]);
     }
 
+  if (ch.cell_count == 0) {
+    extinction = current_step;
+    // leave other stats as they were on previous step
+    if (conf.debug > 1)
+      std::cout << "Species extinct at step " << current_step << std::endl;
+    return;
+  }
+
   for (int i=0; i < conf.env_dims; i++) {
     auto &ns = ch.niche_stats[i];
+    ns.min = ba::min(niche_min[i]);
+    ns.max = ba::max(niche_max[i]);
     ns.position_mean = ba::mean(niche_pos_acc[i]);
     ns.position_sd = sqrt(ba::variance(niche_pos_acc[i]));
     // breadth is 2 * tolerance
@@ -132,10 +146,10 @@ void Species::update_stats(Characteristics &ch) {
     gs.sd = sqrt(ba::variance(genetic_acc[i]));
   }
 
-  if (conf.debug > 3) {
+  if (conf.debug > 1) {
     std::cout <<
       "Species cell count " << ch.cell_count <<
-      ", population =" << ch.population <<
+      ", population = " << ch.population <<
       std::endl;
     for (int i=0; i < conf.env_dims; ++i) {
       const auto &ns = ch.niche_stats[i];
@@ -164,6 +178,6 @@ Species::Species(const Config &c,
   setup_dispersal(sp);
   load_initial(sp, env);
 
-  update_stats(initial_stats);
+  update_stats(initial_stats, 0);
   latest_stats = initial_stats;
 }

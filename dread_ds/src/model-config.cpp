@@ -10,6 +10,7 @@
 #include <boost/tokenizer.hpp>
 
 #include "model-config.h"
+#include "exceptions.h"
 
 namespace po = boost::program_options;
 
@@ -180,7 +181,7 @@ Config::Config(const char *filename) {
 	if (sp.niche.size() < env_dims)
 	  throw ConfigError("Not enough niche values. Need one for each environment dimension.");
 
-	// FIXME genetics (currently all 0.0) // float genetics[max_genetic_dims] = {0.0f};
+	// FIXME set genetics? (currently all 0.0)
 	initial_species.push_back(sp);
       }
     }

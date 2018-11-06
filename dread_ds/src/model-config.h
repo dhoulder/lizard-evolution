@@ -4,17 +4,12 @@
 #define DREADDS_MODEL_CONFIG_H
 
 #include <vector>
-#include <stdexcept>
 #include <string>
 
 #include "model-limits.h"
+#include "exceptions.h"
 
 namespace DreadDs {
-
-  class ConfigError : public std::runtime_error {
-    public:
-    using std::runtime_error::runtime_error;
-  };
 
   struct EnvParams {
     std::string grid_filename;
@@ -46,7 +41,7 @@ namespace DreadDs {
   class Config {
   public:
     // Parameters for a simulation run.
-    int debug = 4; // FIXME
+    int debug = 0;
     int env_dims = 0; // must be <= max_env_dims
     int genetic_dims = max_genetic_dims; // <= max_genetic_dims
 

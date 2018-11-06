@@ -5,6 +5,7 @@
  */
 #include <memory>
 #include <math.h>
+#include <iostream>
 
 #include "model-config.h"
 #include "environment.h"
@@ -16,7 +17,7 @@ using namespace DreadDs;
 
 namespace DreadDs {
 
-  static rng_eng_t rng; // FIXME seed?
+  static rng_eng_t rng;
 
   class DemeMixer {
     /**
@@ -31,7 +32,7 @@ namespace DreadDs {
     DemeMixer(const Config &conf):
       c {conf},
       g {},
-      total_abundance {}
+      total_abundance {0.0f}
     {}
 
     void contribute(const Deme &d) {
@@ -44,9 +45,10 @@ namespace DreadDs {
       total_abundance += d.amount;
     }
 
-    void mix_to(Deme *d) {
-      // Update d with weighted average of contributing demes
-      // FIXME handle / 0.0
+    bool mix_to(Deme *d) {
+      // If possible, update d with weighted average of contributing demes
+      if (total_abundance <= 0.0f)
+	return false;
       for (int i = 0; i < c.genetic_dims; ++i)
 	d->genetics.genetic_position[i] = g.genetic_position[i] / total_abundance;
       for (int i = 0; i < c.env_dims; ++i) {
@@ -54,6 +56,7 @@ namespace DreadDs {
 	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;
       }
       d->is_primary = true;
+      return true;
     }
   };
 }
@@ -67,6 +70,7 @@ Model::Model(const char *config_path,
 Model::Model(const Config &c,
 	     const char *output_path_arg):
   conf(c),
+  step(0),
   env(Environment(conf)), // must use conf member, not arg
   output_path(output_path_arg),
 
@@ -82,6 +86,7 @@ Model::Model(const Config &c,
 		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
+  env.update(step);
   for (const auto &sp: conf.initial_species) {
     tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
   }
@@ -130,8 +135,7 @@ std::shared_ptr<DemeMap> Model::disperse(Species &species) {
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme: deme_cell.second) {
       evolve_towards_niche(deme, source_env);
-      // TODO check for extinction. Remove from DemeMap
-      // CHECK update abundance?
+      // FIXME MAYBE: update abundance?
       do_genetc_drift(deme);
 
       // "disperse" into the same cell. This becomes a primary deme
@@ -213,12 +217,16 @@ bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
 void Model::merge(DemeMap &dm) {
   // Merge demes where gene flow occurs
 
-  for (auto &&deme_cell: dm) {
-    auto &&deme_list = deme_cell.second;
-    if (deme_list.size() < 1)
-      continue;
+  for (auto cell_itr = dm.begin(); cell_itr != dm.end(); ) {
 
-    const Location &loc = deme_cell.first;
+    auto &&deme_list = cell_itr->second;
+    if (deme_list.size() < 1) {
+      // no demes, so get rid of the cell
+      cell_itr = dm.erase(cell_itr);
+      continue;
+    }
+
+    const Location &loc = cell_itr->first;
     Deme *first_deme = &deme_list.front();
 
     if (deme_list.size() >1) {
@@ -244,15 +252,21 @@ void Model::merge(DemeMap &dm) {
 	// otherwise "excluded by competition
 
       // mix down to first deme
+      if (!mixer.mix_to(first_deme)) {
+	// extinct in this cell, so drop it
+	  cell_itr = dm.erase(cell_itr);
+	  continue;
+      }
       deme_list.resize(1);
-      mixer.mix_to(first_deme);
     }
     // update abundance according to current environment
     first_deme->amount = first_deme->niche_suitability(
 	    conf, env.get(loc));
-
-
-    // FIXME CHECK extinction??? check this against spec.
+    if (first_deme->amount <= 0.0f)
+      // another extinction case
+      cell_itr = dm.erase(cell_itr);
+    else
+      ++cell_itr;
   }
 }
 
@@ -267,8 +281,9 @@ int Model::do_step() {
   /**
    * Execute one time step of the model
    */
-
+  ++step;
   env.update(step);
+  int n_occupied = 0;
   for (auto && species: tips) {
     auto target = disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
@@ -287,12 +302,15 @@ int Model::do_step() {
 
     // TODO speciate. (make sure auto && species iterator doesn't visit new species)
 
-    species->update_stats(species->latest_stats);
+    species->update_stats(species->latest_stats, step);
+    n_occupied += species->latest_stats.cell_count;
 
   }
 
   save();
 
-  ++step;
-  return step;
+  if (conf.debug > 1)
+    std::cout << "End of step " << step << std::endl << std::endl;
+
+  return n_occupied;
 }

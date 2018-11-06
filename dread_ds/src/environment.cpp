@@ -8,7 +8,7 @@
 
 
 #include <string>
-#include <iostream> // FIXME debugging
+#include <iostream>
 #include <cassert>
 
 #define BOOST_DISABLE_ASSERTS
@@ -23,6 +23,7 @@
 #include "model-limits.h"
 #include "model-config.h"
 #include "environment.h"
+#include "exceptions.h"
 
 static bool gdal_reg = false;
 

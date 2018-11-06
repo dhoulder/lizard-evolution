@@ -1,15 +1,34 @@
+#include <string>
+#include <stdexcept>
 #include <iostream>
-#include "simulation.h"
-#include <cassert>
+#include <cstdlib>
 
-// FIXME STUB
+#include "exceptions.h"
+#include "simulation.h"
+
+static void usage(char *argv0) {
+  std::cerr << "Usage: " << argv0 << "config-file n-iterations output-path" << std::endl;
+  std::exit(1);
+}
 
 int main(int argc, char *argv[]) {
-  assert(argc > 1);
+  int n =0;
+  if (argc != 4)
+    usage(argv[0]);
+  try {
+    n = std::stoi(argv[2]);
+  }
+  catch (const std::logic_error& oor) {
+    usage(argv[0]);
+  }
 
-  DreadDs::Simulation sim(argv[1], "model-test-out.junk");
-
-  int s = sim.run(4);
-  
-  std::cout << s << " done\n";
+  try {
+    DreadDs::Simulation sim(argv[1], argv[3]);
+    int s = sim.run(n);
+    std::cout << "Final step count: " << s << std::endl;
+  }
+  catch (const DreadDs::ApplicationError &ae) {
+    std::cerr << ae.what()  << std::endl;
+    std::exit(1);
+  }
 }

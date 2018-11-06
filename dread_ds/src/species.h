@@ -6,8 +6,6 @@
 #include <memory>
 #include <vector>
 
-#include <iostream> // FIXME for debugging
-
 #include "model-limits.h"
 #include "model-config.h"
 #include "environment.h"
@@ -85,13 +83,7 @@ namespace DreadDs {
 
     Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
 
-    void print_kernel() { // FIXME debugging
-      std::cout << "Dispersal kernel" << std::endl;
-      for (auto &&v: dk)
-	std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
-    }
-
-    void update_stats(Characteristics &ch);
+    void update_stats(Characteristics &ch, int current_step);
 
   private:
     void setup_dispersal(const SpeciesParameters &sp);
