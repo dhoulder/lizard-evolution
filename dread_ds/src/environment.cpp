@@ -60,9 +60,11 @@ public:
       throw ConfigError("Cannot determine coordinates of cells in grid file");
   }
 
-  void read_row() {
-    if (band->RasterIO(GF_Read, 0, 0, ncol, 1,
-		       row_buffer, ncol, 1, GDT_Float32,
+  void read_row(int row) {
+    if (band->RasterIO(GF_Read,
+		       0, row, ncol, 1,
+		       row_buffer, ncol, 1,
+		       GDT_Float32,
 		       0, 0 ) != CE_None)
       throw ConfigError("Error reading row data from grid file");
   }
@@ -121,11 +123,15 @@ Environment::Environment(const Config &conf_):
 	if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
 	  throw ConfigError("Coordinates of " + ep.grid_filename + " don't match those of first grid file");
     }
-
     for (int row=0; row < env_reader.nrow; ++row) {
-      env_reader.read_row();
-      for (int col=0; col < env_reader.ncol; ++col)
+      env_reader.read_row(row);
+      for (int col=0; col < env_reader.ncol; ++col) {
 	values[row][col][layer] = env_reader.row_buffer[col];
+	if  (conf.debug > 3)
+	  std::cout << "environment: layer=" << layer <<
+	    ": row=" << row << " col=" << col <<
+	    " value=" <<  values[row][col][layer] << std::endl;
+      }
     }
 
     ++layer;
