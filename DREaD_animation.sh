@@ -3,7 +3,7 @@
 #PBS -N Al_an_250
 #PBS -q normalbw
 #PBS -l walltime=48:00:00
-#PBS -l mem=16GB
+#PBS -l mem=24GB
 #PBS -l ncpus=1
 #PBS -j oe
 

@@ -23,11 +23,11 @@ NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-#environment.source       <- "~/code/DREaD_extras/circular250.asc"  # 'internal to generate in the code
-environment.source       <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
+environment.source       <- "~/code/DREaD_extras/circular250.asc"  # 'internal to generate in the code
+#environment.source       <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
 #environment.source    <- "internal"
-environment.dimension <- 225
+environment.dimension <- 250
 
 initial.breadth       <- 3
 initial.cell          <- -1
