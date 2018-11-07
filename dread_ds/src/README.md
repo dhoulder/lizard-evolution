@@ -15,8 +15,8 @@ See ./simulation.h for API usage.
 * `cmake`
   See https://cmake.org/
 
-* A C++ compiler.
-  Needs to support C++11
+* `GDAL`
+  See  https://www.gdal.org/
 
 On Ubuntu these prerequisites can be installed with:
 
@@ -25,6 +25,7 @@ On Ubuntu these prerequisites can be installed with:
 
 ### Building
 ```
+cmake . # first time only to initialise build files
 cmake --build .
 ```
 
