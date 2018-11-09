@@ -60,7 +60,6 @@ namespace DreadDs {
 
       NicheStats niche_stats[max_env_dims];
       GeneticStats genetic_stats[max_genetic_dims];
-
       int cell_count; // number of demes (occupied cells).
       float population; // total population across all occupied cells
     };
@@ -69,17 +68,14 @@ namespace DreadDs {
     std::shared_ptr <Species> left_child = NULL;
     std::shared_ptr <Species> right_child = NULL;
     std::weak_ptr <Species> parent;
-
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
     Timestep split = -1; // Time of speciation. parent->split is species
     // origin time. -1 if not speciated
-
     Characteristics initial_stats; // At species origin (i.e. split from parent)
     Characteristics latest_stats;  // Updated after each time step.
-
     std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
-
     DispersalKernel dk;
+    int id = 0;
 
     Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
 

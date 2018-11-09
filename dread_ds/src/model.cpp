@@ -3,15 +3,26 @@
 /**
  * Implementation of DREaD_ds model. See ./README.md
  */
+
+// For C open(), fdopen() etc.
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <stdio.h>
+
 #include <memory>
 #include <math.h>
 #include <iostream>
+#include <string>
 
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"
 #include "species.h"
 #include "model.h"
+#include "exceptions.h"
 
 using namespace DreadDs;
 
@@ -272,8 +283,62 @@ void Model::merge(DemeMap &dm) {
 
 
 void Model::save() {
-  // FIXME STUB
-  // dump required state to files
+  // Using plain old C file IO because C++ doesn't provide an
+  // equivalent to O_CREAT|O_EXCL.  Could also use
+  // https://www.boost.org/doc/libs/1_67_0/libs/iostreams/doc/classes/file_descriptor.html#file_descriptor_sink
+
+  std::string output_filename = output_path + "/" + std::to_string(step) + ".csv";
+  int fd = open(output_filename.c_str(),
+		// atomically create and open, fail if exists
+		O_WRONLY | O_CREAT | O_EXCL,
+		0664);
+  FILE *of = NULL;
+  if (fd > -1)
+    of = fdopen(fd, "w");
+  if (NULL == of) {
+    char msg_buf[200] = "";
+#if (_POSIX_C_SOURCE >= 200112L) && !  _GNU_SOURCE
+    strerror_r(errno, msg_buf, sizeof(msg_buf));
+    char *mb = msg_buf;
+#else
+    char *mb = strerror_r(errno, msg_buf, sizeof(msg_buf));
+#endif
+    throw ApplicationError("Could not create " +
+			   output_filename + ": " + mb);
+  }
+
+  fprintf(of, "species, row, column, amount");
+  for (int i=0; i < conf.env_dims; ++i)
+    fprintf(of, ", env_%d, niche_center_%d, niche_breadth_%d", i, i, i);
+  for (int i=0; i < conf.genetic_dims; i++)
+    fprintf(of, ", genetic_position_%d", i);
+  fprintf(of, "\n");
+
+  for (auto &&species: tips) {
+    for (auto &&deme_cell: *(species->demes)) {
+      const Location &loc = deme_cell.first;
+      const EnvCell &&ec = env.get(loc);
+      for (auto &&deme: deme_cell.second) {
+	auto &&g = deme.genetics;
+	fprintf(of,
+		"%d, %d, %d, %f",
+		species->id, loc.y, loc.x, deme.amount);
+	for (int i=0; i < conf.env_dims; ++i)
+	  fprintf(of,
+		  ", %f, %f, %f",
+		  ec.v[i],
+		  g.niche_centre[i], g.niche_tolerance[i] *2.0f);
+	for (int i=0; i < conf.genetic_dims; i++)
+	  fprintf(of,
+		  ", %f",
+		  g.genetic_position[i]);
+	fprintf(of, "\n");
+      }
+    }
+  }
+
+  fclose(of);
+
 }
 
 

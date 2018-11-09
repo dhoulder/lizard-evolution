@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <cassert>
+#include <atomic>
 
 #include <boost/serialization/array_wrapper.hpp> // just for boost 1.64. see https://svn.boost.org/trac10/ticket/12982
 #include <boost/accumulators/accumulators.hpp>
@@ -16,6 +17,8 @@
 
 using namespace DreadDs;
 namespace ba = boost::accumulators;
+
+static std::atomic_int id_hwm(0);
 
 static float dispersal_distance(int x, int y) {
   // Replace with some other distance metric if required.
@@ -176,6 +179,8 @@ Species::Species(const Config &c,
    * Load initial species values, locations and abundance.
    */
 {
+  ++id_hwm;
+  id = id_hwm;
   setup_dispersal(sp);
   load_initial(sp, env);
 

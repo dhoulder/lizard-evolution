@@ -1,3 +1,11 @@
+// -*- coding: utf-8 -*-
+
+/**
+ * Dynamic Range Evolution and Diversification simulation with dynamic
+ * speciation
+ *
+ */
+
 #include <string>
 #include <stdexcept>
 #include <iostream>

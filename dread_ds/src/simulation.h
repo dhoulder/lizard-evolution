@@ -1,7 +1,7 @@
 // -*- coding: utf-8; Mode: c++ -*-
 
 /**
-   DREaD_ds model API. See ./README.md
+ * DREaD_ds model API. See ./README.md
  */
 
 #ifndef DREADDS_SIMULATION_H
@@ -19,17 +19,20 @@ namespace DreadDs {
   public:
     const char *const version = "0.01";
 
-    // Configure and initialise the simulation.
+    /**
+     * Configure and initialise the simulation.
+     */
     Simulation(const char *config_path,
 	       const char *output_path);
     ~Simulation();
 
-    // Run the simulation for a number of time steps.
-    //
-    // Arguments: n_steps: number of time steps to run for. Will stop
-    // prematurely if all cells become empty.
-    //
-    // Returns: time step of final iteration.
+    /**
+     * Run the simulation for a number of time steps.  Arguments:
+     * n_steps: number of time steps to run for. Will stop prematurely
+     * if all cells become empty.
+     *
+     * Returns: time step of final iteration.
+     */
     int run(int n_steps);
 
   private:
