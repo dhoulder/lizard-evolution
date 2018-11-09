@@ -1,8 +1,8 @@
 # this file contains functions for dispersal, competition, niche evolution and drift
 
 # env = current environmental layer
-# position = niche position of species
-# breadth = niche breadth of species
+# position = niche position of deme
+# breadth = niche breadth of deme
 
 disperse_ds <- function (demetable.species,
                          env,
@@ -244,16 +244,20 @@ niche_suitability <- function(env,
     # sine suitability is 1 for the central niche position, declining to 0 at
     # the niche limits according to a sine curve
 
-    # transform suitability to range from 0 (for minimum to pi for maximum)
-    suitability <- suitability - niche1.min
+    # transform suitability to range from 0 to 1 (0 for minimum, 1 for maximum)
+    suitability <- (suitability - niche1.min) / niche1.breadth
     suitability[suitability < 0] <- 0
-    suitability <- suitability * (pi / niche1.breadth)
-    suitability[suitability > pi] <- 0
-    suitability <- sin(suitability)
+    suitability[suitability > 1] <- 1
+
+    # transform suitability to range for -0.5 to 1.5 to get the right part of the sine curve
+    suitability <- (suitability * 2) - 0.5
+
+    # then transform to radians and get the sine value, from 0 to 1 (instead of -1 to 1)
+    suitability <- (suitability * pi)
+    suitability <- (sin(suitability) + 1) /2
   }
 
   return(suitability)
-
 }
 
 distances <- function(source, destinations, distance.type="euclidean") {

@@ -1,15 +1,18 @@
 rm(list=ls())
 gc()
 
+setwd("~/code/DREaD_ds")
+
 scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange.R", "DREaD_ds.R",
              "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
 lapply(scripts, source)
 
-library(animation)
+
+run.name              <- "anim_real225_nicherate0.02_dispersal2_300gens_v1"
 
 #sample parameters
-total.time            <- 500
-dispersal             <- 1              # dispersal distance
+total.time            <- 300
+dispersal             <- 2              # dispersal distance
 niche.evolution.rate  <- 0.02
 env.amp               <- 0 #runif(1, 0.25, 2)
 env.freq              <- runif(1, 10, 25)
@@ -17,11 +20,12 @@ NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-#environment.source    <- "~/Work/Software/dan-github/DREaD_extras/circular.asc"  # 'internal to generate in the code
+environment.source    <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
-environment.source    <- "internal"
+#environment.source    <- "internal"
+environment.dimension <- 225
 
-initial.breadth       <- -1
+initial.breadth       <- 3
 initial.cell          <- -1
 initial.extent        <- NA
 initial.species.defined = list(initial.breadth = initial.breadth,
@@ -33,22 +37,39 @@ do.display            <- TRUE
 do.display.diff       <- TRUE
 do.display.genome     <- TRUE
 do.text.output        <- TRUE
-do.animate            <- TRUE
-image_to_file        <- FALSE
+do.animate            <- FALSE
+output_to_file        <- TRUE
+
+# create the image output directory
+output_dir            <- paste("/short/ka2/dfr805/simulation/test_runs/", run.name, sep="")
+image_dir             <- paste(output_dir, "/images/", sep="")
+
+if (dir.exists(image_dir) == FALSE) {
+
+  if (dir.exists(output_dir) == FALSE) {
+    dir.create(output_dir)
+    cat("\nCreated directory", output_dir, "\n")
+  }
+
+  dir.create(image_dir)
+  cat("\nCreated directory", image_dir, "\n")
+}
 
 if (do.display) {
   if (do.display.diff) {
-    my.colours.double <- display.initialise.2by2()
-    my.colours      <- my.colours.double[[1]]
-    my.coloursdiff  <- my.colours.double[[2]]
-    rm(my.colours.double)
+    my.display <- display.initialise.2by2(output_to_file)
+    my.colours      <- my.display[[1]]
+    my.coloursdiff  <- my.display[[2]]
+    my.par          <- my.display[[3]]
   } else {
-    my.colours <- display.initialise()
+    my.display <- display.initialise()
+    my.colours <- my.display[[1]]
   }
 
-  if (do.animate) {
-    ani.record(reset = TRUE) # clear animation history before recording
-  }
+  # if (do.animate) {
+  #   ani.record(reset = TRUE) # clear animation history before recording
+  #   #display.to.file.start(image_dir, 0, image_filename = "animation")
+  # }
 
 }
 
@@ -59,10 +80,4 @@ simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = e
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
                   initial.species.defined = initial.species.defined)
 
-
-ani.replay()
-
-ani.options('ani.width'=850, 'ani.height'=850, 'interval'=0.4)
-setwd("~/Dropbox/Simulation/test_runs_July2018/anim_nicherate0.02_dispersal1_500gens")
-
-saveHTML(ani.replay(), img.name="animation", htmlfile = "anim_nicherate0.02_dispersal1_500gens.html", navigator = FALSE)
+# ADD CODE HERE TO TURN THE IMAGES INTO AN ANIMATION

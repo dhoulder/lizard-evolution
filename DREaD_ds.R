@@ -122,7 +122,7 @@ DREaD_ds <- function(total.time,
   all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
   names(all.coords)[1] <- "cellID"
 
-  if (do.display & !do.display.diff & !output_to_file) {
+  if (do.display & !do.display.diff & !image_to_file) {
     display.update(list(env = env))
   }
 
@@ -284,7 +284,7 @@ DREaD_ds <- function(total.time,
 
       # update the dynamic plot
       if (do.display) {
-        if (output_to_file) {
+        if (image_to_file) {
           display.to.file.start(image_dir, current.time, image_filename = "animation")
         }
 
@@ -306,10 +306,22 @@ DREaD_ds <- function(total.time,
           ani.record() # record the current frame
         }
 
-        if (output_to_file) {
+        if (image_to_file) {
           display.to.file.stop()
         }
       }
+
+      if (raster_to_file & current.time %in% generations_to_save) {
+        current.species.ras <- demes_to_raster(demetable.species, current.speciesID, env)
+        if (run_number_in_filename) {
+          raster.filename <- paste(raster_dir, "run",  run_number, "species", current.speciesID, "_time", current.time, ".asc", sep="")
+        } else {
+          raster.filename <- paste(raster_dir, "species", current.speciesID, "_time", current.time, ".asc", sep="")
+        }
+        writeRaster(current.species.ras, raster.filename, overwrite=T)
+      }
+
+      gc(verbose=FALSE)
 
     } #end of looping through species
 
