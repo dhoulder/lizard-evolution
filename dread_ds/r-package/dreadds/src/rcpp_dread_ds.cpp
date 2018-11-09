@@ -1,3 +1,6 @@
+/**
+ * R interface for DreadDs model
+ */
 
 #include <Rcpp.h>
 
@@ -6,16 +9,15 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-List dreadds() {
-  // FIXME STUB
 
-  DreadDs::Simulation sim("example.conf",
-			  "model-test-out.junk");
+int dreadds(Rcpp::StringVector config_path_vec,
+	    int n_steps,
+	    Rcpp::StringVector output_path_vec) {
 
-  int final_step = sim.run(7);
-
-  CharacterVector x = CharacterVector::create("dreadds STUB", sim.version);
-  List z = List::create(final_step) ;
-
-  return z ;
+  if (config_path_vec.size() < 1 ||
+      output_path_vec.size() <1)
+    return -1;
+  DreadDs::Simulation sim(config_path_vec[0],
+			  output_path_vec[0]);
+  return sim.run(n_steps);
 }

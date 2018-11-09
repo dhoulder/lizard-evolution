@@ -50,6 +50,21 @@ if required, or called from R using the R package below.
 ### Building
 ```
 cd r-package
+```
+
+If you have changed the API in rcpp_*.cpp, use
+```
+# may need to clobber dreadds/R/RcppExports.R first
+mv -i dreadds/R/RcppExports.R /tmp/
+
+R
+...
+> require(Rcpp)
+> compileAttributes("dreadds")
+```
+to update the package skeleton first.
+
+```
 # Need to pass in the location of the library and header via environment. See Makevars
 DREAD_DS_SRC=$(cd ../src/ && pwd) R CMD build dreadds
 ```
