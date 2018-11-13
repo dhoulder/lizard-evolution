@@ -50,6 +50,7 @@ namespace DreadDs {
     float gene_drift_sd = 1.0f; // FIXME use timestep size
     float niche_evolution_rate = 0.1;
     float dispersal_min = 0.02;
+    std::string output_file_prefix = "";
 
     EnvParamsVec env_params;
 

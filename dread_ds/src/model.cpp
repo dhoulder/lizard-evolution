@@ -287,7 +287,8 @@ void Model::save() {
   // equivalent to O_CREAT|O_EXCL.  Could also use
   // https://www.boost.org/doc/libs/1_67_0/libs/iostreams/doc/classes/file_descriptor.html#file_descriptor_sink
 
-  std::string output_filename = output_path + "/" + std::to_string(step) + ".csv";
+  std::string output_filename = output_path + "/" +
+    conf.output_file_prefix + std::to_string(step) + ".csv";
   int fd = open(output_filename.c_str(),
 		// atomically create and open, fail if exists
 		O_WRONLY | O_CREAT | O_EXCL,
@@ -309,7 +310,7 @@ void Model::save() {
 
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
-    fprintf(of, ", env_%d, niche_center_%d, niche_breadth_%d", i, i, i);
+    fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
   for (int i=0; i < conf.genetic_dims; i++)
     fprintf(of, ", genetic_position_%d", i);
   fprintf(of, "\n");

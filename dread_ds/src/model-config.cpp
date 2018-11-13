@@ -72,6 +72,9 @@ Config::Config(const char *filename) {
       ("dispersal_min", po::value<float>(&dispersal_min)->required(),
        "Minimum dispersal amount (0…1)")
 
+      ("output_file_prefix",  po::value<string>(&output_file_prefix),
+       "Output filenaes will all start with this string.")
+
       // Environment input. One or more sets of these are supported.
 
       ("env.grid", po::value<vector<string>>(&env_grids)->required(),

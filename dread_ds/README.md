@@ -6,27 +6,27 @@ R. See `../README.md`
 
 The model implemented here is intended to closely match the model
 implemented by `../DREaD_ds.R`, but in a language that allows for
-greater computational performance and efficiency.
+greater computational performance.
 
 Source code for the C++ implementation of the model can be found in
 `./src/`
 
 Sample configuration and input files can be found in `./examples/`.
 
-Files in `./r-package/` provide an R API that allows input data, model
-configuration, output and visualisation to be handled in R.
-
-This separation means that the model is only loosely coupled to R,
-which opens up the possibility of using the model by, say, calling it
-from a standalone executable that handles all the model inputs and
-outputs.
+Files in `./r-package/` provide an R API that allows the model to be
+called from the R interpreter.
 
 
 ## The model
 
-See `./src/README.md` for details on building the library that
-implements the model. This can be called from a standalone executable
-if required, or called from R using the R package below.
+`./src/README.md` contains instructions for building both the library
+that implements the model, and a standalone executable that provides a
+command line interface to it.
+
+To see the usage information for the standalone executable `dreadds`,
+run it without arguments. `dreadds` uses a configuration file as part
+of its input. See `examples/example.conf` for the configuration file
+format and allowable options.
 
 
 ## The R package (R API for the model)
@@ -47,7 +47,7 @@ if required, or called from R using the R package below.
 
   On Windows, install Rtools from https://cran.r-project.org/bin/windows/Rtools/
 
-### Building
+### Building the R package
 ```
 cd r-package
 ```
@@ -79,7 +79,9 @@ DREAD_DS_SRC=$(cd src && pwd) R
 ### Running
 ```
 R
+...
 > require(dreadds)
-# run stub
-> dreadds()
+# See…
+> help(dreadds)
+# for usage information
 ```
