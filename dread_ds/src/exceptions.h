@@ -7,14 +7,19 @@
 
 namespace DreadDs {
 
-  class ApplicationError : public std::runtime_error {
+  class ApplicationException : public std::runtime_error {
   public:
     using std::runtime_error::runtime_error;
   };
 
-  class ConfigError : public ApplicationError {
+  class ConfigError : public ApplicationException {
   public:
-    using ApplicationError::ApplicationError;
+    using ApplicationException::ApplicationException;
+  };
+
+  class UsageException: public ApplicationException {
+  public:
+    using ApplicationException::ApplicationException;
   };
 
 }

@@ -4,20 +4,21 @@
 
 #include <Rcpp.h>
 
+#include <model-config.h>
 #include <simulation.h>
 
 using namespace Rcpp;
 
 // [[Rcpp::export]]
 
-int dreadds(Rcpp::StringVector config_path_vec,
-	    int n_steps,
-	    Rcpp::StringVector output_path_vec) {
+int dreadds(Rcpp::StringVector config_path_vec) {
+  // FIXME allow config options to be passed in as args
 
-  if (config_path_vec.size() < 1 ||
-      output_path_vec.size() <1)
+  if (config_path_vec.size() < 1)
     return -1;
-  DreadDs::Simulation sim(config_path_vec[0],
-			  output_path_vec[0]);
-  return sim.run(n_steps);
+
+  const char *argv[] = {"dreadds", "-c", config_path_vec[0]};
+  DreadDs::Config conf(3, argv);
+  DreadDs::Simulation sim(conf);
+  return sim.run(conf.n_iterations);
 }

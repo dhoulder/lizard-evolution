@@ -6,37 +6,36 @@
  *
  */
 
-#include <string>
-#include <stdexcept>
 #include <iostream>
 #include <cstdlib>
 
 #include "exceptions.h"
+#include "model-config.h"
 #include "simulation.h"
 
-static void usage(char *argv0) {
-  std::cerr << "Usage: " << argv0 << "config-file n-iterations output-path" << std::endl;
-  std::exit(1);
-}
+using namespace DreadDs;
 
-int main(int argc, char *argv[]) {
-  int n =0;
-  if (argc != 4)
-    usage(argv[0]);
+int main(int argc, const char *argv[]) {
   try {
-    n = std::stoi(argv[2]);
+    Config conf(argc, argv);
+    Simulation sim(conf);
+    int s = sim.run(conf.n_iterations);
+    if (conf.verbosity > 0)
+      std::cout << "Final step count: " << s << std::endl;
   }
-  catch (const std::logic_error& oor) {
-    usage(argv[0]);
+  catch (const UsageException &ae) {
+    std::cerr <<
+      "Usage: " << argv[0] << "--option=value [--option=value …]" << std::endl <<
+      ae.what()  << std::endl;
+    std::exit(0);
   }
-
-  try {
-    DreadDs::Simulation sim(argv[1], argv[3]);
-    int s = sim.run(n);
-    std::cout << "Final step count: " << s << std::endl;
-  }
-  catch (const DreadDs::ApplicationError &ae) {
-    std::cerr << ae.what()  << std::endl;
+  catch (const ConfigError &ae) {
+    std::cerr << ae.what()  << std::endl <<
+      "See " << argv[0] << " --help for usage." << std::endl;
     std::exit(1);
+  }
+  catch (const ApplicationException &ae) {
+    std::cerr << ae.what()  << std::endl;
+    std::exit(2);
   }
 }

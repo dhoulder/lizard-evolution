@@ -38,13 +38,8 @@ namespace DreadDs {
     Environment env;
     std::vector <std::shared_ptr <Species>> roots; // Initial species
     std::vector <std::shared_ptr <Species>> tips; // extant leaf species
-    std::string output_path;
 
-    Model(const char *config_path,
-	  const char *output_path);
-
-    Model(const Config &conf,
-	  const char *output_path);
+    Model(const Config &conf);
 
     /**
      * Execute one time step of the model.
@@ -65,7 +60,7 @@ namespace DreadDs {
     float gene_flow_probability(float distance);
     float genetic_distance(const Deme &d1, const Deme &d2);
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
-    std::shared_ptr<DemeMap> disperse(Species &species);
+    std::shared_ptr<DemeMap> evolve_and_disperse(Species &species);
     void merge(DemeMap &dm);
     void save();
   };

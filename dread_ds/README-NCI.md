@@ -31,9 +31,9 @@ cmake --build .
 
 ```
 cd  ~/DREaD_ds/dread_ds/src
-./test_dd $config_filename $n_iterations $output_path
+./dreadds --help
 
-# See ../examples/ for config format
+# See ../examples/ for config file format
 ```
 
 

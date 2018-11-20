@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 
+#include "model-config.h"
+
 namespace DreadDs {
 
   class Model; // for opaque pointer below
@@ -17,13 +19,11 @@ namespace DreadDs {
   // Represents a DREaD_ds evolution model. See ./README.md
   class Simulation {
   public:
-    const char *const version = "0.01";
 
     /**
      * Configure and initialise the simulation.
      */
-    Simulation(const char *config_path,
-	       const char *output_path);
+    Simulation(const Config &conf);
     ~Simulation();
 
     /**

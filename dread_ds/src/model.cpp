@@ -72,18 +72,10 @@ namespace DreadDs {
   };
 }
 
-Model::Model(const char *config_path,
-	     const char *output_path_arg):
-  Model(Config(config_path),
-	output_path_arg) {}
-
-
-Model::Model(const Config &c,
-	     const char *output_path_arg):
+Model::Model(const Config &c):
   conf(c),
   step(0),
   env(Environment(conf)), // must use conf member, not arg
-  output_path(output_path_arg),
 
   // Generate random values between [gene_flow_clip,
   // 1-gene_flow_clip] to effectively apply high and low
@@ -129,7 +121,7 @@ void Model::do_genetc_drift(Deme &deme) {
 }
 
 
-std::shared_ptr<DemeMap> Model::disperse(Species &species) {
+std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
   /**
    * Iterate over all extant demes of a species and disperse to
    * neighbouring cells, weighted by environmental niche
@@ -287,7 +279,7 @@ void Model::save() {
   // equivalent to O_CREAT|O_EXCL.  Could also use
   // https://www.boost.org/doc/libs/1_67_0/libs/iostreams/doc/classes/file_descriptor.html#file_descriptor_sink
 
-  std::string output_filename = output_path + "/" +
+  std::string output_filename = conf.output_dir + "/" +
     conf.output_file_prefix + std::to_string(step) + ".csv";
   int fd = open(output_filename.c_str(),
 		// atomically create and open, fail if exists
@@ -304,8 +296,8 @@ void Model::save() {
 #else
     char *mb = strerror_r(errno, msg_buf, sizeof(msg_buf));
 #endif
-    throw ApplicationError("Could not create " +
-			   output_filename + ": " + mb);
+    throw ApplicationException("Could not create " +
+			       output_filename + ": " + mb);
   }
 
   fprintf(of, "species, row, column, amount");
@@ -351,7 +343,7 @@ int Model::do_step() {
   env.update(step);
   int n_occupied = 0;
   for (auto && species: tips) {
-    auto target = disperse(*species);
+    auto target = evolve_and_disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
 
     // merge demes in each cell that are within genetic tolerance.
@@ -375,7 +367,7 @@ int Model::do_step() {
 
   save();
 
-  if (conf.debug > 1)
+  if (conf.verbosity > 1)
     std::cout << "End of step " << step << std::endl << std::endl;
 
   return n_occupied;

@@ -41,25 +41,23 @@ namespace DreadDs {
   class Config {
   public:
     // Parameters for a simulation run.
-    int debug = 0;
+    int verbosity = 1;
     int env_dims = 0; // must be <= max_env_dims
     int genetic_dims = max_genetic_dims; // <= max_genetic_dims
-
     float gene_flow_clip = 0.001f;
     float gene_flow_zero_distance = 5.0f;
     float gene_drift_sd = 1.0f; // FIXME use timestep size
     float niche_evolution_rate = 0.1;
     float dispersal_min = 0.02;
+    std::string output_dir = "./";
     std::string output_file_prefix = "";
-
+    int n_iterations = 0;
     EnvParamsVec env_params;
-
     std::vector<SpeciesParameters> initial_species;
 
     Config() {}
 
-    Config(const char *filename);
-
+    Config(int argc, const char *argv[]);
   };
 
 }

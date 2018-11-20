@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 
@@ -27,7 +28,7 @@ static vector<float> comma_split(string csv) {
 }
 
 
-Config::Config(const char *filename) {
+Config::Config(int ac, const char *av[]) {
   /**
    * Configuration values are obtained using Boost.Program_options See
    * https://www.boost.org/doc/libs/1_68_0/doc/html/program_options.html
@@ -48,35 +49,50 @@ Config::Config(const char *filename) {
       species_north, species_east, species_south, species_west,
       species_max_dispersal_radius;
 
-    po::options_description config("Configuration");
-    config.add_options()
-      ("debug", po::value<int>(&debug)->default_value(0),
-       "debug level")
+    po::options_description generic("Generic options");
+    generic.add_options()
+            ("help,h", "Show help message")
+            ("config,c", po::value<string>(),
+	     "Pathname of configuration file containing name=value and [section] lines. "
+	     "Command-line arguments take precedence. Arguments of the form "
+	     "section.name=value can be shortened to name=value under a [section] line. "
+	     "Use # to introduce a comment.");
 
-      ("genetic_dims", po::value<int>(&genetic_dims)->required(),
+    po::options_description config("Configuration options");
+    config.add_options()
+      ("verbosity,v", po::value<int>(&verbosity)->default_value(1),
+       "Verbosity level, 0 (quiet) to 4.")
+
+      ("genetic-dims", po::value<int>(&genetic_dims)->default_value(max_genetic_dims),
        "Number of genetic dimensions")
 
-      ("gene_flow_threshold", po::value<float>(&gene_flow_clip)->required(),
+      ("gene-flow-threshold", po::value<float>(&gene_flow_clip)->required(),
        "Gene flow probabilities that are closer to 0 or 1 by this amount or "
        "less are treated as 0 or 1 respectively")
 
-      ("gene_flow_max_distance", po::value<float>(&gene_flow_zero_distance)->required(),
+      ("gene-flow-max-distance", po::value<float>(&gene_flow_zero_distance)->required(),
        "Gene flow probability approaches zero for genetic distances greater than this")
 
-      ("gene_drift_rate", po::value<float>(&gene_drift_sd)->required(),
+      ("gene-drift-rate", po::value<float>(&gene_drift_sd)->required(),
        "Standard deviation of Brownian motion gene drift per timestep")
 
-      ("niche_evolution_rate", po::value<float>(&niche_evolution_rate)->required(),
+      ("niche-evolution-rate", po::value<float>(&niche_evolution_rate)->required(),
        "Speed of adaptation to niche as a fraction of the distance to niche centre per timestep")
 
-      ("dispersal_min", po::value<float>(&dispersal_min)->required(),
+      ("dispersal-min", po::value<float>(&dispersal_min)->required(),
        "Minimum dispersal amount (0…1)")
 
-      ("output_file_prefix",  po::value<string>(&output_file_prefix),
-       "Output filenaes will all start with this string.")
+      ("output-dir,o",  po::value<string>(&output_dir)->required(),
+       "Pathname of directory for output files.")
 
-      // Environment input. One or more sets of these are supported.
+      ("output-file-prefix,p",  po::value<string>(&output_file_prefix),
+       "Output filenames will all start with this string.")
 
+      ("iterations,n", po::value<int>(&n_iterations)->required(),
+       "Number of time steps to simulate.");
+
+    po::options_description env("Input environment (one or more sets)");
+    env.add_options()
       ("env.grid", po::value<vector<string>>(&env_grids)->required(),
        "Initial environment values as grid file. "
        "Can be specified multiple times for multiple dimensions")
@@ -84,25 +100,25 @@ Config::Config(const char *filename) {
       ("env.ramp", po::value<vector<double>>(&env_ramp)->required(),
        "Environmental change per time step")
 
-      ("env.sine_period", po::value<vector<float>>(&env_sine_period)->required(),
+      ("env.sine-period", po::value<vector<float>>(&env_sine_period)->required(),
        "Length of sinusoidal environmental change in time steps")
 
-      ("env.sine_offset", po::value<vector<float>>(&env_sine_offset)->required(),
+      ("env.sine-offset", po::value<vector<float>>(&env_sine_offset)->required(),
        "Offset of sinusoidal environmental change in timesteps")
 
-      ("env.sine_amplitude", po::value<vector<float>>(&env_sine_amplitude)->required(),
-       "Peak amplitude of sinusoidal environmental change")
+	("env.sine-amplitude", po::value<vector<float>>(&env_sine_amplitude)->required(),
+       "Peak amplitude of sinusoidal environmental change");
 
 
-      // Initial species. One or more sets of these are supported.
-
+    po::options_description species("Initial species (one or more sets)");
+    species.add_options()
       ("species.niche", po::value<vector<string>>(&species_niche)->required(),
        "Species niche as comma-separated values, one per environment dimension") // CSV, one value for each environment dimension
 
-      ("species.niche_breadth", po::value<vector<string>>(&species_niche_breadth)->required(),
+      ("species.niche-breadth", po::value<vector<string>>(&species_niche_breadth)->required(),
        "Species niche breadth") // CSV, one value for each species.niche
 
-      ("species.max_dispersal_radius", po::value<vector<float>>(&species_max_dispersal_radius)->required(),
+      ("species.max-dispersal-radius", po::value<vector<float>>(&species_max_dispersal_radius)->required(),
        "Maximum dispersal radius in grid cells")
 
       ("species.north", po::value<vector<float>>(&species_north)->required(),
@@ -115,17 +131,31 @@ Config::Config(const char *filename) {
        "Southern boundary of initial species bounding rectangle in grid coordinates")
 
       ("species.west", po::value<vector<float>>(&species_west)->required(),
-       "Western boundary of initial species bounding rectangle in grid coordinates")
+       "Western boundary of initial species bounding rectangle in grid coordinates");
 
-      ;
+    config.add(env).add(species);
+    po::options_description cmdline_options;
+    cmdline_options.add(generic).add(config);
 
     po::variables_map vm;
-    ifstream ifs(filename);
+    po::store(po::command_line_parser(ac, av).
+              options(cmdline_options).run(), vm);
 
-    if(ifs.fail())
-      throw ConfigError("Can't open configuration file");
+    if (vm.count("help")) {
+      std::ostringstream os;
+      os << cmdline_options;
+      throw UsageException(os.str());
+    }
 
-    po::store(po::parse_config_file(ifs, config), vm);
+    if (vm.count("config")) {
+      string config_file = vm["config"].as<string>();
+      if (!config_file.empty()) {
+	ifstream ifs(config_file);
+	if(ifs.fail())
+	  throw ConfigError("Can't open configuration file " + config_file);
+	po::store(po::parse_config_file(ifs, config), vm);
+      }
+    }
     po::notify(vm);
 
     env_dims = env_grids.size();
@@ -135,7 +165,7 @@ Config::Config(const char *filename) {
       throw ConfigError("No environment grids");
 
     if (dispersal_min < 0.0 || dispersal_min > 1.0)
-      throw ConfigError("dispersal_min must be between 0 and 1");
+      throw ConfigError("dispersal-min must be between 0 and 1");
 
     try {
       for (int i = 0; i < env_dims; ++i) {
@@ -151,7 +181,7 @@ Config::Config(const char *filename) {
     }
     catch (const out_of_range& oor) {
       throw ConfigError("Each env.grid needs a corresponding "
-			"env.ramp, env.sine_period, env.sine_offset, env.sine_amplitude");
+			"env.ramp, env.sine-period, env.sine-offset, env.sine-amplitude");
     }
 
     try {
@@ -164,7 +194,7 @@ Config::Config(const char *filename) {
 	sp.west = species_west.at(i);
 	sp.max_dispersal_radius = species_max_dispersal_radius.at(i);
 	if (sp.max_dispersal_radius < 0.0)
-	  throw ConfigError("species.max_dispersal_radius must not be negative");
+	  throw ConfigError("species.max-dispersal-radius must not be negative");
 
 	// Need species niche for each environment dimension, so
 	// they're supplied as CSV in the config file
@@ -172,7 +202,7 @@ Config::Config(const char *filename) {
 	  vector<float> nc = move(comma_split(species_niche.at(i)));
 	  vector<float> nt = move(comma_split(species_niche_breadth.at(i)));
 	  if (nc.size() != nt.size())
-	    throw ConfigError("niche and niche_breadth have different lengths");
+	    throw ConfigError("niche and niche-breadth have different lengths");
 	  for (int i=0; i < nc.size(); ++i) {
 	    sp.niche.push_back(NicheSpec {nc[i], nt[i] * 0.5f }); // *0.5 to convert breadth to tolerance
 	  }
@@ -190,7 +220,7 @@ Config::Config(const char *filename) {
     }
     catch (const out_of_range &e) {
       throw ConfigError("Each species.niche needs a corresponding "
-			"species.niche_breadth, species.max_dispersal_radius, "
+			"species.niche-breadth, species.max-dispersal-radius, "
 			"species.north, species.east, species.south, species.west");
     }
 
@@ -215,8 +245,7 @@ Config::Config(const char *filename) {
 
   catch(po::error & e)
     {
-      throw ConfigError("Configuration parsing error: " + string(e.what()));
+      throw ConfigError("Configuration error: " + string(e.what()));
     }
-
 
 }

@@ -4,16 +4,16 @@
  * Implementation of DREaD_ds model API. See ./README.md
  */
 
+#include "model-config.h"
 #include "model.h"
 #include "simulation.h"
 
 using DreadDs::Simulation;
 using DreadDs::Model;
+using DreadDs::Config;
 
-Simulation::Simulation(const char *config_path,
-		       const char *output_path):
-  model(new Model(config_path,
-		  output_path))
+Simulation::Simulation(const Config &conf):
+  model(new Model(conf))
 {}
 
 Simulation::~Simulation() = default;

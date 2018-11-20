@@ -42,7 +42,7 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
-  if (conf.debug > 3) {
+  if (conf.verbosity > 3) {
     std::cout << "Dispersal kernel" << std::endl;
     for (auto &&v: dk)
       std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
@@ -68,7 +68,7 @@ void Species::load_initial(const SpeciesParameters &sp,
   Deme d(sp);
   Location loc;
 
-  if (conf.debug > 1)
+  if (conf.verbosity > 1)
     std::cout << "Loading species. north=" <<
       sp.north << " row " << n <<
       ", south=" << sp.south << " row " << s <<
@@ -128,7 +128,7 @@ void Species::update_stats(Characteristics &ch, int current_step) {
   if (ch.cell_count == 0) {
     extinction = current_step;
     // leave other stats as they were on previous step
-    if (conf.debug > 1)
+    if (conf.verbosity > 1)
       std::cout << "Species extinct at step " << current_step << std::endl;
     return;
   }
@@ -150,7 +150,7 @@ void Species::update_stats(Characteristics &ch, int current_step) {
     gs.sd = sqrt(ba::variance(genetic_acc[i]));
   }
 
-  if (conf.debug > 1) {
+  if (conf.verbosity > 1) {
     std::cout <<
       "Species cell count " << ch.cell_count <<
       ", population = " << ch.population <<

@@ -90,7 +90,7 @@ void Environment::update(int time_step) {
       (p->sine_amplitude * sin(2 * M_PI *
 			       ((double)p->sine_offset +
 				(double)time_step/p->sine_period)));
-    if (conf.debug > 3)
+    if (conf.verbosity > 3)
       std::cout << "env " << i << " step " << time_step << " delta " << *ed << std::endl;
   }
 }
@@ -127,7 +127,7 @@ Environment::Environment(const Config &conf_):
       env_reader.read_row(row);
       for (int col=0; col < env_reader.ncol; ++col) {
 	values[row][col][layer] = env_reader.row_buffer[col];
-	if  (conf.debug > 3)
+	if  (conf.verbosity > 3)
 	  std::cout << "environment: layer=" << layer <<
 	    ": row=" << row << " col=" << col <<
 	    " value=" <<  values[row][col][layer] << std::endl;

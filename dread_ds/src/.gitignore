@@ -5,6 +5,7 @@ cmake_install.cmake
 *.o
 *.so
 *.a
+dreadds
 test[-_]*
 !*.h
 !*.hpp
