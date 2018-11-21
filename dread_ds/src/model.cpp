@@ -4,12 +4,6 @@
  * Implementation of DREaD_ds model. See ./README.md
  */
 
-// For C open(), fdopen() etc.
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
 #include <stdio.h>
 
 #include <ctime>
@@ -24,6 +18,7 @@
 #include "species.h"
 #include "model.h"
 #include "exceptions.h"
+#include "output-file.h"
 
 using namespace DreadDs;
 
@@ -278,31 +273,8 @@ void Model::merge(DemeMap &dm) {
 
 
 void Model::save() {
-  // Using plain old C file IO because C++ doesn't provide an
-  // equivalent to O_CREAT|O_EXCL.  Could also use
-  // https://www.boost.org/doc/libs/1_67_0/libs/iostreams/doc/classes/file_descriptor.html#file_descriptor_sink
-
-  std::string output_filename = conf.output_dir + "/" +
-    conf.output_file_prefix + std::to_string(step) + ".csv";
-  int fd = open(output_filename.c_str(),
-		// atomically create and open, fail if exists
-		O_WRONLY | O_CREAT | O_EXCL,
-		0664);
-  FILE *of = NULL;
-  if (fd > -1)
-    of = fdopen(fd, "w");
-  if (NULL == of) {
-    char msg_buf[200] = "";
-#if (_POSIX_C_SOURCE >= 200112L) && !  _GNU_SOURCE
-    strerror_r(errno, msg_buf, sizeof(msg_buf));
-    char *mb = msg_buf;
-#else
-    char *mb = strerror_r(errno, msg_buf, sizeof(msg_buf));
-#endif
-    throw ApplicationException("Could not create " +
-			       output_filename + ": " + mb);
-  }
-
+  FILE *of = open_output_file(conf,
+			      std::to_string(step) + ".csv");
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
@@ -332,9 +304,52 @@ void Model::save() {
       }
     }
   }
-
   fclose(of);
 
+  of = open_output_file(conf,
+			std::to_string(step) + "-stats.yml");
+  fprintf(of, "# Step %d\n", step);
+  for (auto && species: tips) {
+    Species::Characteristics &ch = species->latest_stats;
+    auto pp = species->parent.lock();
+    fprintf(of,
+	    "- species: %d\n"
+	    "  cell_count: %d\n"
+	    "  population: %f\n"
+	    "  extinction_time: %d\n"
+	    "  speciation_time: %d\n"
+	    "  parent_species: %d\n"
+	    "  niche:\n",
+	    species->id, ch.cell_count, ch.population,
+	    species->extinction, species->split,
+	    pp? pp->id : -1);
+
+    for (int i=0; i < conf.env_dims; ++i) {
+      const auto &ns = ch.niche_stats[i];
+      fprintf(of,
+	      "  - env_var: %d\n"
+	      "    min: %f\n"
+	      "    max: %f\n"
+	      "    mean: %f\n"
+	      "    sd: %f\n"
+	      "    mean_breadth: %f\n"
+	      "    breadth_sd: %f\n",
+	      i, ns.min, ns.max,
+	      ns.position_mean, ns.position_sd,
+	      ns.breadth_mean,  ns.breadth_sd);
+    }
+
+    fprintf(of,
+	    "  genetics:\n");
+    for (int i=0; i < conf.genetic_dims; ++i) {
+      const auto &gs = ch.genetic_stats[i];
+      fprintf(of,
+	      "  - mean: %f\n"
+	      "    sd: %f\n",
+	      gs.mean, gs.sd);
+    }
+  }
+  fclose(of);
 }
 
 
