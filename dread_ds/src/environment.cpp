@@ -90,8 +90,9 @@ void Environment::update(int time_step) {
       (p->sine_amplitude * sin(2 * M_PI *
 			       ((double)p->sine_offset +
 				(double)time_step/p->sine_period)));
-    if (conf.verbosity > 3)
-      std::cout << "env " << i << " step " << time_step << " delta " << *ed << std::endl;
+    if (conf.verbosity > 1)
+      std::cout << "Environment variable " << i <<
+	" offset=" << *ed << std::endl;
   }
 }
 
@@ -104,6 +105,9 @@ Environment::Environment(const Config &conf_):
   for (const auto &ep: conf.env_params) {
 
     Reader env_reader(ep.grid_filename);
+    if (conf.verbosity > 1)
+      std::cout << "Loading environment variable " << layer <<
+	" from " << ep.grid_filename << std::endl;
 
     if (0 == layer) {
       // First file defines bounding box, allocates space and fills in first layer
@@ -116,20 +120,22 @@ Environment::Environment(const Config &conf_):
       // subsequent files fill in 2nd, 3rd, … layers
       assert(layer < max_env_dims);
       if (env_reader.nrow != values.shape()[0] || env_reader.ncol != values.shape()[1])
-	throw ConfigError("Dimensions of " + ep.grid_filename + "don't match those of first grid file");
+	throw ConfigError("Dimensions of " + ep.grid_filename +
+			  "don't match those of first grid file");
       double gt[6];
       env_reader.get_coordinates(gt);
       for (int j=0; j<6; j++)
 	if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
-	  throw ConfigError("Coordinates of " + ep.grid_filename + " don't match those of first grid file");
+	  throw ConfigError("Coordinates of " + ep.grid_filename +
+			    " don't match those of first grid file");
     }
     for (int row=0; row < env_reader.nrow; ++row) {
       env_reader.read_row(row);
       for (int col=0; col < env_reader.ncol; ++col) {
 	values[row][col][layer] = env_reader.row_buffer[col];
-	if  (conf.verbosity > 3)
-	  std::cout << "environment: layer=" << layer <<
-	    ": row=" << row << " col=" << col <<
+	if  (conf.verbosity > 2)
+	  std::cout <<
+	    " row=" << row << " col=" << col <<
 	    " value=" <<  values[row][col][layer] << std::endl;
       }
     }

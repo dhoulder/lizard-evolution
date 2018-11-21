@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include <ctime>
 #include <memory>
 #include <math.h>
 #include <iostream>
@@ -195,7 +196,8 @@ float Model::gene_flow_probability(float distance) {
   // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
   const float A = 14.0f;
   const float B = 0.5f;
-  return (1.0f / (1.0f + exp(((distance / conf.gene_flow_zero_distance) - B) * A)));
+  return (1.0f / (1.0f + exp(((distance /
+			       conf.gene_flow_zero_distance) - B) * A)));
 }
 
 
@@ -203,7 +205,8 @@ float Model::genetic_distance(const Deme &d1, const Deme &d2) {
   // Euclidean distance in gene space
   float sum = 0.0f;
   for (int i = 0; i < conf.genetic_dims; ++i) {
-    const float d = d2.genetics.genetic_position[i] - d1.genetics.genetic_position[i];
+    const float d = d2.genetics.genetic_position[i] -
+      d1.genetics.genetic_position[i];
     sum += d*d;
   }
   return sqrt(sum);
@@ -340,6 +343,18 @@ int Model::do_step() {
    * Execute one time step of the model
    */
   ++step;
+
+  if (conf.verbosity > 0) {
+    std::time_t now = std::time(nullptr);
+    char tstr[50];
+    if (!std::strftime(tstr, sizeof(tstr),
+		       "%Y %b %d %H:%M:%S",
+		       std::localtime(&now)))
+      tstr[0] = '\0';
+    std::cout << (step>1? "\n": "") << "Starting step " <<
+      step << " at " << tstr << std::endl;
+  }
+
   env.update(step);
   int n_occupied = 0;
   for (auto && species: tips) {
@@ -362,13 +377,7 @@ int Model::do_step() {
 
     species->update_stats(species->latest_stats, step);
     n_occupied += species->latest_stats.cell_count;
-
   }
-
   save();
-
-  if (conf.verbosity > 1)
-    std::cout << "End of step " << step << std::endl << std::endl;
-
   return n_occupied;
 }

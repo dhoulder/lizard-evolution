@@ -25,13 +25,13 @@ int main(int argc, const char *argv[]) {
   }
   catch (const UsageException &ae) {
     std::cerr <<
-      "Usage: " << argv[0] << "--option=value [--option=value …]" << std::endl <<
+      "Usage: " << argv[0] << "--option=value [--option=value …]\n"  <<
       ae.what()  << std::endl;
     std::exit(0);
   }
   catch (const ConfigError &ae) {
-    std::cerr << ae.what()  << std::endl <<
-      "See " << argv[0] << " --help for usage." << std::endl;
+    std::cerr << ae.what() <<
+      "\nSee " << argv[0] << " --help for usage." << std::endl;
     std::exit(1);
   }
   catch (const ApplicationException &ae) {

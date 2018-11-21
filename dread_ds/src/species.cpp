@@ -42,10 +42,11 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
-  if (conf.verbosity > 3) {
-    std::cout << "Dispersal kernel" << std::endl;
+  if (conf.verbosity > 1) {
+    std::cout << " Dispersal kernel" << std::endl;
     for (auto &&v: dk)
-      std::cout << v.x << ", " << v.y << " " << v.weight << std::endl;
+      std::cout << " x=" << v.x << ", y=" << v.y <<
+	" weight=" << v.weight << std::endl;
   }
 }
 
@@ -69,12 +70,12 @@ void Species::load_initial(const SpeciesParameters &sp,
   Location loc;
 
   if (conf.verbosity > 1)
-    std::cout << "Loading species. north=" <<
-      sp.north << " row " << n <<
-      ", south=" << sp.south << " row " << s <<
-      ", west=" << sp.west << " col " << w <<
-      ", east=" << sp.east << " col " << e <<
-      std::endl;
+    std::cout << " Loading species. north=" <<
+      sp.north << " (row " << n <<
+      "), south=" << sp.south << " (row " << s <<
+      "), west=" << sp.west << " (col " << w <<
+      "), east=" << sp.east << " (col " << e <<
+      ")" << std::endl;
 
   for (loc.y = n; loc.y <= s; ++loc.y)
     for (loc.x = w; loc.x <= e; ++loc.x) {
@@ -129,7 +130,8 @@ void Species::update_stats(Characteristics &ch, int current_step) {
     extinction = current_step;
     // leave other stats as they were on previous step
     if (conf.verbosity > 1)
-      std::cout << "Species extinct at step " << current_step << std::endl;
+      std::cout << "Species " << id << " extinct at step " <<
+	current_step << std::endl;
     return;
   }
 
@@ -152,7 +154,7 @@ void Species::update_stats(Characteristics &ch, int current_step) {
 
   if (conf.verbosity > 1) {
     std::cout <<
-      "Species cell count " << ch.cell_count <<
+      "Species " << id << " cell count " << ch.cell_count <<
       ", population = " << ch.population <<
       std::endl;
     for (int i=0; i < conf.env_dims; ++i) {
@@ -162,8 +164,7 @@ void Species::update_stats(Characteristics &ch, int current_step) {
 	", max=" << ns.max <<
 	", mean=" << ns.position_mean <<
 	", sd=" << ns.position_sd <<
-	std::endl <<
-	"  breadth: mean=" << ns.breadth_mean <<
+	"\n  breadth: mean=" << ns.breadth_mean <<
 	" sd=" << ns.breadth_sd <<
 	std::endl;
     }
@@ -181,6 +182,10 @@ Species::Species(const Config &c,
 {
   ++id_hwm;
   id = id_hwm;
+
+  if (conf.verbosity > 1)
+    std::cout << "Creating species " << id << std::endl;
+
   setup_dispersal(sp);
   load_initial(sp, env);
 
