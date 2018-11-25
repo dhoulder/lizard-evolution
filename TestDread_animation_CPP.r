@@ -8,9 +8,9 @@ run.name              <- "anim_real225_nicherate0.02_dispersal3_300gens_v5"
 
 #sample parameters
 total.time            <- 500
-dispersal             <- 4              # dispersal distance
+dispersal             <- 2              # dispersal distance
 niche.evolution.rate  <- 0.02
-env.amp               <- 1   #runif(1, 0.25, 2)
+env.amp               <- 0.75   #runif(1, 0.25, 2)
 env.freq              <- 50  #runif(1, 10, 25)
 breadth.evolution.rate  <- 0
 suitability.mode      <- "sine"
@@ -38,7 +38,7 @@ raster_to_file        <- FALSE
 generations_to_save     <- c(0)
 
 # input and output directories
-input.dir             <- "E:/Work/Simulation/test_runs_from_CPP/test_output9Nov_disp4v1"
+input.dir             <- "E:/Work/Simulation/test_runs_from_CPP/test_output23Nov_env0.75_disp2v1"
 output_dir            <- input.dir  #paste("/short/ka2/dfr805/simulation/test_runs/", run.name, sep="")
 image_dir             <- paste(output_dir, "/images/", sep="")
 

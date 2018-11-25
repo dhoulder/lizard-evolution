@@ -181,9 +181,9 @@ browser()
 
   while(current.time < total.time) {
 
-  starttime_timestep <- Sys.time()
+    starttime_timestep <- Sys.time()
 
-  ############################# 3. Environmental change ###########################
+    ############################# 3. Environmental change ###########################
 
     # time changes
     current.time <- current.time + timestep.size
@@ -458,8 +458,6 @@ DREaD_read_plot <- function(total.time,
     set(demetable, i=i, j=1:demetable.columncount, value=new.row)
   }
 
-  demetable.used.rows <- i
-
   # # species rasters is a list that hangs onto each species geographic range in the form of a raster
   # species.rasters <- vector('list', 10000)
   # species.rasters[[1]] <- initial.species[[1]]
@@ -523,10 +521,10 @@ DREaD_read_plot <- function(total.time,
       names(env.table)[4] <- "env1"
       setkey(env.table, cellID)
 
-      # temporary test of within species genetic distances
-      genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
-      genome.distance.max     <- max(genome.distances)
-      genome.distance.median  <- median(genome.distances)
+      # # temporary test of within species genetic distances
+      # genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
+      # genome.distance.max     <- max(genome.distances)
+      # genome.distance.median  <- median(genome.distances)
 
       # calculate and print a species summary - probably drop this once development is done
       sp.summary <- demetable.species[, .(range = .N,
@@ -536,9 +534,10 @@ DREaD_read_plot <- function(total.time,
                                           niche1.breadth.mean = mean(niche1.breadth),
                                           niche1.breadth.sd = sd(niche1.breadth),
                                           niche1.sp.min = min(niche1.position - (niche1.breadth/2)),
-                                          niche1.sp.max = max(niche1.position + (niche1.breadth/2)),
-                                          gen.distance.max = genome.distance.max,
-                                          gen.distance.median = genome.distance.median)]
+                                          niche1.sp.max = max(niche1.position + (niche1.breadth/2))
+                                          #gen.distance.max = genome.distance.max,
+                                          #gen.distance.median = genome.distance.median
+                                          )]
       sp.summary <- round(sp.summary, 4)
       if (do.text.output) {
         list.for.text <- c(list(current.time=current.time,

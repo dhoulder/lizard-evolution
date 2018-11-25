@@ -17,7 +17,8 @@ NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
 suitability.mode      <- "sine"
 speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-environment.source    <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
+#environment.source    <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
+environment.source    <- "E:/Work/Software/dan-github/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
 #environment.source    <- "internal"
 environment.dimension <- 225
@@ -72,7 +73,7 @@ if (do.display) {
 
 # Run model
 simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = env.amp, freq = env.freq,
-                  niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = T,
+                  niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = F,
                   enviro.mode = "sine", suitability.mode = suitability.mode,
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
                   initial.species.defined = initial.species.defined)
