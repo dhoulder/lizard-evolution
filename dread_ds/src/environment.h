@@ -3,8 +3,12 @@
 #ifndef DREADDS_ENVIRONMENT_H
 #define DREADDS_ENVIRONMENT_H
 
+#include <string>
+
 #define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
+// GDAL
+#include "gdal_priv.h"
 
 #include "model-limits.h"
 #include "model-config.h"
@@ -26,6 +30,31 @@ namespace DreadDs {
     float v[max_env_dims];
   };
   typedef boost::multi_array<float, 3> EnvMatrix; // [rows][columns][layers]
+
+
+  class EnvReader {
+    /**
+     * Read raster input data. Understands many common GIS formats.
+     */
+  public:
+    int ncol = 0;
+    int nrow = 0;
+    float *row_buffer = NULL;
+
+    EnvReader(const std::string &filename);
+    // have to prohibit copying due to simple management of GDAl stuff
+    // in ~EnvReader()
+    EnvReader(const EnvReader &er) = delete;
+    EnvReader& operator=(const EnvReader &er) = delete;
+
+    void get_coordinates(double *buff6);
+    void read_row(int row);
+    ~EnvReader();
+
+  private:
+    GDALDataset *dataset = NULL;
+    GDALRasterBand *band = NULL;
+  };
 
   class Environment {
   private:

@@ -29,54 +29,43 @@ static bool gdal_reg = false;
 
 using namespace DreadDs;
 
-class Reader {
-public:
-
-  GDALDataset *dataset = NULL;
-  GDALRasterBand *band = NULL;
-  int ncol = 0;
-  int nrow = 0;
-  float *row_buffer = NULL;
-
-  Reader(const std::string &filename) {
-    if (!gdal_reg) {
-      GDALAllRegister();
-      gdal_reg = true;
-    }
-    dataset = (GDALDataset *) GDALOpen(filename.c_str(), GA_ReadOnly);
-    if (dataset == NULL)
-      throw ConfigError("Cannot read environment input file " + filename);
-
-    band = dataset->GetRasterBand(1);
-    assert(band);
-    ncol = band->GetXSize();
-    nrow = band->GetYSize();
-    row_buffer = (float *) CPLMalloc(sizeof(float)*ncol);
-    assert(row_buffer);
+EnvReader:: EnvReader(const std::string &filename) {
+  if (!gdal_reg) {
+    GDALAllRegister();
+    gdal_reg = true;
   }
+  dataset = (GDALDataset *) GDALOpen(filename.c_str(), GA_ReadOnly);
+  if (dataset == NULL)
+    throw ConfigError("Cannot read environment input file " + filename);
 
-  void get_coordinates(double *buff6) {
-    if (dataset->GetGeoTransform(buff6) != CE_None)
-      throw ConfigError("Cannot determine coordinates of cells in grid file");
-  }
+  band = dataset->GetRasterBand(1);
+  assert(band);
+  ncol = band->GetXSize();
+  nrow = band->GetYSize();
+  row_buffer = (float *) CPLMalloc(sizeof(float)*ncol);
+  assert(row_buffer);
+}
 
-  void read_row(int row) {
-    if (band->RasterIO(GF_Read,
-		       0, row, ncol, 1,
-		       row_buffer, ncol, 1,
-		       GDT_Float32,
-		       0, 0 ) != CE_None)
-      throw ConfigError("Error reading row data from grid file");
-  }
+void EnvReader::get_coordinates(double *buff6) {
+  if (dataset->GetGeoTransform(buff6) != CE_None)
+    throw ConfigError("Cannot determine coordinates of cells in grid file");
+}
 
-  ~Reader() {
-    if (dataset)
-      GDALClose(dataset);
-    if (row_buffer)
-      CPLFree(row_buffer);
-  }
+void EnvReader::read_row(int row) {
+  if (band->RasterIO(GF_Read,
+		     0, row, ncol, 1,
+		     row_buffer, ncol, 1,
+		     GDT_Float32,
+		     0, 0 ) != CE_None)
+    throw ConfigError("Error reading row data from grid file");
+}
 
-};
+EnvReader::~EnvReader() {
+  if (dataset)
+    GDALClose(dataset);
+  if (row_buffer)
+    CPLFree(row_buffer);
+}
 
 
 void Environment::update(int time_step) {
@@ -100,11 +89,10 @@ void Environment::update(int time_step) {
 Environment::Environment(const Config &conf_):
   conf(conf_)
 {
-
   int layer = 0;
   for (const auto &ep: conf.env_params) {
 
-    Reader env_reader(ep.grid_filename);
+    EnvReader env_reader(ep.grid_filename);
     if (conf.verbosity > 1)
       std::cout << "Loading environment variable " << layer <<
 	" from " << ep.grid_filename << std::endl;
