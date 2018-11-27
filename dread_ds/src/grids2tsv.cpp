@@ -39,7 +39,7 @@ int main(int argc, const char *argv[]) {
 	    std::exit(2);
 	  }
       }
-      erv.push_back(std::make_unique<EnvReader>(argv[i]));
+      erv.push_back(std::unique_ptr<EnvReader>(new EnvReader(argv[i])));
     }
   }
   catch (const ApplicationException &ae) {
