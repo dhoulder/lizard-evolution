@@ -1,8 +1,8 @@
 #!/bin/csh
 #PBS -P ka2
 #PBS -N Al_r200
-#PBS -q expressbw
-#PBS -l walltime=2:00:00
+#PBS -q normalbw
+#PBS -l walltime=30:00:00
 #PBS -l mem=16GB
 #PBS -l ncpus=1
 #PBS -j oe
