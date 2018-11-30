@@ -20,7 +20,11 @@ See ./simulation.h for API usage.
 
 On Ubuntu these prerequisites can be installed with:
 
-  `sudo apt-get install libboost-dev libboost-program-options-dev libgdal-dev cmake build-essential`
+  ```
+  sudo apt-get install \
+       libboost-dev libboost-program-options-dev libboost-filesystem-dev \
+       libgdal-dev cmake build-essential
+  ```
 
 
 ### Building

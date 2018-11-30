@@ -189,6 +189,8 @@ Species::Species(const Config &c,
   setup_dispersal(sp);
   load_initial(sp, env);
 
-  update_stats(initial_stats, 0);
+  update_stats(initial_stats,
+	       // use step=0 to indicate before first time step
+	       0);
   latest_stats = initial_stats;
 }

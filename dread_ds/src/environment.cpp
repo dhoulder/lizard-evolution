@@ -29,7 +29,9 @@ static bool gdal_reg = false;
 
 using namespace DreadDs;
 
-EnvReader:: EnvReader(const std::string &filename) {
+EnvReader:: EnvReader(const std::string &filename):
+  grid_filename(filename)
+{
   if (!gdal_reg) {
     GDALAllRegister();
     gdal_reg = true;
@@ -68,34 +70,18 @@ EnvReader::~EnvReader() {
 }
 
 
-void Environment::update(int time_step) {
-  // Set env_delta for the current time step. env_delta gets applied
-  // to every cell in env
-  float *ed = env_delta;
-  auto p = conf.env_params.begin();
-  for (int i = 0; i < conf.env_dims;
-       ++i, ++p, ++ed) {
-    *ed = (time_step * p->ramp) +
-      (p->sine_amplitude * sin(2 * M_PI *
-			       ((double)p->sine_offset +
-				(double)time_step/p->sine_period)));
-    if (conf.verbosity > 1)
-      std::cout << "Environment variable " << i <<
-	" offset=" << *ed << std::endl;
-  }
-}
-
-
 Environment::Environment(const Config &conf_):
+  current_step_offset(-1),
   conf(conf_)
 {
   int layer = 0;
   for (const auto &ep: conf.env_params) {
+    std::string &&grid_filename = ep.get_filename(0);
 
-    EnvReader env_reader(ep.grid_filename);
+    EnvReader env_reader(grid_filename);
     if (conf.verbosity > 1)
       std::cout << "Loading environment variable " << layer <<
-	" from " << ep.grid_filename << std::endl;
+	" from " << grid_filename << std::endl;
 
     if (0 == layer) {
       // First file defines bounding box, allocates space and fills in first layer
@@ -107,27 +93,72 @@ Environment::Environment(const Config &conf_):
     } else {
       // subsequent files fill in 2nd, 3rd, … layers
       assert(layer < max_env_dims);
-      if (env_reader.nrow != values.shape()[0] || env_reader.ncol != values.shape()[1])
-	throw ConfigError("Dimensions of " + ep.grid_filename +
-			  "don't match those of first grid file");
-      double gt[6];
-      env_reader.get_coordinates(gt);
-      for (int j=0; j<6; j++)
-	if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
-	  throw ConfigError("Coordinates of " + ep.grid_filename +
-			    " don't match those of first grid file");
+      check_coordinates(env_reader);
     }
-    for (int row=0; row < env_reader.nrow; ++row) {
-      env_reader.read_row(row);
-      for (int col=0; col < env_reader.ncol; ++col) {
-	values[row][col][layer] = env_reader.row_buffer[col];
-	if  (conf.verbosity > 2)
-	  std::cout <<
-	    " row=" << row << " col=" << col <<
-	    " value=" <<  values[row][col][layer] << std::endl;
-      }
-    }
-
+    load(env_reader, layer);
     ++layer;
   }
+  update(0);
+}
+
+void Environment::check_coordinates(EnvReader &er) {
+  // assumes values and geo_transform have been set
+  if (er.nrow != values.shape()[0] || er.ncol != values.shape()[1])
+    throw ConfigError("Dimensions of " + er.grid_filename +
+		      "don't match those of first grid file");
+  double gt[6];
+  er.get_coordinates(gt);
+  for (int j=0; j<6; j++)
+    if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
+      throw ConfigError("Coordinates of " + er.grid_filename +
+			" don't match those of first grid file");
+}
+
+void Environment::load(EnvReader &er, int layer) {
+  for (int row=0; row < er.nrow; ++row) {
+    er.read_row(row);
+    for (int col=0; col < er.ncol; ++col) {
+      values[row][col][layer] = er.row_buffer[col];
+      if  (conf.verbosity > 2)
+	std::cout <<
+	  " row=" << row << " col=" << col <<
+	  " value=" <<  values[row][col][layer] << std::endl;
+    }
+  }
+}
+
+
+void Environment::update(int step_offset) {
+  /**
+   * For extrapolated environment layers, set env_delta for the
+   * current time step. For time-series layers, load the corresponding
+   * files
+   */
+  if (step_offset == current_step_offset)
+    return;
+  float *ed = env_delta;
+  auto p = conf.env_params.begin();
+  for (int i = 0; i < conf.env_dims;
+       ++i, ++p, ++ed) {
+    if (p->ts_dir.empty()) {
+      // calculate the uniform delta to apply to each base environment layer
+      *ed = (step_offset * p->ramp) +
+	(p->sine_amplitude * sin(2 * M_PI *
+				 ((double)p->sine_offset +
+				  (double)step_offset/p->sine_period)));
+      if (conf.verbosity > 1)
+	std::cout << "Environment variable " << i <<
+	  " offset=" << *ed << std::endl;
+    } else {
+      // load next grid in time series
+      *ed = 0.0f;
+      EnvReader er(p->get_filename(step_offset));
+      check_coordinates(er);
+      load(er, i);
+      if (conf.verbosity > 1)
+	std::cout << "Environment variable " << i <<
+	  " loaded from " << er.grid_filename << std::endl;
+    }
+  }
+  current_step_offset = step_offset;
 }

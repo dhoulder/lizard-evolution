@@ -85,7 +85,6 @@ Model::Model(const Config &c):
 		   conf.gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
-  env.update(step);
   for (const auto &sp: conf.initial_species) {
     tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
   }
@@ -357,7 +356,10 @@ int Model::do_step() {
   /**
    * Execute one time step of the model
    */
+
+  env.update(step); // step is 0-based here
   ++step;
+  // step is 1-based below
 
   if (conf.verbosity > 0) {
     std::time_t now = std::time(nullptr);
@@ -370,7 +372,6 @@ int Model::do_step() {
       step << " at " << tstr << std::endl;
   }
 
-  env.update(step);
   int n_occupied = 0;
   for (auto && species: tips) {
     auto target = evolve_and_disperse(*species);

@@ -40,6 +40,7 @@ namespace DreadDs {
     int ncol = 0;
     int nrow = 0;
     float *row_buffer = NULL;
+    const std::string grid_filename;
 
     EnvReader(const std::string &filename);
     // have to prohibit copying due to simple management of GDAl stuff
@@ -62,6 +63,7 @@ namespace DreadDs {
   public:
     EnvMatrix values;
     float env_delta[max_env_dims] = {0.0f};
+    int current_step_offset = -1;
 
     double geo_transform[6];
     // https://www.gdal.org/gdal_tutorial.html
@@ -78,7 +80,7 @@ namespace DreadDs {
     // geo_transform[5] /* n-s pixel resolution (negative value) */
 
     Environment(const Config &conf);
-    void update(int time_step);
+    void update(int step_offset); // step_offset is 0-based time step
 
     inline long row(double ns) const {
       return  long((ns - geo_transform[3]) / geo_transform[5]);
@@ -100,6 +102,8 @@ namespace DreadDs {
       return get(loc.y, loc.x);
     }
 
+    void check_coordinates(EnvReader &er);
+    void load(EnvReader &er, int layer);
   };
 }
 #endif

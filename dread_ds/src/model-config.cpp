@@ -9,11 +9,13 @@
 
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/filesystem.hpp>
 
 #include "model-config.h"
 #include "exceptions.h"
 
 namespace po = boost::program_options;
+namespace bfs = boost::filesystem;
 
 using namespace std;
 using namespace DreadDs;
@@ -43,7 +45,9 @@ Config::Config(int ac, const char *av[]) {
 
   try {
     vector <double> env_ramp;
-    vector <string> env_grids, species_niche, species_niche_breadth;
+    vector <string> env_grids, env_mode, env_ts_dirs,
+      species_niche, species_niche_breadth;
+    vector <int> env_ts_start, env_ts_step;
     vector <float>
       env_sine_period, env_sine_offset, env_sine_amplitude,
       species_north, species_east, species_south, species_west,
@@ -74,11 +78,11 @@ Config::Config(int ac, const char *av[]) {
        "Gene flow probability approaches zero for genetic distances greater than this")
 
       ("gene-drift-rate", po::value<float>(&gene_drift_sd)->required(),
-       "Standard deviation of Brownian motion gene drift per timestep")
+       "Standard deviation of Brownian motion gene drift per time-step")
 
       ("niche-evolution-rate", po::value<float>(&niche_evolution_rate)->required(),
        "Speed of adaptation to niche as a fraction of the "
-       "distance to niche centre per timestep")
+       "distance to niche centre per time-step")
 
       ("dispersal-min", po::value<float>(&dispersal_min)->required(),
        "Minimum dispersal amount (0…1)")
@@ -94,21 +98,41 @@ Config::Config(int ac, const char *av[]) {
 
     po::options_description env_options("Input environment (one or more sets)");
     env_options.add_options()
+      ("env.mode", po::value<vector<string>>(&env_mode),
+       "ts (time-series) or ex (extrapolate). For ts, a set of input files "
+       "containing the environment at different time steps is supplied. "
+       "In ex mode, a base environment file is supplied, and the environment "
+       "for each time step is extrapolated using the ramp and sine options below.")
+
       ("env.grid", po::value<vector<string>>(&env_grids)->required(),
-       "Initial environment values as grid file. "
-       "Can be specified multiple times for multiple dimensions")
+       "Pathname of grid file containing input environment values. "
+       "When used in conjunction with env.mode=ts, this path "
+       "is relative to each numbered sub-directory of ts-dir. "
+       "Can be specified multiple times for multiple environment dimensions.")
 
-      ("env.ramp", po::value<vector<double>>(&env_ramp)->required(),
-       "Environmental change per time step")
+      ("env.ts-dir", po::value<vector<string>>(&env_ts_dirs),
+       "(ts mode) Pathname of a directory containing numerically named "
+       "sub-directories containing input environment data ")
 
-      ("env.sine-period", po::value<vector<float>>(&env_sine_period)->required(),
-       "Length of sinusoidal environmental change in time steps")
+      ("env.start-dir", po::value<vector<int>>(&env_ts_start),
+       "(ts mode) Specifies the number of the numerically named "
+       "sub-directory of ts-dir to use for the first time step.")
 
-      ("env.sine-offset", po::value<vector<float>>(&env_sine_offset)->required(),
-       "Offset of sinusoidal environmental change in timesteps")
+      ("env.step-by", po::value<vector<int>>(&env_ts_step),
+       "(ts mode) Specifies the increment to use for each successive "
+       "time step. Can be negative.")
 
-	("env.sine-amplitude", po::value<vector<float>>(&env_sine_amplitude)->required(),
-       "Peak amplitude of sinusoidal environmental change");
+      ("env.ramp", po::value<vector<double>>(&env_ramp),
+       "(ex mode) Environmental change per time step.")
+
+      ("env.sine-period", po::value<vector<float>>(&env_sine_period),
+       "(ex mode) Length of sinusoidal environmental change in time steps.")
+
+      ("env.sine-offset", po::value<vector<float>>(&env_sine_offset),
+       "(ex mode) Offset of sinusoidal environmental change in time-steps")
+
+      ("env.sine-amplitude", po::value<vector<float>>(&env_sine_amplitude),
+       "(ex mode) Peak amplitude of sinusoidal environmental change.");
 
 
     po::options_description species_options("Initial species (one or more sets)");
@@ -170,22 +194,51 @@ Config::Config(int ac, const char *av[]) {
     if (dispersal_min < 0.0 || dispersal_min > 1.0)
       throw ConfigError("dispersal-min must be between 0 and 1");
 
-    try {
-      for (int i = 0; i < env_dims; ++i) {
-	EnvParams ep;
-	ep.grid_filename = env_grids[i];
-	// vector.at(i) will throw std::out_of_range when required
-	ep.ramp = env_ramp.at(i);
-	ep.sine_period = env_sine_period.at(i);
-	ep.sine_offset = env_sine_offset.at(i);
-	ep.sine_amplitude = env_sine_amplitude.at(i);
-	env_params.push_back(ep);
+    if (env_mode.size() != env_dims)
+      throw ConfigError("Each env.grid needs a corresponding env.mode");
+
+    int ts_i =0, ex_i = 0;
+    std::string mode;
+    for (int i = 0; i < env_dims; ++i) {
+      EnvParams ep;
+      ep.grid_filename = env_grids[i];
+      try {
+	mode = env_mode[i];
       }
-    }
-    catch (const out_of_range& oor) {
-      throw ConfigError("Each env.grid needs a corresponding "
-			"env.ramp, env.sine-period, env.sine-offset, "
-			"env.sine-amplitude");
+      catch (const out_of_range& oor) {
+	throw ConfigError("Each env.grid needs a corresponding env.mode");
+      }
+      if (mode == "ts") {
+	try {
+	  ep.ts_dir = env_ts_dirs.at(ts_i);
+	  ep.ts_start = env_ts_start.at(ts_i);
+	  ep.ts_step = env_ts_step.at(ts_i);
+	}
+	catch (const out_of_range& oor) {
+	  throw ConfigError("For env.mode=ts, each env.grid needs a corresponding "
+			    "env.ts-dir, env.start-dir, env.step-by.");
+	}
+	ep.scan_ts_dir();
+	++ts_i;
+
+      } else if (mode == "ex")  {
+	// base + offset mode
+	try {
+	  ep.ramp = env_ramp.at(ex_i);
+	  ep.sine_period = env_sine_period.at(ex_i);
+	  ep.sine_offset = env_sine_offset.at(ex_i);
+	  ep.sine_amplitude = env_sine_amplitude.at(ex_i);
+	}
+	catch (const out_of_range& oor) {
+	  throw ConfigError("For env.mode=ex, each env.grid needs a corresponding "
+			    "env.ramp, env.sine-period, env.sine-offset, "
+			    "env.sine-amplitude");
+	}
+	++ex_i;
+      }
+      else throw ConfigError("env.mode must be ex or ts.");
+
+      env_params.push_back(ep);
     }
 
     try {
@@ -249,9 +302,60 @@ Config::Config(int ac, const char *av[]) {
       throw ConfigError("Niche evolution rate must be between 0 and 1");
   }
 
-  catch(po::error & e)
+  catch(po::error &e)
     {
       throw ConfigError("Configuration error: " + string(e.what()));
     }
 
+}
+
+
+void EnvParams::scan_ts_dir() {
+  /**
+   * Build a map of directories in which we look for input environment
+   * files. This approach allows directories to be named in a fairly
+   * flexible manner (e.g. 10, 010, 10-something) and facilitates
+   * interpolating between time steps if required.
+   */
+
+  try {
+    for (auto &&de : bfs::directory_iterator(ts_dir)) {
+      auto &&p = de.path();
+      int n;
+      try {
+	n = stoi(p.filename().native());
+      }
+      catch (invalid_argument &e) {
+	// Non-numeric directory name. Ignore it.
+	continue;
+      }
+      if (!bfs::is_regular_file(p / grid_filename)) {
+	throw ConfigError("No file called " + grid_filename + " in " + p.native());
+      }
+      auto &&v = ts_dir_table.emplace(n, p);
+      if (!v.second)
+	throw ConfigError("Time-series directory named " +
+			  v.first->second.native() +
+			  " conflicts with  directory named " +
+			  p.native());
+    }
+  }
+  catch (bfs::filesystem_error &e) {
+    throw ConfigError("Error scanning " + ts_dir + ": " + e.what());
+  }
+}
+
+string EnvParams::get_filename(int step_offset) const {
+  if (ts_dir.empty())
+    return grid_filename;
+  else {
+    int n = ts_start + step_offset*ts_step;
+    try {
+      return (ts_dir_table.at(n) / grid_filename).native();
+    }
+    catch (const out_of_range &e) {
+      throw ConfigError("No time-series directory for time " +
+			to_string(n) + " in " + ts_dir);
+    }
+  }
 }

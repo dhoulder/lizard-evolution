@@ -5,6 +5,9 @@
 
 #include <vector>
 #include <string>
+#include <map>
+
+#include <boost/filesystem.hpp>
 
 #include "model-limits.h"
 #include "exceptions.h"
@@ -12,7 +15,16 @@
 namespace DreadDs {
 
   struct EnvParams {
-    std::string grid_filename;
+    std::string grid_filename; // FIXME log this for env_var in yml
+
+    // for environment supplied as time series of grids
+    std::string ts_dir;
+    int ts_start = 0;
+    int ts_step = 1;
+    std::map<int, boost::filesystem::path> ts_dir_table;
+    void scan_ts_dir();
+
+    // for environment specified as base + offset
     double ramp = 0.0; // linear environment change per time step
     float sine_period = 4.0f; // wavelength of sinusoidal environment
     // change in time steps
@@ -20,6 +32,8 @@ namespace DreadDs {
     // fraction of the wavelength. Use 0.25
     // for cos()
     float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
+
+    std::string get_filename(int step_offset) const;
   };
 
   typedef std::vector<EnvParams> EnvParamsVec;
