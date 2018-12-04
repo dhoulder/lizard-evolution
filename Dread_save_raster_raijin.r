@@ -21,7 +21,7 @@ output_dir			<- input.args[4]
 total.time            <- timesteps
 dispersal             <- dispersal_dist			# dispersal distance
 niche.evolution.rate  <- 0.02
-env.amp               <- 0  #runif(1, 0.25, 2)
+env.amp               <- 1.5  #runif(1, 0.25, 2)
 env.freq              <- 50 #runif(1, 10, 25)
 NEb                   <- runif(1, 0.0025, 1)
 niche.blocksize       <- 0.05
