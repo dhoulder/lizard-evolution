@@ -9,7 +9,7 @@
 #include <list>
 #include <map>
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 #include "environment.h"
 

@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"

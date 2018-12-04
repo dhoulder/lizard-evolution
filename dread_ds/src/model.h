@@ -17,7 +17,7 @@
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/variate_generator.hpp>
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"

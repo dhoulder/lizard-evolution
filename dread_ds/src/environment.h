@@ -10,7 +10,7 @@
 // GDAL
 #include "gdal_priv.h"
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 
 namespace DreadDs {

@@ -70,7 +70,8 @@ Config::Config(int ac, const char *av[]) {
       ("genetic-dims", po::value<int>(&genetic_dims)->default_value(max_genetic_dims),
        "Number of genetic dimensions")
 
-      ("gene-flow-threshold", po::value<float>(&gene_flow_clip)->required(),
+      ("gene-flow-threshold", po::value<float>(&gene_flow_clip)->
+       default_value(default_gene_flow_clip),
        "Gene flow probabilities that are closer to 0 or 1 by this amount or "
        "less are treated as 0 or 1 respectively")
 

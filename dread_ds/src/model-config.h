@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-#include "model-limits.h"
+#include "constants.h"
 #include "env-params.h"
 
 namespace DreadDs {

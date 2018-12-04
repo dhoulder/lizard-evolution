@@ -11,7 +11,7 @@
 #include <boost/accumulators/statistics.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 #include "species.h"
 

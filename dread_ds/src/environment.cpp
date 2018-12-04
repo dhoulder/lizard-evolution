@@ -20,7 +20,7 @@
 #include "gdal_priv.h"
 #include "cpl_conv.h"
 
-#include "model-limits.h"
+#include "constants.h"
 #include "model-config.h"
 #include "environment.h"
 #include "exceptions.h"
