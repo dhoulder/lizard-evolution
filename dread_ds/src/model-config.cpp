@@ -77,9 +77,6 @@ Config::Config(int ac, const char *av[]) {
       ("gene-flow-max-distance", po::value<float>(&gene_flow_zero_distance)->required(),
        "Gene flow probability approaches zero for genetic distances greater than this")
 
-      ("gene-drift-rate", po::value<float>(&gene_drift_sd)->required(),
-       "Standard deviation of Brownian motion gene drift per time-step")
-
       ("niche-evolution-rate", po::value<float>(&niche_evolution_rate)->required(),
        "Speed of adaptation to niche as a fraction of the "
        "distance to niche centre per time-step")
@@ -295,9 +292,6 @@ Config::Config(int ac, const char *av[]) {
 
     if (gene_flow_zero_distance <= 0.0f)
       throw ConfigError("Gene-flow max distance must be greater than 0");
-
-    if (gene_drift_sd < 0.0f)
-      throw ConfigError("Gene-flow drift rate cannot be negative");
 
     if (niche_evolution_rate < 0.0 or niche_evolution_rate > 1.0)
       throw ConfigError("Niche evolution rate must be between 0 and 1");

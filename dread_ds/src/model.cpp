@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 
+#include "model-limits.h"
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"
@@ -81,8 +82,7 @@ Model::Model(const Config &c):
 		  1.0f - conf.gene_flow_clip),
   gene_flow_random(rng, gene_flow_distr),
   deme_choice_distr(0.0f, 1.0f),
-  gene_drift_distr(0.0f,
-		   conf.gene_drift_sd),
+  gene_drift_distr(0.0f, gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
   for (const auto &sp: conf.initial_species) {

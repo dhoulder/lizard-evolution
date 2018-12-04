@@ -32,7 +32,6 @@ namespace DreadDs {
     int genetic_dims = max_genetic_dims; // <= max_genetic_dims
     float gene_flow_clip = 0.001f;
     float gene_flow_zero_distance = 5.0f;
-    float gene_drift_sd = 1.0f; // FIXME  get from model-limits.h
     float niche_evolution_rate = 0.1;
     float dispersal_min = 0.02;
     std::string output_dir = "./";
