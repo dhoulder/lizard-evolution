@@ -122,7 +122,7 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
    * neighbouring cells, weighted by environmental niche
    * suitability. This can result in several demes per cell.
    */
-  auto target = std::make_shared <DemeMap>(); // FIXME not C++11
+  auto target = std::make_shared <DemeMap>();
   auto &&env_shape = env.values.shape();
 
   // Iterate over all cells where this species occurs
@@ -326,14 +326,15 @@ void Model::save() {
     for (int i=0; i < conf.env_dims; ++i) {
       const auto &ns = ch.niche_stats[i];
       fprintf(of,
-	      "  - env_var: %d\n"
+	      "  - environment: %s\n"
 	      "    min: %f\n"
 	      "    max: %f\n"
 	      "    mean: %f\n"
 	      "    sd: %f\n"
 	      "    mean_breadth: %f\n"
 	      "    breadth_sd: %f\n",
-	      i, ns.min, ns.max,
+	      conf.env_params[i]->grid_filename.c_str(),
+	      ns.min, ns.max,
 	      ns.position_mean, ns.position_sd,
 	      ns.breadth_mean,  ns.breadth_sd);
     }

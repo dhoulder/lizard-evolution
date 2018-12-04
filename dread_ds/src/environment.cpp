@@ -71,18 +71,14 @@ EnvReader::~EnvReader() {
 
 
 Environment::Environment(const Config &conf_):
-  current_step_offset(-1),
+  current_step_offset(0),
   conf(conf_)
 {
   int layer = 0;
   for (const auto &ep: conf.env_params) {
-    std::string &&grid_filename = ep.get_filename(0);
+    std::string &&grid_filename = ep->get_filename(0);
 
     EnvReader env_reader(grid_filename);
-    if (conf.verbosity > 1)
-      std::cout << "Loading environment variable " << layer <<
-	" from " << grid_filename << std::endl;
-
     if (0 == layer) {
       // First file defines bounding box, allocates space and fills in first layer
       values.resize(boost::extents
@@ -98,7 +94,7 @@ Environment::Environment(const Config &conf_):
     load(env_reader, layer);
     ++layer;
   }
-  update(0);
+  update(0); // initial species determination needs this
 }
 
 void Environment::check_coordinates(EnvReader &er) {
@@ -115,6 +111,9 @@ void Environment::check_coordinates(EnvReader &er) {
 }
 
 void Environment::load(EnvReader &er, int layer) {
+  if (conf.verbosity > 1)
+    std::cout << "Loading environment variable " << layer <<
+      " from " << er.grid_filename << std::endl;
   for (int row=0; row < er.nrow; ++row) {
     er.read_row(row);
     for (int col=0; col < er.ncol; ++col) {
@@ -134,31 +133,10 @@ void Environment::update(int step_offset) {
    * current time step. For time-series layers, load the corresponding
    * files
    */
-  if (step_offset == current_step_offset)
-    return;
   float *ed = env_delta;
   auto p = conf.env_params.begin();
   for (int i = 0; i < conf.env_dims;
-       ++i, ++p, ++ed) {
-    if (p->ts_dir.empty()) {
-      // calculate the uniform delta to apply to each base environment layer
-      *ed = (step_offset * p->ramp) +
-	(p->sine_amplitude * sin(2 * M_PI *
-				 ((double)p->sine_offset +
-				  (double)step_offset/p->sine_period)));
-      if (conf.verbosity > 1)
-	std::cout << "Environment variable " << i <<
-	  " offset=" << *ed << std::endl;
-    } else {
-      // load next grid in time series
-      *ed = 0.0f;
-      EnvReader er(p->get_filename(step_offset));
-      check_coordinates(er);
-      load(er, i);
-      if (conf.verbosity > 1)
-	std::cout << "Environment variable " << i <<
-	  " loaded from " << er.grid_filename << std::endl;
-    }
-  }
+       ++i, ++p, ++ed)
+    *ed = (*p)->update_environment(this, step_offset, i);
   current_step_offset = step_offset;
 }

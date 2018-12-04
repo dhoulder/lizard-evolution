@@ -4,39 +4,13 @@
 #define DREADDS_MODEL_CONFIG_H
 
 #include <vector>
+#include <memory>
 #include <string>
-#include <map>
-
-#include <boost/filesystem.hpp>
 
 #include "model-limits.h"
-#include "exceptions.h"
+#include "env-params.h"
 
 namespace DreadDs {
-
-  struct EnvParams {
-    std::string grid_filename; // FIXME log this for env_var in yml
-
-    // for environment supplied as time series of grids
-    std::string ts_dir;
-    int ts_start = 0;
-    int ts_step = 1;
-    std::map<int, boost::filesystem::path> ts_dir_table;
-    void scan_ts_dir();
-
-    // for environment specified as base + offset
-    double ramp = 0.0; // linear environment change per time step
-    float sine_period = 4.0f; // wavelength of sinusoidal environment
-    // change in time steps
-    float sine_offset = 0.0f; // shift sinusoidal change by this
-    // fraction of the wavelength. Use 0.25
-    // for cos()
-    float sine_amplitude = 0.0f; // maximum swing of sinusoidal environment change
-
-    std::string get_filename(int step_offset) const;
-  };
-
-  typedef std::vector<EnvParams> EnvParamsVec;
 
   struct NicheSpec {
     float centre;
@@ -47,10 +21,8 @@ namespace DreadDs {
     float max_dispersal_radius;
     std::vector<NicheSpec> niche;
     float genetics[max_genetic_dims] = {0.0f};
-
     float north, south, east, west; // Initial bounding box
   };
-
 
   class Config {
   public:
@@ -60,20 +32,19 @@ namespace DreadDs {
     int genetic_dims = max_genetic_dims; // <= max_genetic_dims
     float gene_flow_clip = 0.001f;
     float gene_flow_zero_distance = 5.0f;
-    float gene_drift_sd = 1.0f; // FIXME use timestep size
+    float gene_drift_sd = 1.0f; // FIXME  get from model-limits.h
     float niche_evolution_rate = 0.1;
     float dispersal_min = 0.02;
     std::string output_dir = "./";
     std::string output_file_prefix = "";
     int n_iterations = 0;
-    EnvParamsVec env_params;
+    std::vector<std::shared_ptr<BaseEnvParams>> env_params;
     std::vector<SpeciesParameters> initial_species;
 
     Config() {}
 
     Config(int argc, const char *argv[]);
   };
-
 }
 
 #endif

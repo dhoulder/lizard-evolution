@@ -58,12 +58,11 @@ namespace DreadDs {
   };
 
   class Environment {
-  private:
-    const Config &conf;
   public:
+    const Config &conf;
     EnvMatrix values;
     float env_delta[max_env_dims] = {0.0f};
-    int current_step_offset = -1;
+    int current_step_offset = 0;
 
     double geo_transform[6];
     // https://www.gdal.org/gdal_tutorial.html

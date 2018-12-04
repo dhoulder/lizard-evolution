@@ -9,8 +9,8 @@ link_directories(${Boost_LIBRARY_DIRS})
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(dreadds STATIC
-  model-config.cpp deme.cpp environment.cpp species.cpp
-  output-file.cpp model.cpp simulation.cpp)
+  model-config.cpp deme.cpp environment.cpp env-params.cpp
+  output-file.cpp model.cpp simulation.cpp  species.cpp)
 target_link_libraries(dreadds
   ${GDAL_LIBRARY}
   Boost::program_options
