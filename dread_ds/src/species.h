@@ -31,6 +31,7 @@ namespace DreadDs {
     /**
        Describes a species and its phylogeny
     */
+    typedef std::vector <std::shared_ptr <Species>> Vec;
 
     class Characteristics {
     public:
@@ -65,8 +66,8 @@ namespace DreadDs {
     };
 
     const Config &conf;
-    std::shared_ptr <Species> left_child = NULL;
-    std::shared_ptr <Species> right_child = NULL;
+    Vec sub_species;
+
     std::weak_ptr <Species> parent;
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
     Timestep split = -1; // Time of speciation. parent->split is species
@@ -79,7 +80,8 @@ namespace DreadDs {
 
     Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
 
-    void update_stats(Characteristics &ch, int current_step);
+    void speciate();
+    int update_stats(Characteristics &ch, int current_step);
 
   private:
     void setup_dispersal(const SpeciesParameters &sp);

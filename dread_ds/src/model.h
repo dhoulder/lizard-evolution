@@ -36,8 +36,8 @@ namespace DreadDs {
     const Config conf; // must be first (initialisation order)
     int step = 0;
     Environment env;
-    std::vector <std::shared_ptr <Species>> roots; // Initial species
-    std::vector <std::shared_ptr <Species>> tips; // extant leaf species
+    Species::Vec roots; // Initial species
+    Species::Vec tips; // Extant leaf species
 
     Model(const Config &conf);
 

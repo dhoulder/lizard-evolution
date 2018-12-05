@@ -20,6 +20,31 @@ namespace ba = boost::accumulators;
 
 static std::atomic_int id_hwm(0);
 
+Species::Species(const Config &c,
+		 const SpeciesParameters &sp,
+		 const Environment &env):
+  conf(c),
+  demes(new(DemeMap))
+  /**
+   * Load initial species values, locations and abundance.
+   */
+{
+  ++id_hwm;
+  id = id_hwm;
+
+  if (conf.verbosity > 1)
+    std::cout << "Creating species " << id << std::endl;
+
+  setup_dispersal(sp);
+  load_initial(sp, env);
+
+  update_stats(initial_stats,
+	       // use step=0 to indicate before first time step
+	       0);
+  latest_stats = initial_stats;
+}
+
+
 static float dispersal_distance(int x, int y) {
   // Replace with some other distance metric if required.
   return sqrt(x*x + y*y);
@@ -91,10 +116,15 @@ template <class ...Types>
 using Acc = ba::accumulator_set<float,
 			    ba::stats<Types...>>;
 
-void Species::update_stats(Characteristics &ch, int current_step) {
+int Species::update_stats(Characteristics &ch, int current_step) {
+  /**
+   * Update species statistics.
+   * Returns: cell count
+   */
+
   if (extinction > -1)
     // went extinct in earlier time step. Leave the stats alone
-    return;
+    return 0;
 
   Acc <ba::tag::mean, ba::tag::variance>
     niche_pos_acc[conf.env_dims],
@@ -132,7 +162,7 @@ void Species::update_stats(Characteristics &ch, int current_step) {
     if (conf.verbosity > 1)
       std::cout << "Species " << id << " extinct at step " <<
 	current_step << std::endl;
-    return;
+    return 0;
   }
 
   for (int i=0; i < conf.env_dims; i++) {
@@ -169,28 +199,16 @@ void Species::update_stats(Characteristics &ch, int current_step) {
 	std::endl;
     }
   }
+  return ch.cell_count;
 }
 
-Species::Species(const Config &c,
-		 const SpeciesParameters &sp,
-		 const Environment &env):
-  conf(c),
-  demes(new(DemeMap))
+void Species::speciate() {
   /**
-   * Load initial species values, locations and abundance.
+   * Examine species for distinct clumps of demes in genetic space. If
+   * only one is found, leave the species alone, otherwise split the
+   * current species into distinct sub-species.
    */
-{
-  ++id_hwm;
-  id = id_hwm;
 
-  if (conf.verbosity > 1)
-    std::cout << "Creating species " << id << std::endl;
+  // FIXME STUB
 
-  setup_dispersal(sp);
-  load_initial(sp, env);
-
-  update_stats(initial_stats,
-	       // use step=0 to indicate before first time step
-	       0);
-  latest_stats = initial_stats;
 }

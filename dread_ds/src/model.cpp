@@ -374,6 +374,7 @@ int Model::do_step() {
   }
 
   int n_occupied = 0;
+  Species::Vec new_tips;
   for (auto && species: tips) {
     auto target = evolve_and_disperse(*species);
     // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
@@ -390,11 +391,21 @@ int Model::do_step() {
 
     // TODO competition/co-occurrence. (see 3.5)
 
-    // TODO speciate. (make sure auto && species iterator doesn't visit new species)
-
-    species->update_stats(species->latest_stats, step);
-    n_occupied += species->latest_stats.cell_count;
+    species->speciate();
+    if (species->sub_species.empty()) {
+      // no speciation
+      n_occupied += species->update_stats(species->latest_stats, step);
+      new_tips.push_back(species);
+    } else {
+      // species has split into sub_species
+      for (auto &&s: species->sub_species) {
+	n_occupied += s->update_stats(s->latest_stats, step);
+	new_tips.push_back(s);
+      }
+    }
   }
+
+  tips = new_tips;
   save();
   return n_occupied;
 }
