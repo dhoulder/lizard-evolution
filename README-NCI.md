@@ -1,6 +1,6 @@
 # Instructions for building and running on nci.org.au systems
 
-## On raijin.nci.org.au (as of Nov. 2018)
+## On raijin.nci.org.au
 
 ### To build
 
@@ -11,7 +11,7 @@ instead and it might produce faster code.
 ```
 git clone git@github.com:DanRosauer/DREaD_ds.git
 cd DREaD_ds/
-git checkout devel-cpp
+git checkout master
 
 module purge # in case Intel compilers are loaded (conflict with gcc)
 module load pbs # In case you want to submit jobs etc.
@@ -22,19 +22,15 @@ module load boost/1.64.0
 module load cmake/3.8.2
 export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/GNU # or $BOOST_LIBRARYDIR/Intel for intel-cc
 
-cd dread_ds/src
-cmake . # only required once to setup build files
+cd src
+cmake .
 cmake --build .
 ```
 
 ### To run
 
 ```
-cd  ~/DREaD_ds/dread_ds/src
-./dreadds --help
+./src/dreadds --help
 
-# See ../examples/ for config file format
+# See ./README.md` for more information.
 ```
-
-
-
