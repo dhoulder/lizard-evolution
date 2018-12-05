@@ -11,6 +11,7 @@
 #include <math.h>
 #include <iostream>
 #include <string>
+#include <boost/algorithm/string.hpp>
 
 #include "constants.h"
 #include "model-config.h"
@@ -22,6 +23,7 @@
 #include "output-file.h"
 
 using namespace DreadDs;
+namespace ba = boost::algorithm;
 
 namespace DreadDs {
 
@@ -326,14 +328,17 @@ void Model::save() {
     for (int i=0; i < conf.env_dims; ++i) {
       const auto &ns = ch.niche_stats[i];
       fprintf(of,
-	      "  - environment: %s\n"
+	      "  - input_environment: '%s'\n"
+	      "    environment_delta: %f\n"
 	      "    min: %f\n"
 	      "    max: %f\n"
 	      "    mean: %f\n"
 	      "    sd: %f\n"
 	      "    mean_breadth: %f\n"
 	      "    breadth_sd: %f\n",
-	      conf.env_params[i]->grid_filename.c_str(),
+	      ba::replace_all_copy(conf.env_params[i]->get_filename(step-1),
+				   "'", "''").c_str(),
+	      env.env_delta[i],
 	      ns.min, ns.max,
 	      ns.position_mean, ns.position_sd,
 	      ns.breadth_mean,  ns.breadth_sd);
