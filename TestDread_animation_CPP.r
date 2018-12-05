@@ -1,29 +1,26 @@
 rm(list=ls())
 gc()
 
-scripts <- c("disperse_evolve_compete_ds.r","seedSpecies.R","environmentalChange.R", "DREaD_ds.R",
-             "generateSummaryStatistics.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
+scripts <- c("disperse_evolve_compete_ds.r", "environmentalChange.R", "DREaD_ds.R", "helperFunctions.R", "dataStructures.r", "dynamicDisplay.r")
 lapply(scripts, source)
 
 run.name              <- "anim_real225_nicherate0.02_dispersal3_300gens_v5"
 
 #sample parameters
-total.time            <- 300
-dispersal             <- 3              # dispersal distance
+total.time            <- 500
+dispersal             <- 2              # dispersal distance
 niche.evolution.rate  <- 0.02
-env.amp               <- 0 #runif(1, 0.25, 2)
-env.freq              <- runif(1, 10, 25)
-NEb                   <- runif(1, 0.0025, 1)
-niche.blocksize       <- 0.05
+env.amp               <- 0.75   #runif(1, 0.25, 2)
+env.freq              <- 50  #runif(1, 10, 25)
+breadth.evolution.rate  <- 0
 suitability.mode      <- "sine"
 speciation.gene.distance <- 50  # this parameter will need to be set with the drift rate
-#environment.source    <- "~/code/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 environment.source    <- "E:/Work/Software/dan-github/DREaD_extras/realAlps225.asc"  # 'internal to generate in the code
 # or a raster file to load
 #environment.source    <- "internal"
 environment.dimension <- 225
 
-initial.breadth       <- 3
+initial.breadth       <- 4
 initial.cell          <- -1
 initial.extent        <- NA
 initial.species.defined = list(initial.breadth = initial.breadth,
@@ -36,10 +33,13 @@ do.display.diff       <- TRUE
 do.display.genome     <- TRUE
 do.text.output        <- TRUE
 do.animate            <- FALSE
-image_to_file        <- TRUE
+image_to_file         <- TRUE
+raster_to_file        <- FALSE
+generations_to_save     <- c(0)
 
-# create the image output directory
-output_dir            <- paste("/short/ka2/dfr805/simulation/test_runs/", run.name, sep="")
+# input and output directories
+input.dir             <- "E:/Work/Simulation/test_runs_from_CPP/test_output23Nov_env0.75_disp2v1"
+output_dir            <- input.dir  #paste("/short/ka2/dfr805/simulation/test_runs/", run.name, sep="")
 image_dir             <- paste(output_dir, "/images/", sep="")
 
 if (dir.exists(image_dir) == FALSE) {
@@ -72,10 +72,11 @@ if (do.display) {
 }
 
 # Run model
-simulation.1 <- DREaD_ds(total.time = total.time, dispersal = dispersal, amp = env.amp, freq = env.freq,
-                  niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = NEb,  enviro.hetero = F,
+simulation.1 <- DREaD_read_plot(total.time = total.time, dispersal = dispersal, amp = env.amp, freq = env.freq,
+                  niche.evolution.rate = niche.evolution.rate, breadth.ev.rate = breadth.evolution.rate,
                   enviro.mode = "sine", suitability.mode = suitability.mode,
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
-                  initial.species.defined = initial.species.defined)
+                  initial.species.defined = initial.species.defined,
+                  input.dir = input.dir, input.prefix = '')
 
 # ADD CODE HERE TO TURN THE IMAGES INTO AN ANIMATION

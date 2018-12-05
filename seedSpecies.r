@@ -77,7 +77,7 @@ seedSpecies_defined <- function(env,
   initial.cell    <- initial.species.defined$initial.cell
   initial.extent  <- initial.species.defined$initial.extent
 
-  if (initial.cell == -1) {
+  if (initial.cell == -1) { # -1 means choose a cell at random
     # sample a single cell from the domain
     cell <- sample(1:length(env), 1)
     #check the values of the cell is not NA (may be the case with imported rasters)

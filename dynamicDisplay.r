@@ -1,7 +1,7 @@
 # functions for displaying information in runtime such as a map and summary stats
 
 display.initialise <- function() {
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(15,11)
   }
 
@@ -14,7 +14,7 @@ display.initialise <- function() {
 
 display.initialise.double <- function() {
 
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(18,9) # open on-screen display
   }
 
@@ -29,9 +29,9 @@ display.initialise.double <- function() {
   return(list(my.colours, my.diffcolours, stored_par))
 }
 
-display.initialise.2by2 <- function(output_to_file = F) {
+display.initialise.2by2 <- function(image_to_file = F) {
 
-  if (!output_to_file) {
+  if (!image_to_file) {
     x11(10,10) # open on-screen display
   }
 
@@ -143,7 +143,12 @@ text.update <- function(textItems) {
   if (length(textItems[["species_range_niche"]]) > 0) {
 
     sp.summary <- textItems[["species_range_niche"]]
-    geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance)
+
+    gen.distance.available <- (length(sp.summary$gen.distance.max) > 0)
+
+    if (gen.distance.available) {
+      geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance)
+    }
 
     cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID,
         "\nRange:", sp.summary$range,
@@ -152,13 +157,17 @@ text.update <- function(textItems) {
         "\nNiche1 position\tMean:", sp.summary$niche1.position.mean, "\tSD:", sp.summary$niche1.position.sd,
         "\nNiche1 breadth\tMean:", sp.summary$niche1.breadth.mean, "\tSD:", sp.summary$niche1.breadth.sd,
         "\nNiche1 species\tMin: ", sp.summary$niche1.sp.min, "\tMax:", sp.summary$niche1.sp.max,
-        "\nTotal niche breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min),
-        "\n\n\tGenetic divergence",
+        "\nTotal niche breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min))
+
+    if (gen.distance.available) {
+      cat("\n\n\tGenetic divergence",
         "\nMaximum:", sp.summary$gen.distance.max,
         "\tMedian:", sp.summary$gen.distance.median,
-        "\ngeneflow prob at max distance:", paste(round(geneflow.prob * 100, 2), "%", sep=""),
-        "\nThis step:", sp.summary$elapsed.time.step, "\tTotal time elapsed:", sp.summary$elapsed.time.total,
-        "\n*****************************************\n")
+        "\ngeneflow prob at max distance:", paste(round(geneflow.prob * 100, 2), "%", sep=""))
+    }
+
+    cat("\n\nThis step:", sp.summary$elapsed.time.step, "\tTotal time elapsed:", sp.summary$elapsed.time.total,
+    "\n*****************************************\n")
   }
 
   return()
