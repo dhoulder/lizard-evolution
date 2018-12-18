@@ -14,6 +14,7 @@
 #include "constants.h"
 #include "model-config.h"
 #include "species.h"
+#include "exceptions.h"
 
 using namespace DreadDs;
 namespace ba = boost::accumulators;
@@ -67,7 +68,7 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
       }
     }
-  if (conf.verbosity > 1) {
+  if (conf.verbosity > 2) {
     std::cout << " Dispersal kernel" << std::endl;
     for (auto &&v: dk)
       std::cout << " x=" << v.x << ", y=" << v.y <<
@@ -76,38 +77,38 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 }
 
 
-static inline unsigned long clip(long v, unsigned long hi) {
-  assert(hi);
-  return std::min(hi-1, (unsigned long) std::max(0L, v));
-}
-
 void Species::load_initial(const SpeciesParameters &sp,
 			   const Environment &env) {
 
-  auto &&env_shape = env.values.shape();
-  long n = clip(env.row(sp.north), env_shape[0]);
-  long s = clip(env.row(sp.south), env_shape[0]);
-  long e = clip(env.col(sp.east), env_shape[1]);
-  long w = clip(env.col(sp.west),  env_shape[1]);
-  assert(n <= s && w <= e);
+  // get initail bounding rectangle row and column limits.
+
+  // sp.north…west have alreday been bounds checked in sp.get_initial_species()
+  long n = env.row(sp.north);
+  long s = env.row(sp.south);
+  long e = env.col(sp.east);
+  long w = env.col(sp.west);
+
+  if (conf.verbosity > 1)
+    std::cout << " Loading species. "
+      "west=" << sp.west <<
+      ", east=" << sp.east <<
+      ", south=" << sp.south <<
+      ", north=" << sp.north  << std::endl;
+
+  // fill all suitable cells in initial-rectangle
 
   Deme d(sp);
   Location loc;
-
-  if (conf.verbosity > 1)
-    std::cout << " Loading species. north=" <<
-      sp.north << " (row " << n <<
-      "), south=" << sp.south << " (row " << s <<
-      "), west=" << sp.west << " (col " << w <<
-      "), east=" << sp.east << " (col " << e <<
-      ")" << std::endl;
-
+  EnvCell ec;
+  bool no_data;
   for (loc.y = n; loc.y <= s; ++loc.y)
     for (loc.x = w; loc.x <= e; ++loc.x) {
-      d.amount = d.niche_suitability(conf,
-				     env.get(loc));
+      env.get(loc, ec, &no_data);
+      if (no_data)
+        continue;
+      d.amount = d.niche_suitability(conf, ec);
       if (d.amount > 0.0f)
-	(*demes)[loc] = DemeList(1, d);
+        (*demes)[loc] = DemeList(1, d);
     }
 }
 
@@ -139,7 +140,7 @@ int Species::update_stats(Characteristics &ch, int current_step) {
   // FIXME do this in merge() instead of separate loops here?
   for (auto &&kv: *demes)
     for (auto &&d: kv.second) {
-      if (d.amount <-0.0f)
+      if (d.amount <= 0.0f)
 	continue; // FIXME flag these cases???
       ++ch.cell_count;
       ch.population += d.amount;

@@ -15,12 +15,12 @@ namespace DreadDs {
   public:
     std::string grid_filename;
 
-  BaseEnvParams(const std::string &fn):
-    grid_filename(fn) {}
+    BaseEnvParams(const std::string &fn):
+      grid_filename(fn) {}
     virtual std::string get_filename(int step_offset) const= 0;
     virtual float update_environment(Environment *env,
-				     int step_offset,
-				     int layer) const = 0;
+                                     int step_offset,
+                                     int layer) const = 0;
     virtual ~BaseEnvParams() = default;
   };
 
@@ -36,8 +36,8 @@ namespace DreadDs {
 
     virtual std::string get_filename(int step_offset) const;
     virtual float update_environment(Environment *env,
-				     int step_offset,
-				     int layer) const;
+                                     int step_offset,
+                                     int layer) const;
     void scan_ts_dir();
   };
 
@@ -50,13 +50,13 @@ namespace DreadDs {
     float sine_offset = 0.0f; // shift sinusoidal change by this
     // fraction of the wavelength. Use 0.25 for cos()
     float sine_amplitude = 0.0f; // maximum swing of sinusoidal
-				 // environment change
+                                 // environment change
 
     using BaseEnvParams::BaseEnvParams;
     virtual std::string get_filename(int step_offset) const;
     virtual float update_environment(Environment *env,
-				     int step_offset,
-				     int layer) const;
+                                     int step_offset,
+                                     int layer) const;
   };
 }
 
