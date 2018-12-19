@@ -80,9 +80,9 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
 void Species::load_initial(const SpeciesParameters &sp,
 			   const Environment &env) {
 
-  // get initail bounding rectangle row and column limits.
+  // get initial bounding rectangle row and column limits.
 
-  // sp.north…west have alreday been bounds checked in sp.get_initial_species()
+  // sp.north…west have already been bounds checked in sp.get_initial_species()
   long n = env.row(sp.north);
   long s = env.row(sp.south);
   long e = env.col(sp.east);

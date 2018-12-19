@@ -38,7 +38,7 @@ namespace DreadDs {
     const std::string grid_filename;
 
     EnvReader(const std::string &filename);
-    // have to prohibit copying due to simple management of GDAl stuff
+    // have to prohibit copying due to simple management of GDAL stuff
     // in ~EnvReader()
     EnvReader(const EnvReader &er) = delete;
     EnvReader& operator=(const EnvReader &er) = delete;
@@ -84,7 +84,7 @@ namespace DreadDs {
     }
 
     inline double to_ns(long row) const {
-      // return coordinate of cell entre
+      // return coordinate of cell centre
       return geo_transform[3] + ((0.5 + (double)row) * geo_transform[5]);
     }
 
