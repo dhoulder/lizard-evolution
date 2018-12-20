@@ -283,6 +283,7 @@ void Model::merge(DemeMap &dm) {
 void Model::save() {
   FILE *of = open_output_file(conf,
 			      std::to_string(step) + ".csv");
+  // FIXME check fprintf() return
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);

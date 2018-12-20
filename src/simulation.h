@@ -10,11 +10,11 @@
 #include <memory>
 #include <vector>
 
-#include "model-config.h"
-
 namespace DreadDs {
 
-  class Model; // for opaque pointer below
+  // for opaque pointers|references below
+  class Model;
+  class Config;
 
   // Represents a DREaD_ds evolution model. See ./README.md
   class Simulation {
