@@ -51,7 +51,6 @@ display.update <- function(plotItems) {
 
   # this function relies on the data to be plotted, being in scope, rather than passed as argument
   # this can be revised if it is a problem
-
   dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   if (length(plotItems[["env"]]) > 0) {
@@ -73,16 +72,44 @@ display.update <- function(plotItems) {
     } else {
       plot(plotItems[["env"]], main=main.header, col=my.colours)
     }
-
   }
+	
+	# convert row / column coordinates to continuous coordinates, if they don't match the environment raster
+	# for example, if the raster is in degrees, then row and column numbers won't plot correctly
+	
+	if (length(plotItems[["demes_amount_position"]]) > 0 | 
+			length(plotItems[["demes_amount_position_diff"]]) > 0 |
+			length(plotItems[["demes_genecolour"]]) > 0){
+		
+		# check if the environment layer has coordinates matching the row and column numbers
+		env_temp <- plotItems[["env"]]
+		env.has.rowcol.coords <- (env_temp@ncols == env_temp@extent@xmax)
+		
+		# check the range of environment raster values
+		min.env 	<- min(env_temp[], na.rm=T)
+		range.env <- max(env_temp[], na.rm=T) - min.env
+	}
 
   if (length(plotItems[["demes_amount_position"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position"]]
-    these.colours <- my.colours[round(demetable.species$niche1.position*10)]
-    these.sizes   <- sqrt(demetable.species$amount) * 2 * dot.size.scaler
+		
+		# assign colours to niche1.position, based on the 250 colours defined above in display.initialise.2by2()
+		colour.count   <- 250
+    colour.indices <- round((demetable.species$niche1.position - min.env) * colour.count / range.env)
+		these.colours  <- my.colours[colour.indices]
+    these.sizes    <- sqrt(demetable.species$amount) * 2 * dot.size.scaler
 
-    #points(demetable.species$col, demetable.species$row, bg=these.colours, pch=21, fg="black", cex=these.sizes)
-    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=these.sizes) # trying these settings for html animation
+    # replace the row and column values with x, y if needed
+		if (env.has.rowcol.coords) {
+			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+																																							# to standard y values where y=0 as at the bottom, not top
+		} else  {
+		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
+		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
+		}
+
+    points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=these.sizes)
+		
   }
 
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
@@ -97,8 +124,18 @@ display.update <- function(plotItems) {
     colour.nums[colour.nums < 1] <- 1
     colour.nums[colour.nums >250] <- 250
     these.colours <- my.coloursdiff[colour.nums]
+		
+    # replace the row and column values with x, y if needed
+		if (env.has.rowcol.coords) {
+			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+																																							# to standard y values where y=0 as at the bottom, not top
+		} else  {
+		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
+		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
+		}
+		
     #points(demetable.species$x, demetable.species$y, bg=these.colours, pch=21, fg="black", cex=1)
-    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=dot.size.scaler)
+    points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=dot.size.scaler)
   }
 
   if (length(plotItems[["demes_genecolour"]]) > 0) {
@@ -111,7 +148,17 @@ display.update <- function(plotItems) {
     deme.colours <- genome.colour(demetable.species, genome.columns)
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
-    points(demetable.species$col, (environment.dimension-demetable.species$row), col=these.colours, pch=19, cex=dot.size.scaler)
+		
+    # replace the row and column values with x, y if needed
+		if (env.has.rowcol.coords) {
+			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+																																							# to standard y values where y=0 as at the bottom, not top
+		} else  {
+		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
+		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
+		}
+		
+    points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=dot.size.scaler)
 
     ########################################################################################
     these.sizes   <- sqrt(demetable.species$amount) * 1.5
@@ -135,7 +182,7 @@ display.update <- function(plotItems) {
     points(deme$col, deme$row, col="black", pch=0)
   }
 
-  return()
+  return(1)
 }
 
 text.update <- function(textItems) {
