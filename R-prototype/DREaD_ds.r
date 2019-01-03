@@ -469,8 +469,7 @@ DREaD_read_plot <- function(total.time,
   extinct <- vector("logical", 1000)
   extinct.number <- 0
 
-  # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
-
+  # loop through time steps in the simulation
   while(current.time <= total.time) {
 
     starttime_timestep <- Sys.time()
