@@ -12,11 +12,8 @@
 #include <string>
 
 #define BOOST_DISABLE_ASSERTS
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/variate_generator.hpp>
 
+#include "random.h"
 #include "constants.h"
 #include "model-config.h"
 #include "environment.h"
@@ -24,12 +21,6 @@
 #include "species.h"
 
 namespace DreadDs {
-
-  typedef boost::random::mt19937 rng_eng_t;
-  typedef boost::random::uniform_real_distribution<float> uniform_distr_t;
-  typedef boost::random::variate_generator<rng_eng_t&, uniform_distr_t> uniform_vg_t;
-  typedef boost::random::normal_distribution<float> normal_distr_t;
-  typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
 
   class Model {
   public:
@@ -48,13 +39,13 @@ namespace DreadDs {
     int do_step();
 
   private:
-    uniform_distr_t gene_flow_distr;
+    uniform_real_distr_t gene_flow_distr;
     uniform_vg_t gene_flow_random;
-    uniform_distr_t deme_choice_distr;
+    uniform_real_distr_t deme_choice_distr;
     normal_distr_t gene_drift_distr;
     normal_vg_t gene_drift_random;
 
-    void evolve_towards_niche(Deme &deme, const EnvCell &env);
+    void evolve_towards_niche(Deme &deme, const EnvCell env);
     void do_genetc_drift(Deme &deme);
     Deme *choose_primary(DemeList &deme_list);
     float gene_flow_probability(float distance);

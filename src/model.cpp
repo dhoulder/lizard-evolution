@@ -87,7 +87,7 @@ Model::Model(const Config &c):
   gene_drift_distr(0.0f, gene_drift_sd),
   gene_drift_random(rng, gene_drift_distr)
 {
-  for (const auto &sp: conf.initial_species) {
+  for (auto &&sp: conf.get_initial_species(env)) {
     tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
   }
   roots = tips;
@@ -104,11 +104,11 @@ static inline float dispersal_abundance(float source_abundance,
 }
 
 
-void Model::evolve_towards_niche(Deme &deme, const EnvCell &ec) {
+void Model::evolve_towards_niche(Deme &deme, const EnvCell ec) {
   // apply niche selection pressure
   float *nc = deme.genetics.niche_centre;
   for (int i=0; i < conf.env_dims; ++nc, ++i)
-    *nc += (ec.v[i] - *nc) * conf.niche_evolution_rate;
+    *nc += (ec[i] - *nc) * conf.niche_evolution_rate;
 }
 
 void Model::do_genetc_drift(Deme &deme) {
@@ -124,13 +124,17 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
    * neighbouring cells, weighted by environmental niche
    * suitability. This can result in several demes per cell.
    */
+  EnvCell source_env, target_env;
+  bool no_source, no_target;
   auto target = std::make_shared <DemeMap>();
   auto &&env_shape = env.values.shape();
 
   // Iterate over all cells where this species occurs
   for (auto &&deme_cell: *(species.demes)) {
     const Location &loc = deme_cell.first;
-    const EnvCell &&source_env = env.get(loc);
+    env.get(loc, source_env, &no_source);
+    if (no_source)
+      continue;
 
     // Iterate over all demes (sort of "sub species") in the cell
     for (auto &&deme: deme_cell.second) {
@@ -149,19 +153,22 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
 		      1.0), // same cell, no travel cost
 	      true);
       // Disperse into the area around this cell
+      Location new_loc;
       for (auto &&k: species.dk) {
-	Location new_loc;
 	new_loc.x = loc.x + k.x;
 	new_loc.y = loc.y + k.y;
 	if (new_loc.x < 0 || new_loc.y < 0 ||
 	    new_loc.x >= env_shape[1] || new_loc.y >= env_shape[0])
+	  continue;
+	env.get(new_loc, target_env, &no_target);
+	if (no_target)
 	  continue;
 	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
 	(*target)[new_loc].emplace_back(
 		deme,
 		dispersal_abundance(
 			deme.amount,
-			deme.niche_suitability(conf, env.get(new_loc)),
+			deme.niche_suitability(conf, target_env),
 			k.weight),
 		false);
       }
@@ -218,7 +225,7 @@ bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
 
 void Model::merge(DemeMap &dm) {
   // Merge demes where gene flow occurs
-
+  EnvCell ec;
   for (auto cell_itr = dm.begin(); cell_itr != dm.end(); ) {
 
     auto &&deme_list = cell_itr->second;
@@ -262,8 +269,8 @@ void Model::merge(DemeMap &dm) {
       deme_list.resize(1);
     }
     // update abundance according to current environment
-    first_deme->amount = first_deme->niche_suitability(
-	    conf, env.get(loc));
+    env.get(loc, ec); // known location so no need to check for no_data
+    first_deme->amount = first_deme->niche_suitability(conf, ec);
     if (first_deme->amount <= 0.0f)
       // another extinction case
       cell_itr = dm.erase(cell_itr);
@@ -276,6 +283,7 @@ void Model::merge(DemeMap &dm) {
 void Model::save() {
   FILE *of = open_output_file(conf,
 			      std::to_string(step) + ".csv");
+  // FIXME check fprintf() return
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
@@ -283,10 +291,12 @@ void Model::save() {
     fprintf(of, ", genetic_position_%d", i);
   fprintf(of, "\n");
 
+  EnvCell ec;
+  bool no_data;
   for (auto &&species: tips) {
     for (auto &&deme_cell: *(species->demes)) {
       const Location &loc = deme_cell.first;
-      const EnvCell &&ec = env.get(loc);
+      env.get(loc, ec, &no_data);
       for (auto &&deme: deme_cell.second) {
 	auto &&g = deme.genetics;
 	fprintf(of,
@@ -295,7 +305,7 @@ void Model::save() {
 	for (int i=0; i < conf.env_dims; ++i)
 	  fprintf(of,
 		  ", %f, %f, %f",
-		  ec.v[i],
+		  no_data? NAN : ec[i],
 		  g.niche_centre[i], g.niche_tolerance[i] *2.0f);
 	for (int i=0; i < conf.genetic_dims; i++)
 	  fprintf(of,
@@ -334,7 +344,7 @@ void Model::save() {
 	      "    max: %f\n"
 	      "    mean: %f\n"
 	      "    sd: %f\n"
-	      "    mean_breadth: %f\n"
+	      "    breadth_mean: %f\n"
 	      "    breadth_sd: %f\n",
 	      ba::replace_all_copy(conf.env_params[i]->get_filename(step-1),
 				   "'", "''").c_str(),

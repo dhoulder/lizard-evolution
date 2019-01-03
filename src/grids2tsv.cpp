@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cmath>
 
 #include <boost/math/special_functions/next.hpp>
 
@@ -34,7 +35,7 @@ int main(int argc, const char *argv[]) {
       else {
 	er.get_coordinates(gt);
 	for (int j=0; j<6; j++)
-	  if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0) {
+	  if (fabs(boost::math::float_distance(gt[j], geo_transform[j])) > 2.0) {
 	    std::cerr << "Grids have different sizes or resolutions" << std::endl;
 	    std::exit(2);
 	  }

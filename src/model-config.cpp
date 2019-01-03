@@ -1,4 +1,7 @@
 // -*- coding: utf-8 -*-
+/**
+ * Load and check configuration options
+ */
 
 #include <fstream>
 #include <vector>
@@ -6,6 +9,10 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <chrono>
+#include <mutex>
+#include <cmath>
+#include <algorithm>
 
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
@@ -13,19 +20,32 @@
 #include "model-config.h"
 #include "exceptions.h"
 #include "env-params.h"
+#include "environment.h"
+#include "random.h"
 
-namespace po = boost::program_options;
 
 using namespace std;
 using namespace DreadDs;
+namespace po = boost::program_options;
+
+typedef std::chrono::seconds Sec;
+typedef std::chrono::high_resolution_clock HrClock;
+template<class Duration>
+using TimePoint = std::chrono::time_point<HrClock, Duration>;
+
+typedef boost::tokenizer<boost::escaped_list_separator<char>> CsvTokenizer;
 
 static vector<float> comma_split(string csv) {
   vector<float> v;
-  boost::tokenizer<boost::escaped_list_separator<char>> tok(csv);
+  CsvTokenizer tok(csv);
   for (const auto &t : tok)
     v.push_back(stof(t));
   return v;
 }
+
+static mutex rng_mutex;
+static bool rng_seeded = false;
+static rng_eng_t rng;
 
 Config::Config(int ac, const char *av[]) {
   /**
@@ -46,11 +66,10 @@ Config::Config(int ac, const char *av[]) {
   try {
     vector <double> env_ramp;
     vector <string> env_grids, env_mode, env_ts_dirs,
-      species_niche, species_niche_breadth;
+      species_niche, species_niche_breadth, initial_recatangle;
     vector <int> env_ts_start, env_ts_step;
     vector <float>
       env_sine_period, env_sine_offset, env_sine_amplitude,
-      species_north, species_east, species_south, species_west,
       species_max_dispersal_radius;
 
     po::options_description cmdline_options("Options available only on the command line");
@@ -135,8 +154,11 @@ Config::Config(int ac, const char *av[]) {
 
     po::options_description species_options("Initial species (one or more sets)");
     species_options.add_options()
-      ("species.niche", po::value<vector<string>>(&species_niche)->required(),
-       "Species niche as comma-separated values, one per environment dimension")
+      ("species.niche-centre",
+       po::value<vector<string>>(&species_niche)->required(),
+       "Species niche centre as comma-separated values, one per environment "
+       "dimension, or the string random-cell to derive niche-centre from a random "
+       "cell in the landscape. Also see species.initial-rectangle.")
 
       ("species.niche-breadth",
        po::value<vector<string>>(&species_niche_breadth)->required(),
@@ -144,19 +166,15 @@ Config::Config(int ac, const char *av[]) {
 
       ("species.max-dispersal-radius",
        po::value<vector<float>>(&species_max_dispersal_radius)->required(),
-       "Maximum dispersal radius in grid cells")
+       "Maximum dispersal radius in grid cell widths")
 
-      ("species.north", po::value<vector<float>>(&species_north)->required(),
-       "Northern boundary of initial species bounding rectangle in grid coordinates")
-
-      ("species.east", po::value<vector<float>>(&species_east)->required(),
-       "Eastern boundary of initial species bounding rectangle in grid coordinates")
-
-      ("species.south", po::value<vector<float>>(&species_south)->required(),
-       "Southern boundary of initial species bounding rectangle in grid coordinates")
-
-      ("species.west", po::value<vector<float>>(&species_west)->required(),
-       "Western boundary of initial species bounding rectangle in grid coordinates");
+      ("species.initial-rectangle",
+       po::value<vector<string>>(&initial_recatangle)->required(),
+       "Initial bounding rectangle for species. Can be specified as either "
+       "4 comma-separated grid coordinates (xmin, xmax, ymin, ymax), or (if "
+       "niche-centre = random-cell) \"random, <min>, <max>\" to generate a "
+       "random starting rectangle with side lengths between <min> and <max> "
+       "grid cell widths");
 
     config_options.add(env_options).add(species_options);
     cmdline_options.add(config_options);
@@ -168,7 +186,7 @@ Config::Config(int ac, const char *av[]) {
               options(cmdline_options).run(), vm);
 
     if (vm.count("help")) {
-      std::ostringstream os;
+      ostringstream os;
       os << cmdline_options;
       throw UsageException(os.str());
     }
@@ -194,13 +212,13 @@ Config::Config(int ac, const char *av[]) {
       throw ConfigError("Each env.grid needs a corresponding env.mode");
 
     int ts_i =0, ex_i = 0;
-    std::string mode;
+    string mode;
     for (int i = 0; i < env_dims; ++i) {
       mode = env_mode[i];
 
       if (mode == "ts") {
 	// Input environment specified as time series, one file per time step.
-	auto ep = std::make_shared<TsEnvParams>(env_grids[i]);
+	auto ep = make_shared<TsEnvParams>(env_grids[i]);
 	try {
 	  ep->ts_dir = env_ts_dirs.at(ts_i);
 	  ep->ts_start = env_ts_start.at(ts_i);
@@ -219,7 +237,7 @@ Config::Config(int ac, const char *av[]) {
 	// Input environment specified as initial environment and
 	// extrapolated to each time step using a linear ramp and sine
 	// function.
-	auto ep = std::make_shared<ExEnvParams>(env_grids[i]);
+	auto ep = make_shared<ExEnvParams>(env_grids[i]);
 	try {
 	  ep->ramp = env_ramp.at(ex_i);
 	  ep->sine_period = env_sine_period.at(ex_i);
@@ -241,10 +259,35 @@ Config::Config(int ac, const char *av[]) {
     try {
       for (int i = 0; i < species_niche.size(); ++i) {
 	SpeciesParameters sp;
-	sp.north = species_north.at(i);
-	sp.south = species_south.at(i);
-	sp.east = species_east.at(i);
-	sp.west = species_west.at(i);
+        CsvTokenizer tok(initial_recatangle.at(i));
+        vector<string> irs(tok.begin(), tok.end());
+        try {
+          if (irs.at(0) == "random") {
+            sp.bounds_mode = sp.RANDOM_SIZE;
+            sp.random_rect_min = stof(irs.at(1));
+            sp.random_rect_max = stof(irs.at(2));
+            if (sp.random_rect_min > sp.random_rect_max)
+              throw ConfigError(
+                  "min_length exceeds max_length in "
+                  "\"random, <min_length>, <max_length>\"");
+          } else {
+            sp.bounds_mode = sp.NSEW;
+            sp.west = stof(irs.at(0));
+            sp.east = stof(irs.at(1));
+            sp.south = stof(irs.at(2));
+            sp.north = stof(irs.at(3));
+            if (sp.west >= sp.east || sp.south >= sp.north)
+              throw ConfigError(
+                  "Bad initial-rectangle coordinates .Must be "
+                  "<xmin>, <xmax>, <ymin>, <ymax>");
+          }
+        }
+        catch (const logic_error &e) {
+          throw ConfigError(
+              "Bad initial-rectangle. Must be \"<xmin>, <xmax>, <ymin>, <ymax>\" "
+              "or \"random, <min_length>, <max_length>\"");
+        }
+
 	sp.max_dispersal_radius = species_max_dispersal_radius.at(i);
 	if (sp.max_dispersal_radius < 0.0)
 	  throw ConfigError("species.max-dispersal-radius must not be negative");
@@ -252,13 +295,24 @@ Config::Config(int ac, const char *av[]) {
 	// Need species niche for each environment dimension, so
 	// they're supplied as $value,$value,… in the argument value
 	try {
-	  vector<float> nc = move(comma_split(species_niche.at(i)));
-	  vector<float> nt = move(comma_split(species_niche_breadth.at(i)));
-	  if (nc.size() != nt.size())
-	    throw ConfigError("niche and niche-breadth have different lengths");
-	  for (int i=0; i < nc.size(); ++i) {
-	    sp.niche.push_back(NicheSpec {nc[i],
-		  nt[i] * 0.5f }); // *0.5 to convert breadth to tolerance
+	  vector<float> nc;
+	  vector<float> nb = move(comma_split(species_niche_breadth.at(i)));
+
+	  string sn = species_niche.at(i);
+	  if (sn == "random-cell") {
+	    sp.niche_mode = sp.RANDOM_CELL;
+	    nc = move(vector<float>(nb.size(), NAN)); // placeholders
+	  } else {
+	    sp.niche_mode = sp.NICHE_CENTRE;
+	    nc = move(comma_split(sn));
+	    if (nc.size() != nb.size())
+	      throw ConfigError("niche-centre and niche-breadth have different lengths");
+	  }
+
+	  for (int i=0; i < nb.size(); ++i) {
+	    sp.niche.push_back(
+	      NicheSpec(nc[i],
+			nb[i] * 0.5f )); // *0.5 to convert breadth to tolerance
 	  }
 	}
 	catch (const invalid_argument &e) {
@@ -274,9 +328,9 @@ Config::Config(int ac, const char *av[]) {
       }
     }
     catch (const out_of_range &e) {
-      throw ConfigError("Each species.niche needs a corresponding "
+      throw ConfigError("Each species.niche-centre needs a corresponding "
 			"species.niche-breadth, species.max-dispersal-radius, "
-			"species.north, species.east, species.south, species.west");
+			"species.initial-rectangle");
     }
 
     if (dispersal_min < 0.0 || dispersal_min > 1.0)
@@ -302,4 +356,127 @@ Config::Config(int ac, const char *av[]) {
     {
       throw ConfigError("Configuration error: " + string(e.what()));
     }
+
+  {
+    lock_guard<mutex> lock(rng_mutex);
+    if (!rng_seeded) {
+      rng_seeded = true;
+      // seed the RNG with 0…1E9
+      auto now = HrClock::now();
+      TimePoint<Sec> now_sec = std::chrono::time_point_cast<Sec>(now);
+      unsigned int seed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+	now-now_sec).count();
+      rng.seed(seed);
+    }
+  }
+}
+
+void Config::set_params_from_env(SpeciesParameters &sp,
+				const Environment &env) const {
+  /**
+   * Set species parameters that depend on the input environment.
+   */
+
+  auto &&env_shape = env.values.shape();
+  long n, s, e, w;   // rows and columns, not coordinates
+
+  float max_y = env.to_ns(0);
+  float min_y = env.to_ns(env_shape[0] - 1);
+  float min_x = env.to_ew(0);
+  float max_x = env.to_ew(env_shape[1] - 1);
+
+  if (sp.bounds_mode == sp.NSEW) {
+    sp.north = max(min_y, min(max_y, sp.north));
+    sp.south = max(min_y, min(max_y, sp.south));
+    sp.east = max(min_x, min(max_x, sp.east));
+    sp.west = max(min_x, min(max_x, sp.west));
+    n = env.row(sp.north);
+    s = env.row(sp.south);
+    e = env.col(sp.east);
+    w = env.col(sp.west);
+    if (n >= s || w >= e)
+      throw ConfigError("species.initial-rectangle is not "
+			"inside input environment grid");
+  } else if (sp.niche_mode != sp.NICHE_CENTRE) {
+    n = w = 0;
+    s = env_shape[0] - 1;
+    e =  env_shape[1] - 1;
+  } else
+    throw ConfigError("species.initial-rectangle = random "
+		      "can only be used with niche-centre = random-cell");
+
+  if (sp.niche_mode == sp.NICHE_CENTRE)
+    return;
+
+  // Need to set niche centre from random cell in specified initial
+  // rectangle or entire landscape.
+
+  // Find the non-NAN locations within nsew
+  std::deque<Location> locations;
+  Location loc;
+  for (loc.y = n; loc.y <= s; ++loc.y)
+    for (loc.x = w; loc.x <= e; ++loc.x) {
+      if (env.no_data(loc))
+	continue;
+      locations.push_back(loc);
+    }
+  if (locations.size() < 1)
+    throw ConfigError("No usable cells within initial rectangle for "
+		      "species.niche-centre = random-cell");
+
+  // choose cell and set niche centre to match
+  uniform_int_distr_t distr(0, locations.size()-1);
+  int random_loc;
+  {
+    lock_guard<mutex> lock(rng_mutex);
+    random_loc = distr(rng);
+  }
+  const auto &cell_loc = locations[random_loc];
+  if (verbosity > 0)
+    cout << "Chose random starting cell x=" <<
+      env.to_ew(cell_loc.x)  << " (col=" << cell_loc.x <<
+      "), y=" << env.to_ns(cell_loc.y) << " (row=" << cell_loc.y << ")" << endl;
+  EnvCell ec;
+  env.get(cell_loc, ec);
+  float const *v = ec;
+  for (auto &&ns: sp.niche) {
+    ns.centre = *(v++);
+    if (verbosity > 0)
+      cout << "  niche centre " << v-ec << " at cell = " << ns.centre << endl;
+  }
+
+  if (sp.bounds_mode != sp.NSEW) {
+    // Choose random area around cell within specified limits.
+    uniform_real_distr_t distr(
+      // convert side lengths in cell widths to NSEW coordinate
+      // offset from chosen cell
+      env.geo_transform[1] * sp.random_rect_min * 0.5f,
+      env.geo_transform[1] * sp.random_rect_max * 0.5f);
+    float lx = env.to_ew(cell_loc.x);
+    float ly = env.to_ns(cell_loc.y);
+    {
+      lock_guard<mutex> lock(rng_mutex);
+      // add random NSEW padding around chosen cell, clamped to
+      // centres of boundary cells.
+      sp.north = min((float)env.to_ns(n),
+		     ly +  distr(rng));
+      sp.south = max((float)env.to_ns(s),
+		     ly - distr(rng));
+      sp.east = min((float)env.to_ew(e),
+		    lx +  distr(rng));
+      sp.west = max((float)env.to_ew(w),
+		    lx - distr(rng));
+    }
+  }
+}
+
+
+std::vector<SpeciesParameters> Config::get_initial_species(
+  const Environment &env) const {
+  // Some parts of initial_species depend on the environment, so we
+  // make a copy of initial_species and finish configuring it.
+  std::vector<SpeciesParameters> spv = initial_species;
+  for (auto &sp: spv)
+    set_params_from_env(sp, env);
+  return spv;
 }

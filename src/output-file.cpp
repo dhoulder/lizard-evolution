@@ -13,9 +13,14 @@
 #include "exceptions.h"
 #include "output-file.h"
 
-// Using plain old C file IO because C++ doesn't provide an
-// equivalent to O_CREAT|O_EXCL.  Could also use
-// https://www.boost.org/doc/libs/1_67_0/libs/iostreams/doc/classes/file_descriptor.html#file_descriptor_sink
+/**
+ * Using plain old C file IO because C++ doesn't provide an
+ * equivalent to O_CREAT|O_EXCL.
+ *
+ * Note that this assumes that there are no signal handlers, and so
+ * doesn't handle errno == EINTR
+ */
+
 
 FILE *DreadDs::open_output_file(const Config &conf,
 				std::string filename_suffix) {

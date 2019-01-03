@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 #include <cassert>
+#include <cmath>
 
 #define BOOST_DISABLE_ASSERTS
 
@@ -28,6 +29,7 @@
 static bool gdal_reg = false;
 
 using namespace DreadDs;
+namespace bm = boost::math;
 
 EnvReader:: EnvReader(const std::string &filename):
   grid_filename(filename)
@@ -46,6 +48,10 @@ EnvReader:: EnvReader(const std::string &filename):
   nrow = band->GetYSize();
   row_buffer = (float *) CPLMalloc(sizeof(float)*ncol);
   assert(row_buffer);
+  int has_nodata_value;
+  double ndv = band->GetNoDataValue(&has_nodata_value);
+  if (has_nodata_value)
+    nodata_value = (float)ndv; // otherwise leave it is NAN
 }
 
 void EnvReader::get_coordinates(double *buff6) {
@@ -60,6 +66,11 @@ void EnvReader::read_row(int row) {
 		     GDT_Float32,
 		     0, 0 ) != CE_None)
     throw ConfigError("Error reading row data from grid file");
+}
+
+bool EnvReader::is_nodata(float v) {
+  return (!std::isnan(nodata_value)) &&
+    (fabs(bm::float_distance(v, nodata_value)) <= 2.0f);
 }
 
 EnvReader::~EnvReader() {
@@ -105,7 +116,7 @@ void Environment::check_coordinates(EnvReader &er) {
   double gt[6];
   er.get_coordinates(gt);
   for (int j=0; j<6; j++)
-    if (boost::math::float_distance(gt[j], geo_transform[j]) > 2.0)
+    if (fabs(bm::float_distance(gt[j], geo_transform[j])) > 2.0)
       throw ConfigError("Coordinates of " + er.grid_filename +
 			" don't match those of first grid file");
 }
@@ -117,7 +128,8 @@ void Environment::load(EnvReader &er, int layer) {
   for (int row=0; row < er.nrow; ++row) {
     er.read_row(row);
     for (int col=0; col < er.ncol; ++col) {
-      values[row][col][layer] = er.row_buffer[col];
+      const float &v = er.row_buffer[col];
+      values[row][col][layer] = er.is_nodata(v)? NAN : v;
       if  (conf.verbosity > 2)
 	std::cout <<
 	  " row=" << row << " col=" << col <<

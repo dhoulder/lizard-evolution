@@ -28,10 +28,10 @@ namespace DreadDs {
       float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
 
       Genetics():
-	// zero everything
-	niche_centre {},
-	niche_tolerance {},
-	genetic_position {} {}
+        // zero everything
+        niche_centre {},
+        niche_tolerance {},
+        genetic_position {} {}
       Genetics(const SpeciesParameters &sp);
     };
 
@@ -52,13 +52,13 @@ namespace DreadDs {
       is_primary = new_primary;
     }
 
-    float niche_suitability(const Config &conf, const EnvCell &env);
+    float niche_suitability(const Config &conf, const EnvCell env);
 
   };
 
   // Cells occupied by demes of a species, Several demes can occupy a
   // cell, hence std::list
-  typedef std::list <Deme> DemeList;
+  typedef std::list <Deme> DemeList; // FIXME use forward_list with emplace_after(whatever.begin(), …)  and emplace_front() ????? what if more than 1 primary demes???
   typedef std::map <Location, DemeList> DemeMap;
 }
 #endif

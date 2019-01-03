@@ -121,7 +121,7 @@ DREaD_ds <- function(total.time,
 
   ###########################  2. Seed initial species and data structures #############################
   #initial.species <- seedSpecies(env, dispersal = dispersal, print.species.params = TRUE)
-browser()
+
   initial.species <- seedSpecies_defined(env, dispersal = dispersal, initial.species.defined)
   initial.species.ras <- initial.species[[1]]
 
@@ -215,7 +215,7 @@ browser()
       # # select species current iteration
       current.speciesID <- edgetable[i, 11]
 
-  ############################# 4. Dispersal ###########################
+			############################# 4. Dispersal ###########################
       demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
 
       env.table <- as.data.table(cbind(all.coords, env[]))
@@ -363,13 +363,13 @@ DREaD_read_plot <- function(total.time,
   # first check for input files
   if (input.dir == "") {stop("A directory for model output files must be provided.")}
 
-  input.filter <- paste(input.prefix, ".csv", sep="*")
-  input.files <- list.files(path=input.dir, pattern = input.filter, include.dirs = F)
+  input.filter <- paste(input.prefix, "[[:digit:]]*.csv", sep="")
+  input.files  <- list.files(path=input.dir, pattern = input.filter, include.dirs = F)
 
   # get input file numbers to order correctly
   input.files.num <- sub(".csv", "", input.files) # remove the suffix
   if (input.prefix != "") {
-    input.files.num <- sub(input.prefix, "", input.files)
+    input.files.num <- sub(input.prefix, "", input.files.num)
   }
 
   input.file.index <- data.frame(index=1:length(input.files), number=as.numeric(input.files.num), filename=input.files)
@@ -417,12 +417,12 @@ DREaD_read_plot <- function(total.time,
   # generate edgetable  -  edgetable is a matrix that stores information on each species' phylogeny,
   # niche position, niche breadth, speciation modes, range size each row is a species
 
-  # NOTE THAT CURRENT CODE HERE IS DESIGNED TO STORE AND PLOT JUST ONE ENVIRONMENTLA DIMENSION
+  # NOTE THAT CURRENT CODE HERE IS DESIGNED TO STORE AND PLOT JUST ONE ENVIRONMENTAL DIMENSION
 
   edgetable <- makeEdgeTable(1000, dynamicSpeciation = TRUE)
 
   edgetable[1,5]  <- nrow(first.input.file)
-  edgetable[1,7]  <- first.input.file$niche_center_0[1]
+  edgetable[1,7]  <- first.input.file$niche_centre_0[1]
   edgetable[1,8]  <- first.input.file$niche_breadth_0[1]
   edgetable[1,11] <- 1
 
@@ -443,14 +443,15 @@ DREaD_read_plot <- function(total.time,
 
   for (i in 1:length(presence.cells)) {
     #cell <- presence.cells[i]
+		
     new.row <- list(cellFromRowCol(env, first.input.file$row[i], first.input.file$column[i]), # cellID
                     1,                                    # speciesID
                     first.input.file$column[i],           # col
                     first.input.file$row[i],              # row
                     1,                                    # amount - need to sort out values!
-                    first.input.file$niche_center_0[i],   # niche1.position
+                    first.input.file$niche_centre_0[i],   # niche1.position
                     first.input.file$niche_breadth_0[i],  # niche1.breadth
-                    first.input.file$niche_center_1[i],   # niche2.position
+                    first.input.file$niche_centre_1[i],   # niche2.position
                     first.input.file$niche_breadth_1[i]   # niche2.breadth
     )
 
