@@ -142,6 +142,8 @@ Config::Config(int ac, const char *av[]) {
       ("env.ramp", po::value<vector<double>>(&env_ramp),
        "(ex mode) Environmental change per time step.")
 
+      // FIXME make sine* stuff optional. default period=1,offset and amplitude=0
+      // require both amplitude andf period if either supplied. Don't allow period=0
       ("env.sine-period", po::value<vector<float>>(&env_sine_period),
        "(ex mode) Length of sinusoidal environmental change in time steps.")
 
