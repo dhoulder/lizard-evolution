@@ -111,7 +111,13 @@ Config::Config(int ac, const char *av[]) {
        "Output filenames will all start with this string.")
 
       ("iterations,n", po::value<int>(&n_iterations)->required(),
-       "Number of time steps to simulate.");
+       "Number of time steps to simulate.")
+
+      ("check-speciation",
+       po::value<int>(&check_speciation)->default_value(1),
+       "Number of timesteps between speciation checks. "
+       "Use 0 to disable speciation, 1 to check after every step")
+      ;
 
     po::options_description env_options("Input environment (one or more sets)");
     env_options.add_options()
@@ -143,7 +149,7 @@ Config::Config(int ac, const char *av[]) {
        "(ex mode) Environmental change per time step.")
 
       // FIXME make sine* stuff optional. default period=1,offset and amplitude=0
-      // require both amplitude andf period if either supplied. Don't allow period=0
+      // require both amplitude and period if either supplied. Don't allow period=0
       ("env.sine-period", po::value<vector<float>>(&env_sine_period),
        "(ex mode) Length of sinusoidal environmental change in time steps.")
 

@@ -11,7 +11,6 @@
 #include <math.h>
 #include <iostream>
 #include <string>
-#include <boost/algorithm/string.hpp>
 
 #include "constants.h"
 #include "model-config.h"
@@ -23,7 +22,6 @@
 #include "output-file.h"
 
 using namespace DreadDs;
-namespace ba = boost::algorithm;
 
 namespace DreadDs {
 
@@ -88,7 +86,7 @@ Model::Model(const Config &c):
   gene_drift_random(rng, gene_drift_distr)
 {
   for (auto &&sp: conf.get_initial_species(env)) {
-    tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
+    tips.push_back(std::make_shared <Species>(conf, sp, env));
   }
   roots = tips;
 }
@@ -136,7 +134,7 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
     if (no_source)
       continue;
 
-    // Iterate over all demes (sort of "sub species") in the cell
+    // Iterate over all demes in the cell
     for (auto &&deme: deme_cell.second) {
       evolve_towards_niche(deme, source_env);
       // FIXME MAYBE: update abundance?
@@ -230,7 +228,7 @@ void Model::merge(DemeMap &dm) {
 
     auto &&deme_list = cell_itr->second;
     if (deme_list.size() < 1) {
-      // no demes, so get rid of the cell
+      // no demes, so get rid of the cell // FIXME can this actually happen??
       cell_itr = dm.erase(cell_itr);
       continue;
     }
@@ -279,6 +277,12 @@ void Model::merge(DemeMap &dm) {
   }
 }
 
+void Model::write_phylogeny(FILE *of, const Species::Vec &sv) {
+  for (auto &&species: sv) {
+    species->as_yaml(of, step, env.current_delta);
+    write_phylogeny(of, species->sub_species);
+  }
+}
 
 void Model::save() {
   FILE *of = open_output_file(conf,
@@ -320,50 +324,7 @@ void Model::save() {
   of = open_output_file(conf,
 			std::to_string(step) + "-stats.yml");
   fprintf(of, "# Step %d\n", step);
-  for (auto && species: tips) {
-    Species::Characteristics &ch = species->latest_stats;
-    auto pp = species->parent.lock();
-    fprintf(of,
-	    "- species: %d\n"
-	    "  cell_count: %d\n"
-	    "  population: %f\n"
-	    "  extinction_time: %d\n"
-	    "  speciation_time: %d\n"
-	    "  parent_species: %d\n"
-	    "  niche:\n",
-	    species->id, ch.cell_count, ch.population,
-	    species->extinction, species->split,
-	    pp? pp->id : -1);
-
-    for (int i=0; i < conf.env_dims; ++i) {
-      const auto &ns = ch.niche_stats[i];
-      fprintf(of,
-	      "  - input_environment: '%s'\n"
-	      "    environment_delta: %f\n"
-	      "    min: %f\n"
-	      "    max: %f\n"
-	      "    mean: %f\n"
-	      "    sd: %f\n"
-	      "    breadth_mean: %f\n"
-	      "    breadth_sd: %f\n",
-	      ba::replace_all_copy(conf.env_params[i]->get_filename(step-1),
-				   "'", "''").c_str(),
-	      env.env_delta[i],
-	      ns.min, ns.max,
-	      ns.position_mean, ns.position_sd,
-	      ns.breadth_mean,  ns.breadth_sd);
-    }
-
-    fprintf(of,
-	    "  genetics:\n");
-    for (int i=0; i < conf.genetic_dims; ++i) {
-      const auto &gs = ch.genetic_stats[i];
-      fprintf(of,
-	      "  - mean: %f\n"
-	      "    sd: %f\n",
-	      gs.mean, gs.sd);
-    }
-  }
+  write_phylogeny(of, roots);
   fclose(of);
 }
 
@@ -406,16 +367,21 @@ int Model::do_step() {
 
     // TODO competition/co-occurrence. (see 3.5)
 
-    species->speciate();
+    if (conf.check_speciation && (step % conf.check_speciation == 0))
+      species->speciate(step);
     if (species->sub_species.empty()) {
       // no speciation
-      n_occupied += species->update_stats(species->latest_stats, step);
-      new_tips.push_back(species);
+      int n = species->update_stats(species->latest_stats, step);
+      if (n > 0) {
+        n_occupied += n;
+        new_tips.push_back(species);
+      }
     } else {
       // species has split into sub_species
       for (auto &&s: species->sub_species) {
-	n_occupied += s->update_stats(s->latest_stats, step);
-	new_tips.push_back(s);
+        n_occupied += s->update_stats(s->initial_stats, step);
+        s->latest_stats = s->initial_stats;
+        new_tips.push_back(s);
       }
     }
   }

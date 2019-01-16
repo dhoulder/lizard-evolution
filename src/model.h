@@ -7,6 +7,7 @@
 #ifndef DREADDS_MODEL_H
 #define DREADDS_MODEL_H
 
+#include <stdio.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -54,6 +55,7 @@ namespace DreadDs {
     std::shared_ptr<DemeMap> evolve_and_disperse(Species &species);
     void merge(DemeMap &dm);
     void save();
+    void write_phylogeny(FILE *of, const Species::Vec &sv);
   };
 }
 #endif

@@ -58,7 +58,7 @@ namespace DreadDs {
 
   // Cells occupied by demes of a species, Several demes can occupy a
   // cell, hence std::list
-  typedef std::list <Deme> DemeList; // FIXME use forward_list with emplace_after(whatever.begin(), …)  and emplace_front() ????? what if more than 1 primary demes???
+  typedef std::list <Deme> DemeList; // FIXME use forward_list with emplace_after(whatever.begin(), …)  and emplace_front() ????? what if more than 1 primary demes??? or maybe struct {Deme primary;  std::forward_list <Deme> others}
   typedef std::map <Location, DemeList> DemeMap;
 }
 #endif

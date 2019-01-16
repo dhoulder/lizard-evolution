@@ -80,7 +80,6 @@ EnvReader::~EnvReader() {
     CPLFree(row_buffer);
 }
 
-
 Environment::Environment(const Config &conf_):
   current_step_offset(0),
   conf(conf_)
@@ -141,11 +140,11 @@ void Environment::load(EnvReader &er, int layer) {
 
 void Environment::update(int step_offset) {
   /**
-   * For extrapolated environment layers, set env_delta for the
+   * For extrapolated environment layers, set current_delta for the
    * current time step. For time-series layers, load the corresponding
    * files
    */
-  float *ed = env_delta;
+  float *ed = current_delta;
   auto p = conf.env_params.begin();
   for (int i = 0; i < conf.env_dims;
        ++i, ++p, ++ed)

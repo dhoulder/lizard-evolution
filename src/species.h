@@ -2,6 +2,7 @@
 
 #ifndef DREADDS_SPECIES_H
 #define DREADDS_SPECIES_H
+#include <stdio.h>
 
 #include <memory>
 #include <vector>
@@ -68,20 +69,26 @@ namespace DreadDs {
     const Config &conf;
     Vec sub_species;
 
-    std::weak_ptr <Species> parent;
+    Species *parent = NULL; // no need for smart pointer here as
+                            // sub-species will always have a parent
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
-    Timestep split = -1; // Time of speciation. parent->split is species
-    // origin time. -1 if not speciated
+    Timestep split = -1; // Time step of speciation. -1 if we have no
+                         // sub-species. This implies parent->split is
+                         // species origin time.
     Characteristics initial_stats; // At species origin (i.e. split from parent)
     Characteristics latest_stats;  // Updated after each time step.
     std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
     DispersalKernel dk;
     int id = 0;
 
-    Species(const Config &conf, const SpeciesParameters &sp, const Environment &env);
+    Species(const Config &conf);
+    Species(const Config &conf,
+            const SpeciesParameters &sp,
+            const Environment &env);
 
-    void speciate();
+    void speciate(int step);
     int update_stats(Characteristics &ch, int current_step);
+    void as_yaml(FILE *of, int step, const float env_delta[]);
 
   private:
     void setup_dispersal(const SpeciesParameters &sp);

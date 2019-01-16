@@ -31,5 +31,6 @@ On Ubuntu these prerequisites can be installed with:
 ```
 cmake . # first time only to initialise build files
 cmake --build .
+make test # Run test suite
 ```
 

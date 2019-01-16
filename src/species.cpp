@@ -5,37 +5,46 @@
 #include <iostream>
 #include <cassert>
 #include <atomic>
+#include <memory>
+#include <utility>
 
 #include <boost/serialization/array_wrapper.hpp> // just for boost 1.64. see https://svn.boost.org/trac10/ticket/12982
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "constants.h"
 #include "model-config.h"
 #include "species.h"
 #include "exceptions.h"
+#include "alglib/dataanalysis.h"
 
 using namespace DreadDs;
+using boost::algorithm::replace_all_copy;
 namespace ba = boost::accumulators;
 
 static std::atomic_int id_hwm(0);
 
+Species::Species(const Config &c):
+  conf(c),
+  demes(std::make_shared<DemeMap>())
+{
+  ++id_hwm;
+  id = id_hwm;
+  if (conf.verbosity > 1)
+    std::cout << "Creating species " << id << std::endl;
+}
+
+
 Species::Species(const Config &c,
 		 const SpeciesParameters &sp,
 		 const Environment &env):
-  conf(c),
-  demes(new(DemeMap))
+  Species(c)
   /**
    * Load initial species values, locations and abundance.
    */
 {
-  ++id_hwm;
-  id = id_hwm;
-
-  if (conf.verbosity > 1)
-    std::cout << "Creating species " << id << std::endl;
-
   setup_dispersal(sp);
   load_initial(sp, env);
 
@@ -159,7 +168,7 @@ int Species::update_stats(Characteristics &ch, int current_step) {
 
   if (ch.cell_count == 0) {
     extinction = current_step;
-    // leave other stats as they were on previous step
+    // leave other stats as they were on previous step FIXME think about this
     if (conf.verbosity > 1)
       std::cout << "Species " << id << " extinct at step " <<
 	current_step << std::endl;
@@ -203,13 +212,112 @@ int Species::update_stats(Characteristics &ch, int current_step) {
   return ch.cell_count;
 }
 
-void Species::speciate() {
+void Species::speciate(int step) {
   /**
    * Examine species for distinct clumps of demes in genetic space. If
    * only one is found, leave the species alone, otherwise split the
    * current species into distinct sub-species.
    */
+  alglib::real_2d_array points;
+  alglib::clusterizerstate s;
+  alglib::ahcreport rep;
+  alglib::integer_1d_array cidx, cz;
+  alglib::ae_int_t n_clusters;
 
-  // FIXME STUB
+  // set up 2d array of points in genetic space
+  points.setlength(demes->size(), conf.genetic_dims);
+  int i=0;
+  for (auto &&kv: *demes) {
+    // We're doing this after Model::merge(), so we'll have a single
+    // entry in DemeList in each cell.
+    auto &&g = kv.second.front().genetics.genetic_position;
+    for (int j=0; j < conf.genetic_dims; ++j)
+      points[i][j] = g[j];
+    ++i;
+  }
+  if (i < 1)
+    return;
 
+  alglib::clusterizercreate(s);
+  alglib::clusterizersetpoints(s, points, 2); // 2 = Euclidean distance
+  alglib::clusterizersetahcalgo(s, 1); // 1 = single linkage. See
+       // https://en.wikipedia.org/wiki/Single-linkage_clustering
+  alglib::clusterizerrunahc(s, rep);
+  assert(rep.terminationtype >= 0);
+
+  alglib::clusterizerseparatedbydist(
+    rep,
+    conf.gene_flow_zero_distance, // minimum inter-cluster distance,
+    n_clusters,
+    cidx, // array[NPoints], I-th element contains cluster index
+          // (from 0 to n_clusters -1) for I-th point of the dataset.
+    cz);  // Not used.
+
+  if (n_clusters <2)
+    // All one species. Nothing to do
+    return;
+
+  // The species has split into two or more sub species
+  split = step;
+  for (int i=0; i<n_clusters; ++i) {
+    auto s = std::make_shared <Species>(conf);
+    s->dk = dk;
+    s->parent = this;
+    sub_species.push_back(s);
+  }
+
+  // move demes into sub species
+  i=0;
+  for (auto &&kv: *demes) {
+    (*sub_species[cidx[i]]->demes)[kv.first] = std::move(kv.second);
+    ++i;
+  }
+  demes->clear();
+}
+
+void Species::as_yaml(FILE *of, int step, const float env_delta[]) {
+  // statistics are set by most recent call to update_stats()
+  fprintf(of,
+          "- species: %d\n"
+          "  cell_count: %d\n"
+          "  population: %f\n"
+          "  extinction_time: %d\n"
+          "  speciation_time: %d\n"
+          "  parent_species: %d\n"
+          "  niche:\n",
+          id,
+          latest_stats.cell_count,
+          latest_stats.population,
+          extinction,
+          split,
+          parent? parent->id : -1);
+
+  for (int i=0; i < conf.env_dims; ++i) {
+    const auto &ns = latest_stats.niche_stats[i];
+    fprintf(of,
+            "  - input_environment: '%s'\n"
+            "    environment_delta: %f\n"
+            "    min: %f\n"
+            "    max: %f\n"
+            "    mean: %f\n"
+            "    sd: %f\n"
+            "    breadth_mean: %f\n"
+            "    breadth_sd: %f\n",
+            replace_all_copy(conf.env_params[i]->get_filename(step-1),
+                                 "'", "''").c_str(),
+            env_delta[i],
+            ns.min, ns.max,
+            ns.position_mean, ns.position_sd,
+            ns.breadth_mean,  ns.breadth_sd);
+  }
+
+  fprintf(of,
+          "  genetics:\n");
+  for (int i=0; i < conf.genetic_dims; ++i) {
+    const auto &gs = latest_stats.genetic_stats[i];
+    fprintf(of,
+            "  - mean: %f\n"
+            "    sd: %f\n",
+            gs.mean, gs.sd);
+  }
 }

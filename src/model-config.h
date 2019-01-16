@@ -55,6 +55,7 @@ namespace DreadDs {
     std::string output_file_prefix = "";
     int n_iterations = 0;
     std::vector<std::shared_ptr<BaseEnvParams>> env_params;
+    int check_speciation = 1;
 
     Config() {}
 
