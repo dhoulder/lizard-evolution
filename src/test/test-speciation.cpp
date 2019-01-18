@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     s.speciate(42);
 
     if (s.demes->size() != 0 || s.sub_species.size() != 100) {
-      printf("100-cluster test failed: %d %d\n",
+      printf("100-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());
       exit(1);
     }
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     setup3(s);
     s.speciate(42);
     if (s.demes->size() != 0 || s.sub_species.size() != 3) {
-      printf("three-cluster test failed: %d %d\n",
+      printf("three-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());
       exit(2);
     }
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     }
     s.speciate(42);
     if (s.demes->size() != 102 || s.sub_species.size() != 0) {
-      printf("one-cluster test failed: %d %d\n",
+      printf("one-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());
       exit(3);
     }
