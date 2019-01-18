@@ -311,8 +311,9 @@ void Species::as_yaml(FILE *of, int step, const float env_delta[]) {
             ns.breadth_mean,  ns.breadth_sd);
   }
 
-  fprintf(of,
-          "  genetics:\n");
+  if (fprintf(of,
+	      "  genetics:\n") <1)
+    throw ApplicationException("Error writing species YAML file");
   for (int i=0; i < conf.genetic_dims; ++i) {
     const auto &gs = latest_stats.genetic_stats[i];
     fprintf(of,

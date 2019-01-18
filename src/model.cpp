@@ -285,9 +285,8 @@ void Model::write_phylogeny(FILE *of, const Species::Vec &sv) {
 }
 
 void Model::save() {
-  FILE *of = open_output_file(conf,
-			      std::to_string(step) + ".csv");
-  // FIXME check fprintf() return
+  std::string ofn = std::to_string(step) + ".csv";
+  FILE *of = open_output_file(conf, ofn);
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
@@ -315,17 +314,20 @@ void Model::save() {
 	  fprintf(of,
 		  ", %f",
 		  g.genetic_position[i]);
-	fprintf(of, "\n");
+	if (fprintf(of, "\n") <1)
+	  throw ApplicationException("Error wriring " + ofn);
       }
     }
   }
-  fclose(of);
+  if (fclose(of) != 0)
+    throw ApplicationException("Error closing " + ofn);
 
-  of = open_output_file(conf,
-			std::to_string(step) + "-stats.yml");
+  ofn = std::to_string(step) + "-stats.yml";
+  of = open_output_file(conf, ofn);
   fprintf(of, "# Step %d\n", step);
   write_phylogeny(of, roots);
-  fclose(of);
+  if (fclose(of) != 0)
+    throw ApplicationException("Error closing " + ofn);
 }
 
 
