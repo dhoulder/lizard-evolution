@@ -32,15 +32,11 @@ target_link_libraries(dreadds
 add_executable(dreadds-bin dreadds.cpp)
 set_target_properties(dreadds-bin PROPERTIES OUTPUT_NAME dreadds)
 target_link_libraries(dreadds-bin
-  dreadds
-  ${GDAL_LIBRARY}
-  Boost::program_options
-  Boost::filesystem)
+  dreadds)
 
 add_executable(grids2tsv grids2tsv.cpp)
 target_link_libraries(grids2tsv
-  dreadds
-  ${GDAL_LIBRARY})
+  dreadds)
 
 set_property(TARGET grids2tsv dreadds dreadds-bin
              PROPERTY CXX_STANDARD 11)
