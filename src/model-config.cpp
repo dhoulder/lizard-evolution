@@ -86,6 +86,9 @@ Config::Config(int ac, const char *av[]) {
       ("verbosity,v", po::value<int>(&verbosity)->default_value(1),
        "Verbosity level, 0 (quiet) to 3.")
 
+      ("csv-precision", po::value<int>(&csv_precision)->default_value(3),
+       "Number of significant digits in numeric CSV field output")
+
       ("genetic-dims", po::value<int>(&genetic_dims)->default_value(max_genetic_dims),
        "Number of genetic dimensions")
 
@@ -208,6 +211,9 @@ Config::Config(int ac, const char *av[]) {
       }
     }
     po::notify(vm);
+
+    if (csv_precision < 0 || csv_precision > 8)
+      throw ConfigError("csv-precision must be between 0 and 8");
 
     env_dims = env_grids.size();
     if (env_dims > max_env_dims)

@@ -296,6 +296,15 @@ void Model::save() {
 
   EnvCell ec;
   bool no_data;
+  char s1[16], s2[16];
+  auto write_f = [&](float f) {
+    // Write the more compact representation of a float.
+    // e.g. 1234 instead of 1.23e+03
+    int n1 = snprintf(s1, sizeof s1, "%g", f);
+    int n2 = snprintf(s2, sizeof s2, "%0.*g", conf.csv_precision, f);
+    return fprintf(of, ",%s",  n1 < n2? s1: s2);
+  };
+
   for (auto &&species: tips) {
     for (auto &&deme_cell: *(species->demes)) {
       const Location &loc = deme_cell.first;
@@ -303,19 +312,18 @@ void Model::save() {
       for (auto &&deme: deme_cell.second) {
 	auto &&g = deme.genetics;
 	fprintf(of,
-		"%d, %d, %d, %f",
-		species->id, loc.y, loc.x, deme.amount);
-	for (int i=0; i < conf.env_dims; ++i)
-	  fprintf(of,
-		  ", %f, %f, %f",
-		  no_data? NAN : ec[i],
-		  g.niche_centre[i], g.niche_tolerance[i] *2.0f);
+		"%d,%d,%d",
+		species->id, loc.y, loc.x);
+	write_f(deme.amount);
+	for (int i=0; i < conf.env_dims; ++i) {
+	  write_f(no_data? NAN : ec[i]);
+	  write_f(g.niche_centre[i]);
+	  write_f(g.niche_tolerance[i] *2.0f);
+	}
 	for (int i=0; i < conf.genetic_dims; i++)
-	  fprintf(of,
-		  ", %f",
-		  g.genetic_position[i]);
+	  write_f(g.genetic_position[i]);
 	if (fprintf(of, "\n") <1)
-	  throw ApplicationException("Error wriring " + ofn);
+	  throw ApplicationException("Error writing " + ofn);
       }
     }
   }

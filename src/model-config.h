@@ -45,6 +45,7 @@ namespace DreadDs {
   public:
     // Parameters for a simulation run.
     int verbosity = 1;
+    int csv_precision = 3;
     int env_dims = 0; // must be <= max_env_dims
     int genetic_dims = max_genetic_dims; // <= max_genetic_dims
     float gene_flow_clip = 0.001f;
