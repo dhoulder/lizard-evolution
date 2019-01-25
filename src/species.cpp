@@ -1,18 +1,19 @@
 // -*- coding: utf-8 -*-
 
 #include <cmath>
+#include <stdio.h>
 #include <algorithm>
 #include <iostream>
 #include <cassert>
 #include <atomic>
 #include <memory>
 #include <utility>
+#include <string>
 
 #include <boost/serialization/array_wrapper.hpp> // just for boost 1.64. see https://svn.boost.org/trac10/ticket/12982
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
-#include <boost/algorithm/string.hpp>
 
 #include "constants.h"
 #include "model-config.h"
@@ -21,7 +22,6 @@
 #include "alglib/dataanalysis.h"
 
 using namespace DreadDs;
-using boost::algorithm::replace_all_copy;
 namespace ba = boost::accumulators;
 
 static std::atomic_int id_hwm(0);
@@ -275,50 +275,73 @@ void Species::speciate(int step) {
   demes->clear();
 }
 
-void Species::as_yaml(FILE *of, int step, const float env_delta[]) {
-  // statistics are set by most recent call to update_stats()
-  fprintf(of,
-          "- species: %d\n"
-          "  cell_count: %d\n"
-          "  population: %f\n"
-          "  extinction_time: %d\n"
-          "  speciation_time: %d\n"
-          "  parent_species: %d\n"
-          "  niche:\n",
-          id,
-          latest_stats.cell_count,
-          latest_stats.population,
-          extinction,
-          split,
-          parent? parent->id : -1);
+void Species::as_yaml(FILE *of,
+                      const std::string &first_indent) {
+  std::string spaces(first_indent.size(), ' ');
+  const char *ind = spaces.c_str();
+  if (fprintf(
+        of,
+        "%sid: %d\n"
+        "%scell_count: %d\n"
+        "%spopulation: %f\n"
+        "%sextinction_time: %d\n"
+        "%sspeciation_time: %d\n"
+        "%sparent_species: %d\n"
+        "%sniche:\n",
+        first_indent.c_str(), id,
+        ind, latest_stats.cell_count,
+        ind, latest_stats.population,
+        ind, extinction,
+        ind, split,
+        ind, parent? parent->id : -1,
+        ind) < 1)
+    throw ApplicationException("Error writing species YAML file");
 
   for (int i=0; i < conf.env_dims; ++i) {
     const auto &ns = latest_stats.niche_stats[i];
     fprintf(of,
-            "  - input_environment: '%s'\n"
-            "    environment_delta: %f\n"
-            "    min: %f\n"
-            "    max: %f\n"
-            "    mean: %f\n"
-            "    sd: %f\n"
-            "    breadth_mean: %f\n"
-            "    breadth_sd: %f\n",
-            replace_all_copy(conf.env_params[i]->get_filename(step-1),
-                                 "'", "''").c_str(),
-            env_delta[i],
-            ns.min, ns.max,
-            ns.position_mean, ns.position_sd,
-            ns.breadth_mean,  ns.breadth_sd);
+            "%s - min: %f\n"
+            "%s   max: %f\n"
+            "%s   mean: %f\n"
+            "%s   sd: %f\n"
+            "%s   breadth_mean: %f\n"
+            "%s   breadth_sd: %f\n",
+            ind, ns.min,
+            ind, ns.max,
+            ind, ns.position_mean,
+            ind, ns.position_sd,
+            ind, ns.breadth_mean,
+            ind, ns.breadth_sd);
   }
 
-  if (fprintf(of,
-	      "  genetics:\n") <1)
-    throw ApplicationException("Error writing species YAML file");
+  fprintf(of,
+          "%sgenetics:\n", ind);
   for (int i=0; i < conf.genetic_dims; ++i) {
     const auto &gs = latest_stats.genetic_stats[i];
     fprintf(of,
-            "  - mean: %f\n"
-            "    sd: %f\n",
-            gs.mean, gs.sd);
+            "%s - mean: %f\n"
+            "%s   sd: %f\n",
+            ind, gs.mean,
+            ind, gs.sd);
+  }
+}
+
+void Species::phylogeny_as_yaml(FILE *of,
+                              const std::string &first_indent) {
+  as_yaml(of, first_indent);
+  std::string spaces(first_indent.size(), ' ');
+
+  if (sub_species.size() < 1) {
+    fprintf(of,
+            "%schildren: []\n",
+            spaces.c_str());
+    return;
+  }
+  fprintf(of,
+	  "%schildren:\n",
+          spaces.c_str());
+  std::string list_indent = spaces + " - ";
+  for (auto &&c: sub_species) {
+    c->phylogeny_as_yaml(of, list_indent);
   }
 }

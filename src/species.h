@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <string>
 
 #include "constants.h"
 #include "model-config.h"
@@ -88,7 +89,10 @@ namespace DreadDs {
 
     void speciate(int step);
     int update_stats(Characteristics &ch, int current_step);
-    void as_yaml(FILE *of, int step, const float env_delta[]);
+    void as_yaml(FILE *of,
+                 const std::string &first_indent);
+    void phylogeny_as_yaml(FILE *of,
+                           const std::string &first_indent);
 
   private:
     void setup_dispersal(const SpeciesParameters &sp);

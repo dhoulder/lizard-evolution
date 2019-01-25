@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
              s.demes->size(), s.sub_species.size());
       exit(2);
     }
+    s.phylogeny_as_yaml(stdout, "");
   }
 
   {

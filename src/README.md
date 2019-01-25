@@ -33,4 +33,3 @@ cmake . # first time only to initialise build files
 cmake --build .
 make test # Run test suite
 ```
-

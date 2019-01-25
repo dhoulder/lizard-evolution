@@ -12,6 +12,8 @@
 #include <iostream>
 #include <string>
 
+#include <boost/algorithm/string.hpp>
+
 #include "constants.h"
 #include "model-config.h"
 #include "environment.h"
@@ -22,6 +24,7 @@
 #include "output-file.h"
 
 using namespace DreadDs;
+using boost::algorithm::replace_all_copy;
 
 namespace DreadDs {
 
@@ -277,13 +280,6 @@ void Model::merge(DemeMap &dm) {
   }
 }
 
-void Model::write_phylogeny(FILE *of, const Species::Vec &sv) {
-  for (auto &&species: sv) {
-    species->as_yaml(of, step, env.current_delta);
-    write_phylogeny(of, species->sub_species);
-  }
-}
-
 void Model::save() {
   std::string ofn = std::to_string(step) + ".csv";
   FILE *of = open_output_file(conf, ofn);
@@ -292,7 +288,8 @@ void Model::save() {
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
   for (int i=0; i < conf.genetic_dims; i++)
     fprintf(of, ", genetic_position_%d", i);
-  fprintf(of, "\n");
+  if (fprintf(of, "\n") < 1)
+    throw ApplicationException("Error writing " + ofn);
 
   EnvCell ec;
   bool no_data;
@@ -322,7 +319,7 @@ void Model::save() {
 	}
 	for (int i=0; i < conf.genetic_dims; i++)
 	  write_f(g.genetic_position[i]);
-	if (fprintf(of, "\n") <1)
+	if (fprintf(of, "\n") < 1)
 	  throw ApplicationException("Error writing " + ofn);
       }
     }
@@ -332,8 +329,22 @@ void Model::save() {
 
   ofn = std::to_string(step) + "-stats.yml";
   of = open_output_file(conf, ofn);
-  fprintf(of, "# Step %d\n", step);
-  write_phylogeny(of, roots);
+  fprintf(of,
+	  "step: %d\n"
+	  "input_environment:\n",
+	  step);
+  for (int i=0; i < conf.env_dims; ++i)
+    fprintf(of,
+            " - filename: '%s'\n"
+            "   delta: %f\n",
+            replace_all_copy(conf.env_params[i]->get_filename(step-1),
+                             "'", "''").c_str(),
+            env.current_delta[i]);
+  if (fprintf(of, "species:\n") <1)
+    throw ApplicationException("Error writing " + ofn);
+  for (auto &&species: roots)
+    species->phylogeny_as_yaml(of, " - ");
+
   if (fclose(of) != 0)
     throw ApplicationException("Error closing " + ofn);
 }

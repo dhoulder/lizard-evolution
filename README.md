@@ -20,12 +20,19 @@ the original model prototype written in R.
 ## Building and running he model
 
 `./src/README.md` contains instructions for building both the library
-that implements the model, and a standalone executable that provides a
-command-line interface to it.
+that implements the model, and a standalone executable (`dreadds`)
+that provides a command-line interface to it.
 
-To see the usage information for the standalone executable `dreadds`,
-run it without arguments. `dreadds` uses a configuration file as part
-of its input. See `examples/example.conf` for the configuration file
-format and allowable options.
+To see the usage information and a description of all configuration
+options for the `dreadds` executable, run
+```
+src/dreadds -h
+```
+
+Configuration options are usually supplied to `dreadds` by means of a
+a configuration file. Command-line options override options in the
+configuration file. See `examples/example.conf` for the configuration
+file format and comments that explain how the configuration options
+are used.
 
 `./r-package/README.md` contains instructions for building the R API.
