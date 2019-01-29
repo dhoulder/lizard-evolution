@@ -86,6 +86,9 @@ Config::Config(int ac, const char *av[]) {
       ("verbosity,v", po::value<int>(&verbosity)->default_value(1),
        "Verbosity level, 0 (quiet) to 3.")
 
+      ("csv-precision", po::value<int>(&csv_precision)->default_value(3),
+       "Number of significant digits in numeric CSV field output")
+
       ("genetic-dims", po::value<int>(&genetic_dims)->default_value(max_genetic_dims),
        "Number of genetic dimensions")
 
@@ -111,7 +114,13 @@ Config::Config(int ac, const char *av[]) {
        "Output filenames will all start with this string.")
 
       ("iterations,n", po::value<int>(&n_iterations)->required(),
-       "Number of time steps to simulate.");
+       "Number of time steps to simulate.")
+
+      ("check-speciation",
+       po::value<int>(&check_speciation)->default_value(1),
+       "Number of timesteps between speciation checks. "
+       "Use 0 to disable speciation, 1 to check after every step")
+      ;
 
     po::options_description env_options("Input environment (one or more sets)");
     env_options.add_options()
@@ -203,6 +212,9 @@ Config::Config(int ac, const char *av[]) {
     }
     po::notify(vm);
 
+    if (csv_precision < 0 || csv_precision > 8)
+      throw ConfigError("csv-precision must be between 0 and 8");
+
     env_dims = env_grids.size();
     if (env_dims > max_env_dims)
       throw ConfigError("Too many environment grids");
@@ -249,6 +261,8 @@ Config::Config(int ac, const char *av[]) {
 			    "env.ramp, env.sine-period, env.sine-offset, "
 			    "env.sine-amplitude");
 	}
+	if (ep->sine_period <= 0.0f)
+	  throw ConfigError("sine_period must be greater than 0");
 	env_params.push_back(ep);
 
 	++ex_i;

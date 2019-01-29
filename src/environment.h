@@ -59,7 +59,7 @@ namespace DreadDs {
   public:
     const Config &conf;
     EnvMatrix values;
-    float env_delta[max_env_dims] = {0.0f};
+    float current_delta[max_env_dims] = {0.0f};
     int current_step_offset = 0;
 
     double geo_transform[6];
@@ -104,7 +104,7 @@ namespace DreadDs {
           *no_data = true;
           return;
         }
-        ec[i] = be + env_delta[i];
+        ec[i] = be + current_delta[i];
       }
       *no_data = false;
     }
@@ -112,7 +112,7 @@ namespace DreadDs {
     inline void get(const Location &loc, EnvCell ec) const {
      const auto &&base_env = values[loc.y][loc.x];
       for (int i =0; i < values.shape()[2]; i++) {
-        ec[i] = base_env[i] + env_delta[i];
+        ec[i] = base_env[i] + current_delta[i];
       }
     }
 

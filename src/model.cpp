@@ -11,6 +11,7 @@
 #include <math.h>
 #include <iostream>
 #include <string>
+
 #include <boost/algorithm/string.hpp>
 
 #include "constants.h"
@@ -23,7 +24,7 @@
 #include "output-file.h"
 
 using namespace DreadDs;
-namespace ba = boost::algorithm;
+using boost::algorithm::replace_all_copy;
 
 namespace DreadDs {
 
@@ -88,7 +89,7 @@ Model::Model(const Config &c):
   gene_drift_random(rng, gene_drift_distr)
 {
   for (auto &&sp: conf.get_initial_species(env)) {
-    tips.push_back(std::shared_ptr <Species>(new Species(conf, sp, env)));
+    tips.push_back(std::make_shared <Species>(conf, sp, env));
   }
   roots = tips;
 }
@@ -136,7 +137,7 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
     if (no_source)
       continue;
 
-    // Iterate over all demes (sort of "sub species") in the cell
+    // Iterate over all demes in the cell
     for (auto &&deme: deme_cell.second) {
       evolve_towards_niche(deme, source_env);
       // FIXME MAYBE: update abundance?
@@ -230,7 +231,7 @@ void Model::merge(DemeMap &dm) {
 
     auto &&deme_list = cell_itr->second;
     if (deme_list.size() < 1) {
-      // no demes, so get rid of the cell
+      // no demes, so get rid of the cell // FIXME can this actually happen??
       cell_itr = dm.erase(cell_itr);
       continue;
     }
@@ -279,20 +280,28 @@ void Model::merge(DemeMap &dm) {
   }
 }
 
-
 void Model::save() {
-  FILE *of = open_output_file(conf,
-			      std::to_string(step) + ".csv");
-  // FIXME check fprintf() return
+  std::string ofn = std::to_string(step) + ".csv";
+  FILE *of = open_output_file(conf, ofn);
   fprintf(of, "species, row, column, amount");
   for (int i=0; i < conf.env_dims; ++i)
     fprintf(of, ", env_%d, niche_centre_%d, niche_breadth_%d", i, i, i);
   for (int i=0; i < conf.genetic_dims; i++)
     fprintf(of, ", genetic_position_%d", i);
-  fprintf(of, "\n");
+  if (fprintf(of, "\n") < 1)
+    throw ApplicationException("Error writing " + ofn);
 
   EnvCell ec;
   bool no_data;
+  char s1[16], s2[16];
+  auto write_f = [&](float f) {
+    // Write the more compact representation of a float.
+    // e.g. 1234 instead of 1.23e+03
+    int n1 = snprintf(s1, sizeof s1, "%g", f);
+    int n2 = snprintf(s2, sizeof s2, "%0.*g", conf.csv_precision, f);
+    return fprintf(of, ",%s",  n1 < n2? s1: s2);
+  };
+
   for (auto &&species: tips) {
     for (auto &&deme_cell: *(species->demes)) {
       const Location &loc = deme_cell.first;
@@ -300,71 +309,44 @@ void Model::save() {
       for (auto &&deme: deme_cell.second) {
 	auto &&g = deme.genetics;
 	fprintf(of,
-		"%d, %d, %d, %f",
-		species->id, loc.y, loc.x, deme.amount);
-	for (int i=0; i < conf.env_dims; ++i)
-	  fprintf(of,
-		  ", %f, %f, %f",
-		  no_data? NAN : ec[i],
-		  g.niche_centre[i], g.niche_tolerance[i] *2.0f);
+		"%d,%d,%d",
+		species->id, loc.y, loc.x);
+	write_f(deme.amount);
+	for (int i=0; i < conf.env_dims; ++i) {
+	  write_f(no_data? NAN : ec[i]);
+	  write_f(g.niche_centre[i]);
+	  write_f(g.niche_tolerance[i] *2.0f);
+	}
 	for (int i=0; i < conf.genetic_dims; i++)
-	  fprintf(of,
-		  ", %f",
-		  g.genetic_position[i]);
-	fprintf(of, "\n");
+	  write_f(g.genetic_position[i]);
+	if (fprintf(of, "\n") < 1)
+	  throw ApplicationException("Error writing " + ofn);
       }
     }
   }
-  fclose(of);
+  if (fclose(of) != 0)
+    throw ApplicationException("Error closing " + ofn);
 
-  of = open_output_file(conf,
-			std::to_string(step) + "-stats.yml");
-  fprintf(of, "# Step %d\n", step);
-  for (auto && species: tips) {
-    Species::Characteristics &ch = species->latest_stats;
-    auto pp = species->parent.lock();
+  ofn = std::to_string(step) + "-stats.yml";
+  of = open_output_file(conf, ofn);
+  fprintf(of,
+	  "step: %d\n"
+	  "input_environment:\n",
+	  step);
+  for (int i=0; i < conf.env_dims; ++i)
     fprintf(of,
-	    "- species: %d\n"
-	    "  cell_count: %d\n"
-	    "  population: %f\n"
-	    "  extinction_time: %d\n"
-	    "  speciation_time: %d\n"
-	    "  parent_species: %d\n"
-	    "  niche:\n",
-	    species->id, ch.cell_count, ch.population,
-	    species->extinction, species->split,
-	    pp? pp->id : -1);
+            " - filename: '%s'\n"
+            "   delta: %f\n",
+            replace_all_copy(conf.env_params[i]->get_filename(step-1),
+                             "'", "''").c_str(),
+            env.current_delta[i]);
+  if (fprintf(of, "species:\n") <1)
+    throw ApplicationException("Error writing " + ofn);
+  for (auto &&species: roots)
+    species->phylogeny_as_yaml(of, " - ");
 
-    for (int i=0; i < conf.env_dims; ++i) {
-      const auto &ns = ch.niche_stats[i];
-      fprintf(of,
-	      "  - input_environment: '%s'\n"
-	      "    environment_delta: %f\n"
-	      "    min: %f\n"
-	      "    max: %f\n"
-	      "    mean: %f\n"
-	      "    sd: %f\n"
-	      "    breadth_mean: %f\n"
-	      "    breadth_sd: %f\n",
-	      ba::replace_all_copy(conf.env_params[i]->get_filename(step-1),
-				   "'", "''").c_str(),
-	      env.env_delta[i],
-	      ns.min, ns.max,
-	      ns.position_mean, ns.position_sd,
-	      ns.breadth_mean,  ns.breadth_sd);
-    }
-
-    fprintf(of,
-	    "  genetics:\n");
-    for (int i=0; i < conf.genetic_dims; ++i) {
-      const auto &gs = ch.genetic_stats[i];
-      fprintf(of,
-	      "  - mean: %f\n"
-	      "    sd: %f\n",
-	      gs.mean, gs.sd);
-    }
-  }
-  fclose(of);
+  if (fclose(of) != 0)
+    throw ApplicationException("Error closing " + ofn);
 }
 
 
@@ -406,16 +388,21 @@ int Model::do_step() {
 
     // TODO competition/co-occurrence. (see 3.5)
 
-    species->speciate();
+    if (conf.check_speciation && (step % conf.check_speciation == 0))
+      species->speciate(step);
     if (species->sub_species.empty()) {
       // no speciation
-      n_occupied += species->update_stats(species->latest_stats, step);
-      new_tips.push_back(species);
+      int n = species->update_stats(species->latest_stats, step);
+      if (n > 0) {
+        n_occupied += n;
+        new_tips.push_back(species);
+      }
     } else {
       // species has split into sub_species
       for (auto &&s: species->sub_species) {
-	n_occupied += s->update_stats(s->latest_stats, step);
-	new_tips.push_back(s);
+        n_occupied += s->update_stats(s->initial_stats, step);
+        s->latest_stats = s->initial_stats;
+        new_tips.push_back(s);
       }
     }
   }
