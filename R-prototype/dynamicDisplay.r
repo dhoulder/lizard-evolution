@@ -46,7 +46,17 @@ display.initialise.2by2 <- function(image_to_file = F) {
   return(list(my.colours, my.diffcolours, stored_par))
 }
 
-display.update <- function(plotItems) {
+display.initialise.colours <- function() {
+  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
+  my.colours    <- my.colours.function(250)
+  
+  my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
+  my.diffcolours    <- my.diffcolours.function(250)
+  
+  return(list(my.colours, my.diffcolours))
+}
+
+display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_genome_map=T) {
   # elements is a list of named components to include in the display
 
   # this function relies on the data to be plotted, being in scope, rather than passed as argument
@@ -54,6 +64,12 @@ display.update <- function(plotItems) {
   dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   if (length(plotItems[["env"]]) > 0) {
+    
+    # to maintain a consistent scale of environment colours, fix two pixels to the extremes of the range
+    # currently this is the initial range of values (0 to 100) plus the amplitude of cyclical variation
+    # 10, so the range should be -10 to 110
+    plotItems[["env"]][1] <- -10
+    plotItems[["env"]][2] <- 110
 
     if (length(plotItems[["current.time"]]) > 0) {
       main.header <- paste("Time:", plotItems[["current.time"]])
@@ -67,7 +83,9 @@ display.update <- function(plotItems) {
                            "\tDispersal:", plotItems[["niche.params"]][[3]])
     }
 
-    if (length(plotItems[["demes_genecolour"]]) > 0) {
+    if ( (length(plotItems[["demes_genecolour"]]) > 0) | (!plot_env) ) {
+      # plot the environment in colours to get the legend, then overplot in white
+      #plot(plotItems[["env"]], main=main.header, col=my.colours)
       plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight gene colours
     } else {
       plot(plotItems[["env"]], main=main.header, col=my.colours)
@@ -149,30 +167,34 @@ display.update <- function(plotItems) {
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
 		
-    # replace the row and column values with x, y if needed
-		if (env.has.rowcol.coords) {
-			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
-																																							# to standard y values where y=0 as at the bottom, not top
-		} else  {
-		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
-		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
-		}
-		
-    points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=dot.size.scaler)
-
+    if (plot_genome_map) {
+      # replace the row and column values with x, y if needed
+  		if (env.has.rowcol.coords) {
+  			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+  																																							# to standard y values where y=0 as at the bottom, not top
+  		} else  {
+  		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
+  		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
+  		}
+  		
+      points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=dot.size.scaler)
+    }
     ########################################################################################
-    these.sizes   <- sqrt(demetable.species$amount) * 1.5
-
-    # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
-    plot.limit  <- speciation.gene.distance * 0.6
-    plot.limits <- as.numeric(demetable.species[, .(min(gene.pos1, (plot.limit * -1)), max(gene.pos1, plot.limit), min(gene.pos2, (plot.limit * -1)), max(gene.pos2, plot.limit))])
-
-    plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, cex=these.sizes,
-         pch=20, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
-
-    # add a weighted genome mean for the species, to the plot
-    means <- genome.mean(demetable.species, genome.columns)
-    points(means[1], means[2], pch=3, cex=1.5)
+    if (plot_genome_scatter) {
+      
+      these.sizes   <- sqrt(demetable.species$amount) * 1.5
+  
+      # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
+      plot.limit  <- speciation.gene.distance * 0.6
+      plot.limits <- as.numeric(demetable.species[, .(min(gene.pos1, (plot.limit * -1)), max(gene.pos1, plot.limit), min(gene.pos2, (plot.limit * -1)), max(gene.pos2, plot.limit))])
+  
+      plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, cex=these.sizes,
+           pch=20, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
+  
+      # add a weighted genome mean for the species, to the plot
+      means <- genome.mean(demetable.species, genome.columns)
+      points(means[1], means[2], pch=3, cex=1.5)
+    }
     ########################################################################################
 
   }
@@ -230,7 +252,7 @@ genome.colour <- function(demetable.species, genome.columns) {
   # the no ordination method
   max.dist <- 25  # this should be the genetic distance for maximum colour intensity in any one dimension
   genome.dimensions <- length(genome.columns)
-
+  
   # this is an inelegant method, but I can't effectively reference columns in a data.table via a variable
   genomes.species.df <- as.data.frame(demetable.species[, ..genome.columns])
 
@@ -270,14 +292,14 @@ genome.mean <- function(demetable.species, genome.columns) {
   return(genome.mean.pos)
 }
 
-display.to.file.start <- function(image_dir, time, image_filename = "plot") {
+display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=2) {
   image.width = 960
-  image.width = 960
+  image.height = 960
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
-  png(output.filename, width = 960, height=960)
-  #par(my.par)
-  par(mfcol=c(2,2))
+  png(output.filename, width = image.width, height=image.height)
+
+  par(mfcol=c(plot_rows, plot_cols))
 }
 
 display.to.file.stop <- function() {

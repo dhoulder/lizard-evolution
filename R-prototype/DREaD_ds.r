@@ -56,6 +56,8 @@ require(data.table)
 require(dplyr)
 require(gstat)
 require(raster)
+require(yaml)
+source("dynamicDisplay.r")
 
 DREaD_ds <- function(total.time,
                       dispersal,
@@ -376,8 +378,7 @@ DREaD_read_plot <- function(total.time,
   input.file.index <- input.file.index[order(input.file.index$number), ]
   rm(input.files, input.files.num)
 
-  nfiles <- nrow(input.file.index)
-  total.time <- nfiles
+  total.time <- nrow(input.file.index)
 
   input.file.path   <- paste(input.dir, "/", input.file.index$filename[1], sep="")
   first.input.file  <- read.csv(input.file.path)
@@ -469,7 +470,8 @@ DREaD_read_plot <- function(total.time,
   extinct <- vector("logical", 1000)
   extinct.number <- 0
 
-  # loop through time steps in the simulation
+  # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
+
   while(current.time <= total.time) {
 
     starttime_timestep <- Sys.time()
@@ -593,5 +595,279 @@ DREaD_read_plot <- function(total.time,
 
   }   # end of while loop
 
+  return()
+}
+
+
+
+###############################################################################
+###############################################################################
+
+DREaD_single_plots <- function(dispersal,
+                            niche.evolution.rate,
+                            timestep.size = 1,
+                            speciation.gene.distance,
+                            environment.source,
+                            environment.dimension = 100,
+                            input.dir = "",
+                            input.prefix = "out",
+														do.hillshade=T) {
+  
+  # this function plots the DREaD animations which were generated in the C++ version
+  # by loading in a separate .csv text file for each timestep
+  # the arguments to the function are used to load and update the environment for plotting
+
+  starttime_global <- Sys.time()
+  
+  # first check for input files
+  if (input.dir == "") {stop("A directory for model output files must be provided.")}
+  # as well as the text for the plots
+ 
+  input.filter <- paste(input.prefix, "[[:digit:]]*.csv", sep="")
+  input.files  <- list.files(path=input.dir, pattern = input.filter, include.dirs = F)
+  
+  # get input file numbers to order correctly
+  input.files.num <- sub(".csv", "", input.files) # remove the suffix
+  if (input.prefix != "") {
+    input.files.num <- sub(input.prefix, "", input.files.num)
+  }
+  
+  input.file.index <- data.frame(index=1:length(input.files), number=as.numeric(input.files.num), filename=input.files)
+  input.file.index <- input.file.index[order(input.file.index$number), ]
+  rm(input.files, input.files.num)
+  
+  # add a column for yaml filenames
+  input.file.index$yaml_filename <- sub('.csv', '-stats.yml', input.file.index$filename)
+  
+  total.time <- nrow(input.file.index)
+  
+  input.file.path   <- paste(input.dir, "/", input.file.index$filename[1], sep="")
+  first.input.file  <- read.csv(input.file.path)
+  stats.file.path   <- paste(input.dir, "/", input.file.index$yaml_filename[1], sep="")
+browser()
+  first.stats       <- read_yaml(stats.file.path)
+  
+	if (do.hillshade) {
+		hillshade <- raster("/short/ka2/simulation/input_data/realAlps250_hillshade.asc")
+	}
+	
+	
+  ######################### 1. Load background environment ########################
+  env <- raster(environment.source)
+  starting.env <- env
+  
+  # use the background environment to define all cells in the model
+  all.coords <- rowColFromCell(env, 1:ncell(env))
+  all.coords <- as.data.table(cbind(1:nrow(all.coords), all.coords))
+  names(all.coords)[1] <- "cellID"
+  
+  if (do.display & !do.display.diff & !image_to_file) {
+    display.update(list(env = env))
+  }
+  
+  ###########################  2. Seed initial species and data structures #############################
+  
+  # generate edgetable  -  edgetable is a matrix that stores information on each species' phylogeny,
+  # niche position, niche breadth, speciation modes, range size each row is a species
+  
+  # NOTE THAT CURRENT CODE HERE IS DESIGNED TO STORE AND PLOT JUST ONE ENVIRONMENTAL DIMENSION
+  
+  edgetable <- makeEdgeTable(1000, dynamicSpeciation = TRUE)
+  
+  edgetable[1,5]  <- nrow(first.input.file)
+  edgetable[1,7]  <- first.input.file$niche_centre_0[1]
+  edgetable[1,8]  <- first.input.file$niche_breadth_0[1]
+  edgetable[1,11] <- 1
+  
+  presence.cells <- 1:nrow(first.input.file)
+  coords <- first.input.file[,2:3]
+  rownum <- 1
+  
+  # count the number of genome dimensions directly from the model output
+  input.genome.columns  <- grep("genetic_", names(first.input.file))  
+  genome.dimensions <- length(input.genome.columns)
+  
+  demetable <- makeDemeTable(genome.dimensions = genome.dimensions, rowcount = 10000)
+  #genomeInitial <- as.list(rep(0, genome.dimensions))
+  demetable.columncount <- ncol(demetable)
+
+  # identify the genome position columns - to avoid repeating it within loops
+  first.gene.col.idx    <- which(names(demetable)=="gene.pos1")
+  genome.columns        <- first.gene.col.idx:(first.gene.col.idx + genome.dimensions - 1)
+	
+	# if just one environment dimension is used, avoid loading NA values for niche_centre_1, niche_breadth_1
+	if (is.null(first.input.file$niche_centre_1)) {
+		first.input.file$niche_centre_1  <- 1
+		first.input.file$niche_breadth_1 <- 1
+	}
+  
+  for (i in 1:length(presence.cells)) {
+    #cell <- presence.cells[i]
+    
+    new.row <- list(cellFromRowCol(env, first.input.file$row[i], first.input.file$column[i]), # cellID
+                    1,                                    # speciesID
+                    first.input.file$column[i],           # col
+                    first.input.file$row[i],              # row
+                    1,                                    # amount - need to sort out values!
+                    first.input.file$niche_centre_0[i],   # niche1.position
+                    first.input.file$niche_breadth_0[i],  # niche1.breadth
+                    first.input.file$niche_centre_1[i],   # niche2.position
+                    first.input.file$niche_breadth_1[i]   # niche2.breadth
+    )
+   
+    new.row <- c(new.row, first.input.file[i, input.genome.columns]) # add the genome columns - 2 or more
+    set(demetable, i=i, j=1:demetable.columncount, value=new.row)
+  }
+  
+  current.time <- 0
+
+  extinct <- vector("logical", 1000)
+  extinct.number <- 0
+  
+  # while loop propels the simulation. iterations repeat until the condition (number of species generated) is met
+  
+  while(current.time <= total.time) {
+    
+    starttime_timestep <- Sys.time()
+    
+    current.time <- current.time + timestep.size
+    
+    ############################# 3. Environmental change ###########################
+    
+    # use the yaml file to get the environmental offset (and if needed the path of a new environmental layer)
+    stats.file.path <- paste(input.dir, "/", input.file.index$yaml_filename[current.time], sep="")
+    stats           <- read_yaml(stats.file.path)
+    env_0_delta     <- stats[[1]]$niche[[1]]$environment_delta
+    env <- starting.env + env_0_delta
+    
+    # species.tips is the row index of non-extinct lineages (rows in the edgetable)
+    if(any(extinct==TRUE)){
+      species.tips <- seq_along(which(!is.na(edgetable[,10])))[-which(extinct == TRUE)]
+    } else {
+      species.tips <- seq_along(which(edgetable[,10]==1))
+    }
+    
+    # read in the input data for the current timestep
+    input.file.path   <- paste(input.dir, "/", input.file.index$filename[current.time], sep="")
+    current.input.file  <- read.csv(input.file.path)
+    input.demecount <- nrow(current.input.file)
+		
+		# if just one environment dimension is used, avoid loading NA values for niche_centre_1, niche_breadth_1
+		if (is.null(first.input.file$niche_centre_1)) {
+			first.input.file$niche_centre_1  <- 1
+			first.input.file$niche_breadth_1 <- 1
+		}
+    
+    # update demetable from the current.input.file
+    demetable <- makeDemeTable(genome.dimensions = genome.dimensions, rowcount = input.demecount)
+    demetable$cellID <- cellFromRowCol(env, current.input.file$row, current.input.file$column)
+    demetable[, 2:9] <- current.input.file[, c(1,3,2,4,6,7,9,10)]
+    demetable[, genome.columns] <- current.input.file[, input.genome.columns]
+    
+    # iterate through extant species
+    for (i in species.tips) {
+      
+      #skips rows that have speciated (i.e., is an ancestral branch not an extant lineage)
+      # this section shouldn't be needed if internal branches are correctly coded when speciation occurs
+      extant.species <- which(!is.na(edgetable[,10]))
+      if (length(extant.species) > 1) {
+        if (edgetable[i, 2] %in% edgetable[extant.species, 1] ) {
+          edgetable[i, 10] <- 2 #set this species as an internal branch
+          next
+        }
+      }
+      
+      # # select species current iteration
+      current.speciesID <- edgetable[i, 11]
+      
+      demetable.species <- demetable[demetable$speciesID==current.speciesID, ]
+      
+      env.table <- as.data.table(cbind(all.coords, env[]))
+      names(env.table)[4] <- "env1"
+      setkey(env.table, cellID)
+      
+      # # temporary test of within species genetic distances
+      # genome.distances <- dist(demetable.species[, genome.columns, with=FALSE])
+      # genome.distance.max     <- max(genome.distances)
+      # genome.distance.median  <- median(genome.distances)
+      
+      # calculate and print a species summary - probably drop this once development is done
+      sp.summary <- demetable.species[, .(range = .N,
+                                          total_amount = sum(amount),
+                                          niche1.position.mean = mean(niche1.position),
+                                          niche1.position.sd = sd(niche1.position),
+                                          niche1.breadth.mean = mean(niche1.breadth),
+                                          niche1.breadth.sd = sd(niche1.breadth),
+                                          niche1.sp.min = min(niche1.position - (niche1.breadth/2)),
+                                          niche1.sp.max = max(niche1.position + (niche1.breadth/2))
+      )]
+
+      sp.summary <- round(sp.summary, 4)
+      if (do.text.output) {
+        list.for.text <- c(list(current.time=current.time,
+                                elapsed.time.total = difftime(Sys.time(), starttime_global),
+                                elapsed.time.step = difftime(Sys.time(), starttime_timestep),
+                                current.speciesID=as.integer(current.speciesID)),
+                           as.list(sp.summary[1,]))
+        text.update(list(species_range_niche=list.for.text))
+      }
+
+      # update the dynamic plot
+      if (do.display) {
+        
+        niche.params <- list(niche.breadth=round(demetable.species[,max(niche1.breadth)],2), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
+        
+        if (image_to_file) {
+#browser()           
+          # do separate plots one at a time, for the same timestep
+          
+          display.to.file.start(image_dir, current.time, image_filename = "environment", plot_rows=1, plot_cols=1)
+          display.update(list(env = env, current.time=current.time, niche.params = niche.params), plot_env=T)
+					
+					if (do.hillshade) {
+						# adding hillshade externally from the function - messy, fix later
+						plot(hillshade, col = grey.colors(255, start=0.2, end=1), alpha=0.3, add=T, legend=F)
+					}
+          display.to.file.stop()
+          
+          display.to.file.start(image_dir, current.time, image_filename = "demes_niche", plot_rows=1, plot_cols=1)
+          display.update(list(env = env, demes_amount_position=demetable.species, current.time=current.time, niche.params = niche.params), plot_env = F)
+
+					if (do.hillshade) {
+						# adding hillshade externally from the function - messy, fix later
+						plot(hillshade, col = grey.colors(255, start=0.2, end=1), alpha=0.3, add=T, legend=F)
+					}          
+					display.to.file.stop()
+          
+          display.to.file.start(image_dir, current.time, image_filename = "env_diff", plot_rows=1, plot_cols=1)
+          display.update(list(env = env, demes_amount_position_diff=demetable.species, current.time=current.time, niche.params = niche.params), plot_env = F)
+					if (do.hillshade) {
+						# adding hillshade externally from the function - messy, fix later
+						plot(hillshade, col = grey.colors(255, start=0.2, end=1), alpha=0.3, add=T, legend=F)
+					}					
+          display.to.file.stop()
+   
+          display.to.file.start(image_dir, current.time, image_filename = "gene_colour", plot_rows=1, plot_cols=1)
+          display.update(list(env = env, demes_genecolour=demetable.species, genome.columns = genome.columns, current.time=current.time, niche.params = niche.params), plot_env = F, plot_genome_scatter=F, plot_genome_map=T)
+					if (do.hillshade) {
+						# adding hillshade externally from the function - messy, fix later
+						plot(hillshade, col = grey.colors(255, start=0.2, end=1), alpha=0.3, add=T, legend=F)
+					}          
+					display.to.file.stop()
+          
+          display.to.file.start(image_dir, current.time, image_filename = "gene_scatter", plot_rows=1, plot_cols=1)
+          display.update(list(env = env, demes_genecolour=demetable.species, genome.columns = genome.columns, current.time=current.time, niche.params = niche.params), plot_env = F, plot_genome_scatter=T, plot_genome_map=F)
+          display.to.file.stop()
+
+        }
+        
+      }
+      
+      gc(verbose=FALSE)
+      
+    } #end of looping through species
+    
+  }   # end of while loop
+  
   return()
 }
