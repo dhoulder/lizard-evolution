@@ -5,23 +5,20 @@ scripts <- c("disperse_evolve_compete_ds.r", "environmentalChange.r", "DREaD_ds.
 lapply(scripts, source)
 
 # turn the input arguments into local variables with relevant names
-# turn the input arguments into local variables with relevant names
 input.args	          <- commandArgs(trailingOnly = TRUE)
 dispersal_dist        <- as.numeric(input.args[1])
 timesteps        			<- as.numeric(input.args[2])
-output_dir						<- input.args[3]
+niche_evolution				<- as.numeric(input.args[3])
+output_dir						<- input.args[4]
 
 input_prexix					<- "out"
-
-#run.name              <- "anim_real225_nicherate0.02_dispersal3_300gens_v5"
 
 #sample parameters
 total.time            <- timesteps
 dispersal             <- dispersal_dist              # dispersal distance in cells
+niche.evolution.rate  <- niche_evolution
 
-# MOST OF THE FOLLOWING ARGUMENTS SHOULD BE LOADED FROM THE c++ OUTPUT FILES
-
-niche.evolution.rate  <- 0.02
+# MOST OF THE FOLLOWING ARGUMENTS SHOULD BE LOADED FROM THE YAML OUTPUT FILES
 env.amp               <- 0   #runif(1, 0.25, 2)
 env.freq              <- 50  #runif(1, 10, 25)
 breadth.evolution.rate  <- 0
@@ -74,12 +71,6 @@ if (do.display) {
     my.display <- display.initialise()
     my.colours <- my.display[[1]]
   }
-
-  # if (do.animate) {
-  #   ani.record(reset = TRUE) # clear animation history before recording
-  #   #display.to.file.start(image_dir, 0, image_filename = "animation")
-  # }
-
 }
 
 # Run model
@@ -89,5 +80,3 @@ simulation.1 <- DREaD_read_plot(total.time = total.time, dispersal = dispersal, 
                   speciation.gene.distance = speciation.gene.distance, environment.source = environment.source,
                   initial.species.defined = initial.species.defined,
                   input.dir = input.dir, input.prefix = input_prexix)
-
-# ADD CODE HERE TO TURN THE IMAGES INTO AN ANIMATION
