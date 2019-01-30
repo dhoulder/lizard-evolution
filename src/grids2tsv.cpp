@@ -31,14 +31,14 @@ int main(int argc, const char *argv[]) {
       double gt[6];
       EnvReader er(argv[i]);
       if (i < 2)
-	er.get_coordinates(geo_transform);
+        er.get_coordinates(geo_transform);
       else {
-	er.get_coordinates(gt);
-	for (int j=0; j<6; j++)
-	  if (fabs(boost::math::float_distance(gt[j], geo_transform[j])) > 2.0) {
-	    std::cerr << "Grids have different sizes or resolutions" << std::endl;
-	    std::exit(2);
-	  }
+        er.get_coordinates(gt);
+        for (int j=0; j<6; j++)
+          if (fabs(boost::math::float_distance(gt[j], geo_transform[j])) > 2.0) {
+            std::cerr << "Grids have different sizes or resolutions" << std::endl;
+            std::exit(2);
+          }
       }
       erv.push_back(std::unique_ptr<EnvReader>(new EnvReader(argv[i])));
     }
@@ -66,10 +66,17 @@ int main(int argc, const char *argv[]) {
       erp->read_row(r);
     float y = geo_transform[3] + (geo_transform[5] * (r+0.5f));
     for (int c=0; c < nc; ++c) {
+      bool nd = true;
+      for (auto &erp: erv)
+        nd = nd && erp->is_nodata(erp->row_buffer[c]);
+      if (nd)
+        continue;
       float x = geo_transform[0] + (geo_transform[1] * (c+0.5f));
       std::cout << x << "\t" << y;
-      for (auto &erp: erv)
-	std::cout << "\t" << erp->row_buffer[c];
+      for (auto &erp: erv) {
+        float v = erp->row_buffer[c];
+        std::cout << "\t" << (erp->is_nodata(v)? NAN : v);
+      }
       std::cout << std::endl;
 
     }
