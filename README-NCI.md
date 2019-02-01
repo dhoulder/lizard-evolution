@@ -4,24 +4,43 @@
 
 ### To build the dreadds library and executable
 
-This recipe uses gcc. You could probably use the Intel C++ compiler
-instead and it might produce faster code.
-
+First, get the source code:
 ```
 git clone git@github.com:DanRosauer/DREaD_ds.git
 cd DREaD_ds/
 git checkout master
+```
 
-module purge # in case Intel compilers are loaded (conflict with gcc)
+To build using the Intel compiler:
+```
+module purge
+module load pbs # In case you want to submit jobs etc.
+module load gcc/4.9.0
+module load intel-cc/2018.3.222
+module load gdal/2.2.2
+module load boost/1.64.0
+module load cmake/3.8.2
+export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/Intel
+```
+
+To build using gcc:
+```
+module purge # in case Intel compilers are loaded
 module load pbs # In case you want to submit jobs etc.
 
 module load gcc/4.9.0 # could probably use intel-cc instead
 module load gdal/2.2.2
 module load boost/1.64.0
 module load cmake/3.8.2
-export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/GNU # or $BOOST_LIBRARYDIR/Intel for intel-cc
+export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/GNU
+```
 
+To compile and link:
+```
 cd src
+# If you've previously built with a different compiler, use:
+#   rm CMakeCache.txt
+# first
 cmake .
 cmake --build .
 ```
@@ -35,7 +54,6 @@ cmake --build .
 ```
 
 ### To build and install R packages
-
 ```
 # R was built with the Intel compilers
 module unload gcc
