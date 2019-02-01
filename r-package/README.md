@@ -8,13 +8,27 @@
 * R and the Rcpp package. See
   http://dirk.eddelbuettel.com/code/rcpp.html
 
-  The package build process also needs pdflatex.
-  On Ubuntu 18.04 use::
+  Rcpp can be installed for an individual user with
   ```
-  apt-get install r-base r-cran-rcpp texlive-latex-base
+  # You may need to set your environment first with "module load ..."
+  # or similar so that the correct version of R and the C++ compiler is
+  # available. Check your local system documentation.
+  R
+  install.packages('Rcpp')
   ```
 
-  On Windows, install Rtools from https://cran.r-project.org/bin/windows/Rtools/
+  It can also be installed system-wide
+
+  * On Ubuntu 18.04 use::
+    ```
+    apt-get install r-base r-cran-rcpp texlive-latex-base
+    ```
+    On RHEL, Fedora and CentOS, install the R-Rcpp package. You may need
+    to enable the EPEL package repository first. See
+    https://fedoraproject.org/wiki/EPEL
+
+  * On Windows, install Rtools from
+    https://cran.r-project.org/bin/windows/Rtools/
 
 ### Building the R package
 
