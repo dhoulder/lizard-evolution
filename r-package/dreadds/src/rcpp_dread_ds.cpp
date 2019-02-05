@@ -5,7 +5,7 @@
 #include <Rcpp.h>
 
 #include <model-config.h>
-#include <simulation.h>
+#include <model.h>
 
 using namespace Rcpp;
 
@@ -19,6 +19,11 @@ int dreadds(Rcpp::StringVector config_path_vec) {
 
   const char *argv[] = {"dreadds", "-c", config_path_vec[0]};
   DreadDs::Config conf(3, argv);
-  DreadDs::Simulation sim(conf);
-  return sim.run(conf.n_iterations);
+  DreadDs::Model model(conf);
+
+  for (int i = 0; i < conf.n_iterations; ++i) {
+    if (model.do_step() == 0)
+      break;
+  }
+  return model.step;
 }

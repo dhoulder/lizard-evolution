@@ -8,11 +8,13 @@
 
 #define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
-// GDAL
-#include "gdal_priv.h"
 
 #include "constants.h"
 #include "model-config.h"
+
+// for opaque pointers below. see #include "gdal_priv.h"
+class GDALDataset;
+class GDALRasterBand;
 
 namespace DreadDs {
   struct Location {

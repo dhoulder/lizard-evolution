@@ -11,17 +11,20 @@
 
 #include "exceptions.h"
 #include "model-config.h"
-#include "simulation.h"
+#include "model.h"
 
 using namespace DreadDs;
 
 int main(int argc, const char *argv[]) {
   try {
     Config conf(argc, argv);
-    Simulation sim(conf);
-    int s = sim.run(conf.n_iterations);
+    Model model(conf);
+    for (int i =0; i < conf.n_iterations; ++i) {
+      if (model.do_step() == 0)
+	break;
+    }
     if (conf.verbosity > 0)
-      std::cout << "Final step count: " << s << std::endl;
+      std::cout << "Final step count: " << model.step << std::endl;
   }
   catch (const UsageException &ae) {
     std::cerr <<

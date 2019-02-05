@@ -13,7 +13,7 @@ add_subdirectory(test)
 
 add_library(dreadds STATIC
   model-config.cpp deme.cpp environment.cpp env-params.cpp
-  output-file.cpp model.cpp simulation.cpp  species.cpp
+  output-file.cpp model.cpp species.cpp
   alglib/alglibinternal.cpp
   alglib/dataanalysis.cpp
   alglib/solvers.cpp

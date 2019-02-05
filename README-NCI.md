@@ -11,7 +11,9 @@ cd DREaD_ds/
 git checkout master
 ```
 
-To build using the Intel compiler:
+To build using the Intel compiler. Use this recipe if you intend to
+build the R package as well.
+
 ```
 module purge
 module load pbs # In case you want to submit jobs etc.
@@ -38,7 +40,9 @@ export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/GNU
 To compile and link:
 ```
 cd src
-# If you've previously built with a different compiler, use:
+
+# If you've previously built with a different compiler (e.g. gcc vs
+# intel-cc), first do:
 #   rm CMakeCache.txt
 # first
 cmake .
@@ -55,13 +59,19 @@ cmake --build .
 
 ### To build and install R packages
 ```
-# R was built with the Intel compilers
-module unload gcc
-module load intel-fc/2018.3.222
+# R was built with the Intel compilers, so we need to use those too
+
+# If not already loaded, do...
+module load gcc/4.9.0
 module load intel-cc/2018.3.222
-module load R/3.5.1
 module load gdal/2.2.2
+module load boost/1.64.0
+export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/Intel
+# and then...
+module load intel-fc/2018.3.222
+module load R/3.5.1
 module load proj/4.9.3
+export PKG_CXXFLAGS=-std=c++11
 
 R
 install.packages('yaml')
