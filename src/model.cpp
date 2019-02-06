@@ -89,9 +89,11 @@ Model::Model(const Config &c):
   gene_drift_random(rng, gene_drift_distr)
 {
   for (auto &&sp: conf.get_initial_species(env)) {
-    tips.push_back(std::make_shared <Species>(conf, sp, env));
+    const auto &&s = std::make_shared <Species>(conf, sp, env);
+    roots.push_back(s);
+    if (s->extinction < 0)
+      tips.push_back(s);
   }
-  roots = tips;
 }
 
 // MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
@@ -378,36 +380,37 @@ int Model::do_step() {
 
     // merge demes in each cell that are within genetic tolerance.
     merge(*target);
+    int n_cells = target->size();
+    n_occupied += n_cells;
 
     // TODO? can do this row-lagged in the dispersal loop, providing we
     // stay far enough behind the dispersal area
     // TODO?? do this in another thread?
 
     // Finished with source demes now - replace with target;
-    species->demes = target;
-
+    species->update(target, step);
     // TODO competition/co-occurrence. (see 3.5)
 
-    if (conf.check_speciation && (step % conf.check_speciation == 0))
-      species->speciate(step);
-    if (species->sub_species.empty()) {
-      // no speciation
-      int n = species->update_stats(species->latest_stats, step);
-      if (n > 0) {
-        n_occupied += n;
+    if (n_cells > 0) {
+      if (conf.check_speciation && (step % conf.check_speciation == 0))
+	species->speciate();
+      if (species->sub_species.empty()) {
+	// No speciation.
+	// We have to update_stats() after every step as we may
+	// speciate on the next iteration and we want to leave the
+	// parent specaies with accurate stats.
+	species->update_stats(species->latest_stats);
         new_tips.push_back(species);
-      }
-    } else {
-      // species has split into sub_species
-      for (auto &&s: species->sub_species) {
-        n_occupied += s->update_stats(s->initial_stats, step);
-        s->latest_stats = s->initial_stats;
-        new_tips.push_back(s);
+      } else {
+	// species has split into sub_species
+	for (auto &&s: species->sub_species) {
+	  s->set_initial_stats();
+	  new_tips.push_back(s);
+	}
       }
     }
   }
 
   tips = new_tips;
-  save();
   return n_occupied;
 }

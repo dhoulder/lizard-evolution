@@ -12,7 +12,7 @@
   ```
   # You may need to set your environment first with "module load ..."
   # or similar so that the correct version of R and the C++ compiler is
-  # available. Check your local system documentation.
+  # available. Check ../README-* and your local system documentation.
   R
   install.packages('Rcpp')
   ```

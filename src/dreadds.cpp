@@ -20,7 +20,9 @@ int main(int argc, const char *argv[]) {
     Config conf(argc, argv);
     Model model(conf);
     for (int i =0; i < conf.n_iterations; ++i) {
-      if (model.do_step() == 0)
+      int n = model.do_step();
+      model.save();
+      if (n == 0)
 	break;
     }
     if (conf.verbosity > 0)

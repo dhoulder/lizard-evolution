@@ -37,6 +37,7 @@ namespace DreadDs {
      * Returns: total number of occupied cells across all species.
      */
     int do_step();
+    void save();
 
   private:
     uniform_real_distr_t gene_flow_distr;
@@ -53,7 +54,6 @@ namespace DreadDs {
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
     std::shared_ptr<DemeMap> evolve_and_disperse(Species &species);
     void merge(DemeMap &dm);
-    void save();
   };
 }
 #endif

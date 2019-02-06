@@ -65,6 +65,7 @@ namespace DreadDs {
       GeneticStats genetic_stats[max_genetic_dims];
       int cell_count; // number of demes (occupied cells).
       float population; // total population across all occupied cells
+      int step = -1; // time step of last stats update
     };
 
     const Config &conf;
@@ -76,25 +77,27 @@ namespace DreadDs {
     Timestep split = -1; // Time step of speciation. -1 if we have no
                          // sub-species. This implies parent->split is
                          // species origin time.
-    Characteristics initial_stats; // At species origin (i.e. split from parent)
     Characteristics latest_stats;  // Updated after each time step.
     std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
     DispersalKernel dk;
     int id = 0;
+    int step = -1; // time step of most recent dispersal
 
     Species(const Config &conf);
     Species(const Config &conf,
             const SpeciesParameters &sp,
             const Environment &env);
-
-    void speciate(int step);
-    int update_stats(Characteristics &ch, int current_step);
+    void set_initial_stats();
+    void update(const std::shared_ptr <DemeMap> &d, int step);
+    void speciate();
+    int update_stats(Characteristics &ch);
     void as_yaml(FILE *of,
                  const std::string &first_indent);
     void phylogeny_as_yaml(FILE *of,
                            const std::string &first_indent);
 
   private:
+    Characteristics initial_stats; // At species origin (i.e. split from parent)
     void setup_dispersal(const SpeciesParameters &sp);
     void load_initial(const SpeciesParameters &sp, const Environment &env);
   };

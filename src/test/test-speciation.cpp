@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         d.genetics.genetic_position[j] = (float)i;
       (*s.demes)[loc].push_front(d);
     }
-    s.speciate(42);
+    s.speciate();
 
     if (s.demes->size() != 0 || s.sub_species.size() != 100) {
       printf("100-cluster test failed: %lu %lu\n",
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     c.gene_flow_zero_distance = 0.9 * sqrt(3.0f);
     Species s(c);
     setup3(s);
-    s.speciate(42);
+    s.speciate();
     if (s.demes->size() != 0 || s.sub_species.size() != 3) {
       printf("three-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         d.genetics.genetic_position[j] = x;
       (*s.demes)[loc].push_front(d);
     }
-    s.speciate(42);
+    s.speciate();
     if (s.demes->size() != 102 || s.sub_species.size() != 0) {
       printf("one-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());

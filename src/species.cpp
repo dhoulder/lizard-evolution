@@ -28,6 +28,7 @@ static std::atomic_int id_hwm(0);
 
 Species::Species(const Config &c):
   conf(c),
+  step(0), // step=0 indicates before first time step
   demes(std::make_shared<DemeMap>())
 {
   ++id_hwm;
@@ -47,13 +48,27 @@ Species::Species(const Config &c,
 {
   setup_dispersal(sp);
   load_initial(sp, env);
+  set_initial_stats();
+  if (demes->size() == 0)
+    extinction = 0; // Dead on arrival
+}
 
-  update_stats(initial_stats,
-	       // use step=0 to indicate before first time step
-	       0);
+void Species::set_initial_stats() {
+  update_stats(initial_stats);
   latest_stats = initial_stats;
 }
 
+void Species::update(const std::shared_ptr <DemeMap> &d, int s) {
+  demes = d;
+  step = s;
+  if (d->size() == 0 && extinction < 0) {
+    update_stats(latest_stats); // TODO could probably short-circuit this
+    extinction = step;
+    if (conf.verbosity > 1)
+      std::cout << "Species " << id << " extinct at step " <<
+	extinction << std::endl;
+  }
+}
 
 static float dispersal_distance(int x, int y) {
   // Replace with some other distance metric if required.
@@ -126,15 +141,20 @@ template <class ...Types>
 using Acc = ba::accumulator_set<float,
 			    ba::stats<Types...>>;
 
-int Species::update_stats(Characteristics &ch, int current_step) {
+int Species::update_stats(Characteristics &ch) {
   /**
    * Update species statistics.
    * Returns: cell count
    */
 
-  if (extinction > -1)
-    // went extinct in earlier time step. Leave the stats alone
+  if (extinction > -1 || split > -1)
+    // went extinct or speciated in earlier time step. Leave the stats alone
     return 0;
+
+  // no need to recalculate everything if nothing's changed
+  if (step == ch.step)
+    return ch.cell_count;
+  ch.step = step;
 
   Acc <ba::tag::mean, ba::tag::variance>
     niche_pos_acc[conf.env_dims],
@@ -157,7 +177,7 @@ int Species::update_stats(Characteristics &ch, int current_step) {
       for (int i=0; i < conf.env_dims; i++) {
 	float nc = d.genetics.niche_centre[i];
 	float nt = d.genetics.niche_tolerance[i];
-	niche_min[i]( nc - nt);
+	niche_min[i](nc - nt);
 	niche_max[i](nc + nt);
 	niche_pos_acc[i](nc);
 	niche_tol_acc[i](nt);
@@ -167,11 +187,7 @@ int Species::update_stats(Characteristics &ch, int current_step) {
     }
 
   if (ch.cell_count == 0) {
-    extinction = current_step;
     // leave other stats as they were on previous step FIXME think about this
-    if (conf.verbosity > 1)
-      std::cout << "Species " << id << " extinct at step " <<
-	current_step << std::endl;
     return 0;
   }
 
@@ -212,7 +228,7 @@ int Species::update_stats(Characteristics &ch, int current_step) {
   return ch.cell_count;
 }
 
-void Species::speciate(int step) {
+void Species::speciate() {
   /**
    * Examine species for distinct clumps of demes in genetic space. If
    * only one is found, leave the species alone, otherwise split the
@@ -253,7 +269,7 @@ void Species::speciate(int step) {
           // (from 0 to n_clusters -1) for I-th point of the dataset.
     cz);  // Not used.
 
-  if (n_clusters <2)
+  if (n_clusters < 2)
     // All one species. Nothing to do
     return;
 
@@ -262,6 +278,7 @@ void Species::speciate(int step) {
   for (int i=0; i<n_clusters; ++i) {
     auto s = std::make_shared <Species>(conf);
     s->dk = dk;
+    s->step = step;
     s->parent = this;
     sub_species.push_back(s);
   }
