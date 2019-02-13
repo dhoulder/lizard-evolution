@@ -1,17 +1,27 @@
 #!/bin/bash
 
+usage() {
+    [ "$1" ] && echo "$1" >&2
+    cat >&2 <<EOF
+# Usage: $0 config-file path_to_output_dir"
+#
 # Use this script to submit a set of dreadds simulation jobs to PBS.
 # It displays a tty form (using dialog) that allows the number and
-# shape of jobs to be specified, as well as the parameter space to explore.
+# shape of jobs to be specified, as well as the parameter space to
+# explore.
 # The parameter space is specified by supplying lists of values for
 # --species.max-dispersal-radius
 # --species.niche-breadth
 # --gene-flow-max-distance
 #
-# While the dreadds config file allow for the specification of
+# While the dreadds config file allows for the specification of
 # multiple species, the simulations performed here are limited to one
 # species. This is mainly to keep the user interface from being
 # unwieldy.
+EOF
+    exit 1
+}
+
 
 dreadds=dreadds # the executable to run (in $PATH or specify absolute pathname)
 utils=/g/data/ka2/util/bin # dialog lives here, if not available in $PATH.
@@ -23,12 +33,6 @@ this=$here/$(basename "$0")
 
 # Put $executable in the same directory as this script or in $HOME/bin
 export PATH=$PATH:$here:$HOME/bin
-
-usage() {
-    [ "$1" ] && echo "$1" >&2
-    echo "Usage: $0 config-file path_to_output_dir" >&2
-    exit 1
-}
 
 readvars() {
     read n_jobs

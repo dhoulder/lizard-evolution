@@ -10,6 +10,10 @@ for greater computational performance.
 
 `./examples/` contains sample configuration and input files.
 
+`./scripts/` contains shell scripts to assist in running the model and
+pre-processing input data. Run these without arguments for usage
+information.
+
 `./r-package/` contains files that provide an R API that allows the
 model to be called from the R interpreter.
 
@@ -34,5 +38,9 @@ a configuration file. Command-line options override options in the
 configuration file. See `examples/example.conf` for the configuration
 file format and comments that explain how the configuration options
 are used.
+
+The build procedure will also generate `src/grids2tsv` which can be
+used to convert rasters of climate values to vector form.
+
 
 `./r-package/README.md` contains instructions for building the R API.
