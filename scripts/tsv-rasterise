@@ -2,7 +2,7 @@
 
 usage() {
     cat >&2 <<EOF
-# Usage: $0 xmin xmax ymin ymax cell_spacing nodata_value \\
+# Usage: $0 xmin xmax ymin ymax n_cols n_rows nodata_value \\
 #        locations_tsv_file values_tsv_file output_dir
 #
 # Generate rasters of climate variables from point data in text files.
@@ -29,18 +29,18 @@ die() {
     exit 1
 }
 
-[ $# = 9 ] || usage
+[ $# = 10 ] || usage
 
 xmin=$1
 xmax=$2
 ymin=$3
 ymax=$4
-cellspacing=$5
-nodata_value=$6
-
-locations_tsv=$7
-values_tsv=$8
-out=$9 # parent of output dirs.
+ncols=$5
+nrows=$6
+nodata_value=$7
+locations_tsv=$8
+values_tsv=$9
+out=${10} # parent of output dirs.
 
 which gdal_rasterize >/dev/null 2>/dev/null || \
     module load gdal # For systems using http://modules.sourceforge.net/
@@ -100,9 +100,9 @@ for col in $columns; do
     echo -n "$col..." >&2
     gdal_rasterize -q \
         -a "$col" \
-        -te $xmin $ymin $xmax $ymax \
-        -tr $cellspacing $cellspacing \
-        -a_nodata $nodata_value \
+        -te "$xmin" "$ymin" "$xmax" "$ymax" \
+        -ts "$ncols" "$nrows" \
+        -a_nodata "$nodata_value" \
         -ot Float32 \
         "$tmp_dir/data.vrt" "$col/$outname" || \
         die "gdal_rasterize ... $tmp_dir/data.vrt $col/$outname failed"
