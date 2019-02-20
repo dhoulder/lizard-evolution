@@ -38,5 +38,9 @@ add_executable(grids2tsv grids2tsv.cpp)
 target_link_libraries(grids2tsv
   dreadds)
 
-set_property(TARGET grids2tsv dreadds dreadds-bin
+add_executable(csv2grid csv2grid.cpp)
+target_link_libraries(csv2grid
+    ${GDAL_LIBRARY})
+
+set_property(TARGET csv2grid grids2tsv dreadds dreadds-bin
              PROPERTY CXX_STANDARD 11)

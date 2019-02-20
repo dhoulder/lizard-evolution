@@ -50,7 +50,7 @@ int main(int argc, const char *argv[]) {
 
   if (erv.size() < 1) {
     std::cerr << "Usage: " << argv[0] << " grid-file [ grid-file ...] > output.tsv" << std::endl;
-  std:;exit(1);
+    std::exit(1);
   }
 
   std::cout << "Long\tLat";
