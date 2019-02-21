@@ -31,6 +31,8 @@ die() {
 
 [ $# = 10 ] || usage
 
+basedir=$(cd $(dirname "$0")/.. && pwd)
+
 xmin=$1
 xmax=$2
 ymin=$3
@@ -42,10 +44,10 @@ locations_tsv=$8
 values_tsv=$9
 out=${10} # parent of output dirs.
 
-which gdal_rasterize >/dev/null 2>/dev/null || \
-    module load gdal # For systems using http://modules.sourceforge.net/
-which gdal_rasterize >/dev/null || \
-    die "Couldn't find gdal_rasterize. Please install the gdal package."
+export PATH="$basedir/bin:$basedir/src:$PATH"
+
+which csv2grid >/dev/null || \
+    die "Couldn't find csv2grid. See $basedir/README.md"
 
 wd=$PWD
 
@@ -76,35 +78,30 @@ read line1 < "$tmp_dir/data.csv"
     die "Expected column headings Long and Lat on line 1"
 columns=${line1//,/ }
 
-cat > "$tmp_dir/data.vrt" <<EOF
-<OGRVRTDataSource>
-    <OGRVRTLayer name="data">
-        <SrcDataSource relativeToVRT="1">data.csv</SrcDataSource>
-        <GeometryType>wkbPoint</GeometryType>
-        <LayerSRS>WGS84</LayerSRS>
-        <GeometryField encoding="PointFromColumns" x="Long" y="Lat"/>
-    </OGRVRTLayer>
-</OGRVRTDataSource>
-EOF
-
 # Generate output rasters as GeoTIF
 outname=$(basename "${values_tsv%.tsv}").tif
 
+# Create numerically named symlinks in ./steps to make running the model easier
+mkdir -p steps
+
+step=0
 for col in $columns; do
     [ "$col" = Long -o "$col" = Lat ] && \
         continue
+    ((step++))
     mkdir -p "$col" || die "Couldn't create output directory $col in $PWD"
     outfile="$col/$outname"
     [ -s "$outfile" ] && die "$outfile already exists in $PWD"
 
+    [ -e "steps/$step" ] || ln -s  "../$col"  "steps/$step"
+
     echo -n "$col..." >&2
-    gdal_rasterize -q \
-        -a "$col" \
-        -te "$xmin" "$ymin" "$xmax" "$ymax" \
-        -ts "$ncols" "$nrows" \
-        -a_nodata "$nodata_value" \
-        -ot Float32 \
-        "$tmp_dir/data.vrt" "$col/$outname" || \
-        die "gdal_rasterize ... $tmp_dir/data.vrt $col/$outname failed"
+    csv2grid \
+        "$tmp_dir/data.csv" "$col" \
+        "$xmin" "$xmax" "$ymin" "$ymax" \
+        "$ncols" "$nrows" \
+        "$nodata_value" \
+         "$col/$outname" || \
+        die "csv2grid ... $tmp_dir/data.vrt $col/$outname failed"
 done
 echo >&2
