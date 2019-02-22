@@ -74,8 +74,6 @@ trap cleanup EXIT
 [ -s "$tmp_dir/data.csv" ] || die "Failed to create $tmp_dir/data.csv"
 
 read line1 < "$tmp_dir/data.csv"
-[[ "$line1" =~ Long, && "$line1" =~ Lat, ]] || \
-    die "Expected column headings Long and Lat on line 1"
 columns=${line1//,/ }
 
 # Generate output rasters as GeoTIF
@@ -91,7 +89,10 @@ for col in $columns; do
     ((step++))
     mkdir -p "$col" || die "Couldn't create output directory $col in $PWD"
     outfile="$col/$outname"
-    [ -s "$outfile" ] && die "$outfile already exists in $PWD"
+    if [ -s "$outfile" ]; then
+        echo "$outfile already exists in $PWD. Skipping."
+        continue
+    fi
 
     [ -e "steps/$step" ] || ln -s  "../$col"  "steps/$step"
 
