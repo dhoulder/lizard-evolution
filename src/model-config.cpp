@@ -4,6 +4,7 @@
  */
 
 #include <fstream>
+#include <iostream>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -13,6 +14,7 @@
 #include <mutex>
 #include <cmath>
 #include <algorithm>
+#include <random>
 
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
@@ -21,7 +23,6 @@
 #include "exceptions.h"
 #include "env-params.h"
 #include "environment.h"
-#include "random.h"
 
 
 using namespace std;
@@ -43,9 +44,9 @@ static vector<float> comma_split(string csv) {
   return v;
 }
 
+static std::random_device rd;
+static std::mt19937 rng(rd());
 static mutex rng_mutex;
-static bool rng_seeded = false;
-static rng_eng_t rng;
 
 Config::Config(int ac, const char *av[]) {
   /**
@@ -370,20 +371,8 @@ Config::Config(int ac, const char *av[]) {
     {
       throw ConfigError("Configuration error: " + string(e.what()));
     }
-
-  {
-    lock_guard<mutex> lock(rng_mutex);
-    if (!rng_seeded) {
-      rng_seeded = true;
-      // seed the RNG with 0…1E9
-      auto now = HrClock::now();
-      TimePoint<Sec> now_sec = std::chrono::time_point_cast<Sec>(now);
-      unsigned int seed = std::chrono::duration_cast<std::chrono::nanoseconds>(
-	now-now_sec).count();
-      rng.seed(seed);
-    }
-  }
 }
+
 
 void Config::set_params_from_env(SpeciesParameters &sp,
 				const Environment &env) const {
@@ -439,7 +428,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
 		      "species.niche-centre = random-cell");
 
   // choose cell and set niche centre to match
-  uniform_int_distr_t distr(0, locations.size()-1);
+  std::uniform_int_distribution<> distr(0, locations.size()-1);
   int random_loc;
   {
     lock_guard<mutex> lock(rng_mutex);
@@ -461,7 +450,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
 
   if (sp.bounds_mode != sp.NSEW) {
     // Choose random area around cell within specified limits.
-    uniform_real_distr_t distr(
+    std::uniform_real_distribution<float> distr(
       // convert side lengths in cell widths to NSEW coordinate
       // offset from chosen cell
       env.geo_transform[1] * sp.random_rect_min * 0.5f,

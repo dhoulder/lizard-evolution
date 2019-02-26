@@ -28,7 +28,6 @@ namespace DreadDs {
   typedef boost::random::mt19937 rng_eng_t;
 
   typedef boost::random::uniform_real_distribution<float> uniform_real_distr_t;
-  typedef boost::random::uniform_int_distribution<int> uniform_int_distr_t;
   typedef boost::random::variate_generator<rng_eng_t&, uniform_real_distr_t>  uniform_vg_t;
   typedef boost::random::normal_distribution<float> normal_distr_t;
   typedef boost::random::variate_generator<rng_eng_t&, normal_distr_t> normal_vg_t;
