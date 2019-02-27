@@ -10,7 +10,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
-#include <chrono>
 #include <mutex>
 #include <cmath>
 #include <algorithm>
@@ -28,11 +27,6 @@
 using namespace std;
 using namespace DreadDs;
 namespace po = boost::program_options;
-
-typedef std::chrono::seconds Sec;
-typedef std::chrono::high_resolution_clock HrClock;
-template<class Duration>
-using TimePoint = std::chrono::time_point<HrClock, Duration>;
 
 typedef boost::tokenizer<boost::escaped_list_separator<char>> CsvTokenizer;
 
@@ -449,12 +443,16 @@ void Config::set_params_from_env(SpeciesParameters &sp,
   }
 
   if (sp.bounds_mode != sp.NSEW) {
+    // convert side lengths in cell widths to NSEW coordinate
+    // offset from chosen cell
+    float min_offset = env.geo_transform[1] * sp.random_rect_min * 0.5f;
+    float max_offset = env.geo_transform[1] * sp.random_rect_max * 0.5f;
     // Choose random area around cell within specified limits.
-    std::uniform_real_distribution<float> distr(
-      // convert side lengths in cell widths to NSEW coordinate
-      // offset from chosen cell
-      env.geo_transform[1] * sp.random_rect_min * 0.5f,
-      env.geo_transform[1] * sp.random_rect_max * 0.5f);
+    std::uniform_real_distribution<float> distr(min_offset, max_offset);
+    auto random_offset = [&]() {
+      // uniform_real_distribution<>(x, x)() has undefined behaviour
+      return (max_offset > min_offset)? distr(rng) : min_offset;
+    };
     float lx = env.to_ew(cell_loc.x);
     float ly = env.to_ns(cell_loc.y);
     {
@@ -462,13 +460,13 @@ void Config::set_params_from_env(SpeciesParameters &sp,
       // add random NSEW padding around chosen cell, clamped to
       // centres of boundary cells.
       sp.north = min((float)env.to_ns(n),
-		     ly +  distr(rng));
+		     ly +  random_offset());
       sp.south = max((float)env.to_ns(s),
-		     ly - distr(rng));
+		     ly - random_offset());
       sp.east = min((float)env.to_ew(e),
-		    lx +  distr(rng));
+		    lx +  random_offset());
       sp.west = max((float)env.to_ew(w),
-		    lx - distr(rng));
+		    lx - random_offset());
     }
   }
 }
