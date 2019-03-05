@@ -11,9 +11,11 @@ cd DREaD_ds/
 git checkout master
 ```
 
-To build using the Intel compiler. Use this recipe if you intend to
-build the R package as well.
+To build using the Intel compiler, paste the following commands into your
+/bin/bash terminal window.
 
+Use this recipe if you intend to build the R package as well as the standalone
+dreadds executable.
 ```
 module purge
 module load pbs # In case you want to submit jobs etc.
@@ -23,6 +25,11 @@ module load gdal/2.2.2
 module load boost/1.64.0
 module load cmake/3.8.2
 export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/Intel
+# The following are required if you intend to build the R API in ./r-package
+module load intel-fc/2018.3.222
+module load R/3.5.1
+module load proj/4.9.3
+export PKG_CXXFLAGS=-std=c++11
 ```
 
 To build using gcc:
@@ -42,7 +49,7 @@ To compile and link:
 cd src
 
 # If you've previously built with a different compiler (e.g. gcc vs
-# intel-cc), first do:
+# intel-cc), do:
 #   rm CMakeCache.txt
 # first
 cmake .
@@ -58,21 +65,16 @@ cmake --build .
 ```
 
 ### To build and install R packages
+
+On raijin, R was built with the Intel compilers, so use the Intel compiler setup
+instructions above. See `r-package/README.md` for more details.
+
+
+### Some possibly useful R packages
+
+These are not required but may be useful
+
 ```
-# R was built with the Intel compilers, so we need to use those too
-
-# If not already loaded, do...
-module load gcc/4.9.0
-module load intel-cc/2018.3.222
-module load gdal/2.2.2
-module load boost/1.64.0
-export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/Intel
-# and then...
-module load intel-fc/2018.3.222
-module load R/3.5.1
-module load proj/4.9.3
-export PKG_CXXFLAGS=-std=c++11
-
 R
 install.packages('yaml')
 # rgdal allows reading/writing common GIS file formats

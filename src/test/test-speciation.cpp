@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string>
 #include "species.h"
 #include "model-config.h"
 #include "deme.h"
@@ -55,6 +56,12 @@ int main(int argc, char *argv[]) {
       exit(2);
     }
     s.phylogeny_as_yaml(stdout, "");
+    std::string n = s.phylogeny_as_newick();
+    if (n != "(species_103:0,species_104:0,species_105:0)species_102;") {
+      printf("phylogeny_as_newick() failed: Got %s\n",
+             n.c_str());
+      exit(3);
+    }
   }
 
   {
@@ -73,7 +80,7 @@ int main(int argc, char *argv[]) {
     if (s.demes->size() != 102 || s.sub_species.size() != 0) {
       printf("one-cluster test failed: %lu %lu\n",
              s.demes->size(), s.sub_species.size());
-      exit(3);
+      exit(4);
     }
   }
   printf("OK\n");

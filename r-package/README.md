@@ -32,36 +32,42 @@
 
 ### Building the R package
 
-* ```
-  # cd to the directory containing this README.md
+* Make sure you've set up your compilation environment first.
+  See `../README-*.md` and `../README.md`.
+  The build process needs to be able to find the libraries that the DREaD_ds
+  library depends on.
+
+* Change your working directory to the one containing this `README.md`
+  if you're not already here. e.g.
+  ```
+  cd r-package/
   ```
 
-* (Note: if you have changed the API in `rcpp_*.cpp`, do…
+* The build process needs to know where to find the DREaD_ds C++
+  library and header files (see `dreadds/src/Makevars`). This is done
+  by setting the `DREAD_DS_SRC` environment variable. Assuming your
+  working directory is `r-package` and you're using the `/bin/bash`
+  shell, use…
   ```
-  # may need to clobber dreadds/R/RcppExports.R first
-  mv -i dreadds/R/RcppExports.R /tmp/
+  export DREAD_DS_SRC=$(cd ../src/ && pwd)
+  ```
+  On Windows, use the `SET` command to set `DREAD_DS_SRC` to the absolute path
+  of `../src`
 
+* Use
+  ```
+  R CMD build dreadds
+  ```
+  to create the package file (`dreadds*.tar.gz`). Note that this doesn't compile
+  any C++ code at this stage.
+
+* Install the package with
+  ```
   R
-  ...
-  > require(Rcpp)
-  > compileAttributes("dreadds")
-  ```
-  …to update the package skeleton first. Note that those files are under
-  version control)
-
-
-* ```
-  # Need to pass in the location of the library and header via environment. See Makevars
-  DREAD_DS_SRC=$(cd ../src/ && pwd) R CMD build dreadds
-  ```
-
-### Installing
-* ```
-  # cd to the directory containing this README.md
-
-  DREAD_DS_SRC=$(cd ../src && pwd) R
   > install.packages("dreadds_1.0.tar.gz", repos = NULL)
   ```
+  Note that `install.packages("dreadds", repos = NULL)` can also be used to compile and
+  install the package without having to wrap everything up in an archive first.
 
 ### Running
 ```
@@ -72,3 +78,19 @@ R
 > help(dreadds)
 # for usage information
 ```
+
+
+### Modifying the R package
+
+* If you have changed the API in `rcpp_*.cpp`, do…
+  ```
+  mv -i dreadds/src/RcppExports.cpp ~/
+
+  R
+  ...
+  > require(Rcpp)
+  > compileAttributes("dreadds")
+  > q()
+  ```
+  …to update the package skeleton first. Note that those files are under
+  version control

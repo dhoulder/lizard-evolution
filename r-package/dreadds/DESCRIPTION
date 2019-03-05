@@ -2,17 +2,17 @@ Package: dreadds
 Type: Package
 Title: Dynamic Range Evolution and Diversification simulation with dynamic speciation
 Version: 1.0
-Date: 2018-08-22
+Date: 2019-03-05
 Author: David Houlder
-Maintainer: David Houlder <david.houlder@anu.edu.au>
-Description: Implements a spatially explicit Dynamic Intraspecific
-        Macroevolutionary Model (DynIMM) to simulate expected spatial
+Maintainer: David Houlder <david.houlder@anu.edu.au> <david@davidhoulder.com>
+Description: Implements a spatially explicit dynamic intraspecific
+        macroevolutionary model to simulate expected spatial
         patterns of species and phylogenetic diversity. The primary
-        purpose of DynIMM is to select appropriate models which
+        purpose is to select appropriate models which
         generate expected spatial patterns best matching observed
         diversity. Used to determine the processes responsible for the
         spatial distribution of biological diversity and phylogenetic
         endemism.
 License: GPL (>= 2)
-Imports: Rcpp (>= 0.12.15)
+Imports: methods, Rcpp (>= 1.0.0)
 LinkingTo: Rcpp

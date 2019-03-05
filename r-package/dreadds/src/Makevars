@@ -1,3 +1,2 @@
 PKG_CPPFLAGS=-I$(DREAD_DS_SRC)
 PKG_LIBS=-L$(DREAD_DS_SRC) -ldreadds -lboost_program_options -lboost_filesystem  -lgdal
-# FIXME: -L for Boost, GDAL too

@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 #include <string>
+#include <sstream>
 
 #include <boost/serialization/array_wrapper.hpp> // just for boost 1.64. see https://svn.boost.org/trac10/ticket/12982
 #include <boost/accumulators/accumulators.hpp>
@@ -361,4 +362,36 @@ void Species::phylogeny_as_yaml(FILE *of,
   for (auto &&c: sub_species) {
     c->phylogeny_as_yaml(of, list_indent);
   }
+}
+
+std::string Species::get_name() {
+  // There's currently no explicit species naming, but to ensure
+  // consistent behaviour now and into the future, use this to get
+  // a species' name or label.
+  return "species_" + std::to_string(id);
+}
+
+static void traverse_newick(std::ostringstream &sstr, Species &s) {
+  // See https://en.wikipedia.org/wiki/Newick_format
+  if (s.sub_species.size() > 0) {
+    sstr << "(";
+    int i = 0;
+    for (auto &&child: s.sub_species) {
+      if (i == 0)
+        ++i;
+      else sstr << ",";
+      traverse_newick(sstr, *child);
+    }
+    sstr << ")";
+  }
+  sstr << s.get_name();
+  if (s.parent)
+    // branch length if not root
+    sstr << ":" << (s.step - s.parent->step);
+}
+
+std::string Species::phylogeny_as_newick() {
+  std::ostringstream sstr;
+  traverse_newick(sstr, *this);
+  return sstr.str() + ";";
 }

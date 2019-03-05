@@ -1,12 +1,14 @@
 # Dynamic Range Evolution and Diversification simulation with dynamic speciation (DREaD_ds)
 
 This directory contains source code and documentation for the DREaD_ds
-evolution model.
+evolution model. See `README-*.md` for site- and platform-specific
+information.
 
-`./src` contains source code for the C++ implementation of the model.
-The model implemented in C++ is intended to closely match the model
-implemented by `./R-prototype/DREaD_ds.R`, but in a language that allows
-for greater computational performance.
+`./src` contains source code for the C++ implementation of the model
+and several utility programs. The model implemented in C++ is
+intended to closely match the model implemented by
+`./R-prototype/DREaD_ds.R`, but in a language that allows for greater
+computational performance.
 
 `./examples/` contains sample configuration and input files.
 

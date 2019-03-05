@@ -37,7 +37,16 @@ namespace DreadDs {
      * Returns: total number of occupied cells across all species.
      */
     int do_step();
+
+    /**
+     * Save current state to files in output directory
+     */
     void save();
+
+    /**
+     * Return all species known to the model as a flattened list
+     */
+    Species::Vec get_all_species();
 
   private:
     uniform_real_distr_t gene_flow_distr;

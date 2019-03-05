@@ -1,33 +1,37 @@
 \name{dreadds-package}
 \alias{dreadds-package}
+\alias{dreadds}
 \docType{package}
-\title{\packageTitle{dreadds}}
-\description{\packageDescription{dreadds}}
+\title{
+Dynamic Range Evolution and Diversification simulation with dynamic speciation
+}
+\description{
+  Implements a spatially explicit dynamic intraspecific
+  macroevolutionary model to simulate expected spatial
+  patterns of species and phylogenetic diversity. The primary
+  purpose is to select appropriate models which
+  generate expected spatial patterns best matching observed
+  diversity. Used to determine the processes responsible for the
+  spatial distribution of biological diversity and phylogenetic
+  endemism.
+}
 \details{
-  The DESCRIPTION file: \packageDESCRIPTION{dreadds}
-  \packageIndices{dreadds}
-
-  FIXME
-  This section should provide a more detailed overview of how to use the
-  package, including the most important functions.
+  The package provides the dreadds_model() constructor. See the
+  examples below and the documentation for dreadds_model().
 }
 \author{
-  \packageAuthor{dreadds}
-
-  Maintainer: \packageMaintainer{dreadds}
+David Houlder, david@davidhoulder.com, david.houlder@anu.edu.au
 }
 \references{
-  FIXME
-  This optional section can contain literature or other references for
-  background information.
+  https://github.com/DanRosauer/DREaD_ds
 }
-% Optionally other standard keywords, one per line,
-% from the file KEYWORDS in the R documentation.
-\keyword{package}
-\seealso{
-  Optional links to other man pages
-}
+\keyword{ package }
+
 \examples{
-  ## Optional simple examples of the most important functions
-  ## Use \dontrun{} around code to be shown but not executed
+  \dontrun{
+  > require(dreadds)
+  Loading required package: dreadds
+  > m <- dreadds_model('test.conf', c('-o', 'out'))
+  # See help(dreadds_model) for details
+}
 }

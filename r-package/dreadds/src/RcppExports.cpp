@@ -5,20 +5,11 @@
 
 using namespace Rcpp;
 
-// dreadds
-int dreadds(Rcpp::StringVector config_path_vec);
-RcppExport SEXP _dreadds_dreadds(SEXP config_path_vecSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::StringVector >::type config_path_vec(config_path_vecSEXP);
-    rcpp_result_gen = Rcpp::wrap(dreadds(config_path_vec));
-    return rcpp_result_gen;
-END_RCPP
-}
+
+RcppExport SEXP _rcpp_module_boot_dreadds();
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_dreadds_dreadds", (DL_FUNC) &_dreadds_dreadds, 1},
+    {"_rcpp_module_boot_dreadds", (DL_FUNC) &_rcpp_module_boot_dreadds, 0},
     {NULL, NULL, 0}
 };
 

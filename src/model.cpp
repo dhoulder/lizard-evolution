@@ -414,3 +414,18 @@ int Model::do_step() {
   tips = new_tips;
   return n_occupied;
 }
+
+static void traverse_species(Species::Vec &flat,
+                             std::shared_ptr <Species> &s) {
+  flat.push_back(s);
+  for (auto &&child: s->sub_species)
+    traverse_species(flat, child);
+}
+
+
+Species::Vec Model::get_all_species()  {
+  Species::Vec v;
+  for (auto &&species: roots)
+    traverse_species(v, species);
+  return v;
+}

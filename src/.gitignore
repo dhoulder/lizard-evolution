@@ -6,6 +6,8 @@ cmake_install.cmake
 *.so
 *.a
 dreadds
+csv2grid
+grids2tsv
 test[-_]*
 !*.h
 !*.hpp

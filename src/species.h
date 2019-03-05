@@ -95,6 +95,8 @@ namespace DreadDs {
                  const std::string &first_indent);
     void phylogeny_as_yaml(FILE *of,
                            const std::string &first_indent);
+    std::string phylogeny_as_newick(); // See https://en.wikipedia.org/wiki/Newick_format
+    std::string get_name();
 
   private:
     Characteristics initial_stats; // At species origin (i.e. split from parent)
