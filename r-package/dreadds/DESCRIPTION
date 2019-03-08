@@ -14,5 +14,5 @@ Description: Implements a spatially explicit dynamic intraspecific
         spatial distribution of biological diversity and phylogenetic
         endemism.
 License: GPL (>= 2)
-Imports: methods, Rcpp (>= 1.0.0)
+Imports: methods, Rcpp (>= 0.12.15)
 LinkingTo: Rcpp

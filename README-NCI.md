@@ -29,7 +29,6 @@ export BOOST_LIBRARYDIR=$BOOST_LIBRARYDIR/Intel
 module load intel-fc/2018.3.222
 module load R/3.5.1
 module load proj/4.9.3
-export PKG_CXXFLAGS=-std=c++11
 ```
 
 To build using gcc:

@@ -12,7 +12,7 @@
   ```
   # You may need to set your environment first with "module load ..."
   # or similar so that the correct version of R and the C++ compiler is
-  # available. Check ../README-* and your local system documentation.
+  # available. See ../README-*.md and your local system documentation.
   R
   install.packages('Rcpp')
   ```
@@ -50,6 +50,7 @@
   shell, use…
   ```
   export DREAD_DS_SRC=$(cd ../src/ && pwd)
+  export PKG_CXXFLAGS=-std=c++11
   ```
   On Windows, use the `SET` command to set `DREAD_DS_SRC` to the absolute path
   of `../src`
