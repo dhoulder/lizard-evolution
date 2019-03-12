@@ -1,4 +1,4 @@
-// -*- coding: utf-8 -*-
+// -*- mode: C++; coding: utf-8; eval: (c-set-offset 'arglist-intro '+) -*-
 
 #include <cmath>
 #include <stdio.h>
@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cassert>
 #include <atomic>
+#include <vector>
+#include <forward_list>
 #include <memory>
 #include <utility>
 #include <string>
@@ -18,9 +20,10 @@
 
 #include "constants.h"
 #include "model-config.h"
+#include "environment.h"
+#include "deme.h"
 #include "species.h"
 #include "exceptions.h"
-#include "alglib/dataanalysis.h"
 
 using namespace DreadDs;
 namespace ba = boost::accumulators;
@@ -38,14 +41,13 @@ Species::Species(const Config &c):
     std::cout << "Creating species " << id << std::endl;
 }
 
-
+/**
+ * Load initial species values, locations and abundance.
+ */
 Species::Species(const Config &c,
 		 const SpeciesParameters &sp,
 		 const Environment &env):
   Species(c)
-  /**
-   * Load initial species values, locations and abundance.
-   */
 {
   setup_dispersal(sp);
   load_initial(sp, env);
@@ -77,9 +79,7 @@ static float dispersal_distance(int x, int y) {
 }
 
 void Species::setup_dispersal(const SpeciesParameters &sp) {
-  // Calculate dispersal kernel (TODO? we could probably store just
-  // one quadrant (perhaps only one octant). Probably little gain
-  // though)
+  // Calculate dispersal kernel
   int r = (int) (ceil(sp.max_dispersal_radius) + 0.5);
   for (int i = -r; i <= r; ++i)
     for (int j = -r; j <= r; ++j) {
@@ -142,12 +142,11 @@ template <class ...Types>
 using Acc = ba::accumulator_set<float,
 			    ba::stats<Types...>>;
 
+/**
+ * Update species statistics.
+ * Returns: cell count
+ */
 int Species::update_stats(Characteristics &ch) {
-  /**
-   * Update species statistics.
-   * Returns: cell count
-   */
-
   if (extinction > -1 || split > -1)
     // went extinct or speciated in earlier time step. Leave the stats alone
     return 0;
@@ -167,7 +166,7 @@ int Species::update_stats(Characteristics &ch) {
   ch.cell_count = 0;
   ch.population = 0.0f;
 
-  // FIXME do this in merge() instead of separate loops here?
+  // TODO? do this in merge() instead of separate loops here?
   for (auto &&kv: *demes)
     for (auto &&d: kv.second) {
       if (d.amount <= 0.0f)
@@ -188,7 +187,7 @@ int Species::update_stats(Characteristics &ch) {
     }
 
   if (ch.cell_count == 0) {
-    // leave other stats as they were on previous step FIXME think about this
+    // leave other stats as they were on previous step TODO think about this
     return 0;
   }
 
@@ -229,69 +228,115 @@ int Species::update_stats(Characteristics &ch) {
   return ch.cell_count;
 }
 
-void Species::speciate() {
-  /**
-   * Examine species for distinct clumps of demes in genetic space. If
-   * only one is found, leave the species alone, otherwise split the
-   * current species into distinct sub-species.
-   */
-  alglib::real_2d_array points;
-  alglib::clusterizerstate s;
-  alglib::ahcreport rep;
-  alglib::integer_1d_array cidx, cz;
-  alglib::ae_int_t n_clusters;
 
-  // set up 2d array of points in genetic space
-  points.setlength(demes->size(), conf.genetic_dims);
-  int i=0;
-  for (auto &&kv: *demes) {
-    // We're doing this after Model::merge(), so we'll have a single
-    // entry in DemeList in each cell.
-    auto &&g = kv.second.front().genetics.genetic_position;
-    for (int j=0; j < conf.genetic_dims; ++j)
-      points[i][j] = g[j];
-    ++i;
+/**
+ * Find clusters of points in genome space. Every deme in a cluster
+ * can be reached by taking steps no larger than the threshold
+ * distance (single-linkage clustering).
+ */
+std::vector <DemeMapEntryVec> Species::get_clusters(DemeMap &dm,
+						    float distance) {
+  std::forward_list<DemeMapEntry *> source;
+  std::vector <DemeMapEntryVec> clusters;
+  float dsq = distance*distance;
+  for (auto &&kv: dm)
+    source.push_front(&kv);
+
+  int n = dm.size();
+  while (!source.empty()) {
+    // extract a cluster from source and add it to clusters
+
+    DemeMapEntryVec
+      edge, // Holds the set of points forming the "invasion front" of
+	    // the search for the current cluster.
+      cl;   // Holds points from edge after we've searched for their
+	    // neighbours.
+    cl.reserve(n);
+    edge.reserve(n);
+
+    // Choose any starting deme
+    edge.push_back(source.front());
+    source.pop_front();
+    do {
+      // Grab any edge point and find all unclustered points within
+      // range
+      DemeMapEntry *d = edge.back();
+      edge.pop_back();
+      cl.push_back(d);
+
+      auto p = source.begin();
+      auto prev = source.end();
+      // We're doing this after Model::merge(), so we'll have a single
+      // entry in DemeList in each cell.
+      Deme &d1 = d->second.front();
+      while (p != source.end()) {
+	Deme &d2 = (*p)->second.front();
+	if (d1.genetic_distance_sq(conf, d2) <= dsq) {
+	  // Within range.
+	  edge.push_back(*p);
+	  // Pull the candidate out of source
+	  if (prev == source.end()) { // at the front of the list
+	    source.pop_front();
+	    p = source.begin();
+	  } else
+	    p = source.erase_after(prev);
+	  // p is now pointing to the next candidate, prev is the same.
+	} else {
+	  // Point too far away. Advance to the next candidate
+	  prev = p;
+	  ++p;
+	}
+      }
+    } while (!edge.empty());
+
+    // Got a cluster
+    n -= cl.size();
+    clusters.push_back(std::move(cl));
   }
-  if (i < 1)
-    return;
 
-  alglib::clusterizercreate(s);
-  alglib::clusterizersetpoints(s, points, 2); // 2 = Euclidean distance
-  alglib::clusterizersetahcalgo(s, 1); // 1 = single linkage. See
-       // https://en.wikipedia.org/wiki/Single-linkage_clustering
-  alglib::clusterizerrunahc(s, rep);
-  assert(rep.terminationtype >= 0);
+  return clusters;
+}
 
-  alglib::clusterizerseparatedbydist(
-    rep,
-    conf.gene_flow_zero_distance, // minimum inter-cluster distance,
-    n_clusters,
-    cidx, // array[NPoints], I-th element contains cluster index
-          // (from 0 to n_clusters -1) for I-th point of the dataset.
-    cz);  // Not used.
+/**
+ * Create a sub species with no demes
+ */
+std::shared_ptr <Species> Species::add_child() {
+  auto s = std::make_shared <Species>(conf);
+  s->dk = dk;
+  s->step = step;
+  s->parent = this;
+  sub_species.push_back(s);
+  return s;
+}
 
-  if (n_clusters < 2)
+
+/**
+ * Examine species for distinct clumps of demes in genetic space. If
+ * only one is found, leave the species alone, otherwise split the
+ * current species into distinct sub-species.
+ */
+void Species::speciate() {
+  std::vector<DemeMapEntryVec> clusters = get_clusters(
+    *demes,
+    conf.gene_flow_zero_distance);
+
+  if (clusters.size() < 2)
     // All one species. Nothing to do
     return;
 
   // The species has split into two or more sub species
   split = step;
-  for (int i=0; i<n_clusters; ++i) {
-    auto s = std::make_shared <Species>(conf);
-    s->dk = dk;
-    s->step = step;
-    s->parent = this;
-    sub_species.push_back(s);
-  }
 
-  // move demes into sub species
-  i=0;
-  for (auto &&kv: *demes) {
-    (*sub_species[cidx[i]]->demes)[kv.first] = std::move(kv.second);
-    ++i;
+  for (auto &&dv: clusters) {
+    auto s = add_child();
+    // move demes into sub species
+    for (auto &&d: dv) {
+      (*(s->demes))[d->first] = std::move(d->second);
+    }
   }
   demes->clear();
 }
+
 
 void Species::as_yaml(FILE *of,
                       const std::string &first_indent) {

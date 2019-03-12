@@ -59,7 +59,6 @@ namespace DreadDs {
     void do_genetc_drift(Deme &deme);
     Deme *choose_primary(DemeList &deme_list);
     float gene_flow_probability(float distance);
-    float genetic_distance(const Deme &d1, const Deme &d2);
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
     std::shared_ptr<DemeMap> evolve_and_disperse(Species &species);
     void merge(DemeMap &dm);

@@ -27,14 +27,14 @@ namespace DreadDs {
   };
 
   typedef std::vector <DispersalWeight> DispersalKernel;
+  typedef std::vector<DemeMapEntry *> DemeMapEntryVec;
 
   class Species {
   public:
     /**
        Describes a species and its phylogeny
     */
-    typedef std::vector <std::shared_ptr <Species>> Vec;
-
+    typedef std::vector<std::shared_ptr <Species>> Vec;
     class Characteristics {
     public:
       // Derived from demes of this species.
@@ -102,6 +102,9 @@ namespace DreadDs {
     Characteristics initial_stats; // At species origin (i.e. split from parent)
     void setup_dispersal(const SpeciesParameters &sp);
     void load_initial(const SpeciesParameters &sp, const Environment &env);
+    std::shared_ptr <Species> add_child();
+    std::vector <DemeMapEntryVec> get_clusters(DemeMap &dm,
+					       float distance);
   };
 
 }

@@ -5,7 +5,7 @@
 /**
  * A "deme" is a population in a cell
  */
-
+#include <cmath>
 #include <list>
 #include <map>
 
@@ -54,11 +54,27 @@ namespace DreadDs {
 
     float niche_suitability(const Config &conf, const EnvCell env);
 
+    inline float genetic_distance_sq(const Config &conf, const Deme &d2) const {
+      // Square of Euclidean distance in gene space
+      float sum = 0.0f;
+      for (int i = 0; i < conf.genetic_dims; ++i) {
+	const float d = d2.genetics.genetic_position[i] -
+	  genetics.genetic_position[i];
+	sum += d*d;
+      }
+      return sum;
+    }
+
+    inline float genetic_distance(const Config &conf, const Deme &d2) const {
+      return std::sqrt(genetic_distance_sq(conf, d2));
+    }
+
   };
 
   // Cells occupied by demes of a species, Several demes can occupy a
   // cell, hence std::list
   typedef std::list <Deme> DemeList; // FIXME use forward_list with emplace_after(whatever.begin(), …)  and emplace_front() ????? what if more than 1 primary demes??? or maybe struct {Deme primary;  std::forward_list <Deme> others}
   typedef std::map <Location, DemeList> DemeMap;
+  typedef std::pair<const Location, DemeList> DemeMapEntry;
 }
 #endif

@@ -1,4 +1,1 @@
 Recommended license: GPL
-
-Needs to be GPL v2 or similar due to dependency on http://www.alglib.net/
-See http://www.alglib.net/translator/man/manual.cpp.html#int_license

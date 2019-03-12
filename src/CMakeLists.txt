@@ -14,15 +14,6 @@ add_subdirectory(test)
 add_library(dreadds STATIC
   model-config.cpp deme.cpp environment.cpp env-params.cpp
   output-file.cpp model.cpp species.cpp
-  alglib/alglibinternal.cpp
-  alglib/dataanalysis.cpp
-  alglib/solvers.cpp
-  alglib/alglibmisc.cpp
-  alglib/linalg.cpp
-  alglib/specialfunctions.cpp
-  alglib/ap.cpp
-  alglib/optimization.cpp
-  alglib/statistics.cpp
 )
 target_link_libraries(dreadds
   ${GDAL_LIBRARY}

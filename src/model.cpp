@@ -8,9 +8,9 @@
 
 #include <ctime>
 #include <memory>
-#include <math.h>
 #include <iostream>
 #include <string>
+#include <cmath>
 
 #include <boost/algorithm/string.hpp>
 
@@ -202,26 +202,14 @@ float Model::gene_flow_probability(float distance) {
   // ~1.0 for distance == 0, approaches 0 for distance >= gene_flow_zero_distance
   const float A = 14.0f;
   const float B = 0.5f;
-  return (1.0f / (1.0f + exp(((distance /
-			       conf.gene_flow_zero_distance) - B) * A)));
-}
-
-
-float Model::genetic_distance(const Deme &d1, const Deme &d2) {
-  // Euclidean distance in gene space
-  float sum = 0.0f;
-  for (int i = 0; i < conf.genetic_dims; ++i) {
-    const float d = d2.genetics.genetic_position[i] -
-      d1.genetics.genetic_position[i];
-    sum += d*d;
-  }
-  return sqrt(sum);
+  return (1.0f / (1.0f + std::exp(((distance /
+				    conf.gene_flow_zero_distance) - B) * A)));
 }
 
 
 bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
   // see 3.4.1 "Does gene flow occur?"
-  return (gene_flow_probability(genetic_distance(d1, d2)) >
+  return (gene_flow_probability(d1.genetic_distance(conf, d2)) >
 	  gene_flow_random());
 }
 
@@ -403,6 +391,8 @@ int Model::do_step() {
         new_tips.push_back(species);
       } else {
 	// species has split into sub_species
+	if (conf.verbosity > 0)
+	  std::cout << "Speciation occurred" << std::endl;
 	for (auto &&s: species->sub_species) {
 	  s->set_initial_stats();
 	  new_tips.push_back(s);
