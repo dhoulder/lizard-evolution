@@ -50,8 +50,13 @@ EnvReader:: EnvReader(const std::string &filename):
   assert(row_buffer);
   int has_nodata_value;
   double ndv = band->GetNoDataValue(&has_nodata_value);
-  if (has_nodata_value)
-    nodata_value = (float)ndv; // otherwise leave it is NAN
+  if (has_nodata_value) {
+    nodata_value = (float)ndv; // Otherwise leave it as NAN
+    // Need to avoid FP precision problems when detecting no-data
+    // values. (note: boost::math::float_distance() can be really
+    // slow)
+    nodata_tol = fabs(nodata_value) * 1e-05f;
+  }
 }
 
 void EnvReader::get_coordinates(double *buff6) {
@@ -70,7 +75,7 @@ void EnvReader::read_row(int row) {
 
 bool EnvReader::is_nodata(float v) {
   return (!std::isnan(nodata_value)) &&
-    (fabs(bm::float_distance(v, nodata_value)) <= 2.0f);
+    (fabs(v - nodata_value) <= nodata_tol);
 }
 
 EnvReader::~EnvReader() {

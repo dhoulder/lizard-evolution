@@ -55,6 +55,7 @@ namespace DreadDs {
     GDALDataset *dataset = NULL;
     GDALRasterBand *band = NULL;
     float nodata_value = NAN;
+    float nodata_tol = 0.0f;
   };
 
   class Environment {
