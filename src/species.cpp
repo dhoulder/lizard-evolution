@@ -73,13 +73,21 @@ void Species::update(const std::shared_ptr <DemeMap> &d, int s) {
   }
 }
 
-static float dispersal_distance(int x, int y) {
+static float dispersal_distance(double x, double y) {
   // Replace with some other distance metric if required.
-  return sqrt(x*x + y*y);
+  return std::sqrt(x*x + y*y);
 }
 
 void Species::setup_dispersal(const SpeciesParameters &sp) {
   // Calculate dispersal kernel
+
+  // Implements inverse-square falloff from 1.0 at distance 0 to
+  // conf.dispersal_min at sp.max_dispersal_radius
+  float dist_adjust =
+    (std::sqrt(1.0f / conf.dispersal_min)
+     - 1.0f) /
+    sp.max_dispersal_radius;
+
   int r = (int) (ceil(sp.max_dispersal_radius) + 0.5);
   for (int i = -r; i <= r; ++i)
     for (int j = -r; j <= r; ++j) {
@@ -90,7 +98,7 @@ void Species::setup_dispersal(const SpeciesParameters &sp) {
       if (dd <= sp.max_dispersal_radius) {
 	dk.push_back(DispersalWeight {
 	    i, j,
-	      1.0f - ((1.0f - conf.dispersal_min) * dd/sp.max_dispersal_radius)});
+	      1.0f / std::pow(((dd * dist_adjust) + 1.0f), 2.0f)});
       }
     }
   if (conf.verbosity > 2) {
@@ -196,16 +204,16 @@ int Species::update_stats(Characteristics &ch) {
     ns.min = ba::min(niche_min[i]);
     ns.max = ba::max(niche_max[i]);
     ns.position_mean = ba::mean(niche_pos_acc[i]);
-    ns.position_sd = sqrt(ba::variance(niche_pos_acc[i]));
+    ns.position_sd = std::sqrt(ba::variance(niche_pos_acc[i]));
     // breadth is 2 * tolerance
     ns.breadth_mean = 2.0 * ba::mean(niche_tol_acc[i]);
-    ns.breadth_sd = 2.0 * sqrt(ba::variance(niche_tol_acc[i]));
+    ns.breadth_sd = 2.0 * std::sqrt(ba::variance(niche_tol_acc[i]));
   }
 
   for (int i=0; i < conf.genetic_dims; i++) {
     auto &gs = ch.genetic_stats[i];
     gs.mean = ba::mean(genetic_acc[i]);
-    gs.sd = sqrt(ba::variance(genetic_acc[i]));
+    gs.sd = std::sqrt(ba::variance(genetic_acc[i]));
   }
 
   if (conf.verbosity > 1) {
