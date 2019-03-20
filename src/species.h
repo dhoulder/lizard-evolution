@@ -83,13 +83,14 @@ namespace DreadDs {
     int id = 0;
     int step = -1; // time step of most recent dispersal
 
-    Species(const Config &conf);
+    Species(const Config &conf, const int species_id);
     Species(const Config &conf,
+	    const int species_id,
             const SpeciesParameters &sp,
             const Environment &env);
     void set_initial_stats();
     void update(const std::shared_ptr <DemeMap> &d, int step);
-    void speciate();
+    void speciate(int *id_counter);
     int update_stats(Characteristics &ch);
     void as_yaml(FILE *of,
                  const std::string &first_indent);
@@ -102,7 +103,7 @@ namespace DreadDs {
     Characteristics initial_stats; // At species origin (i.e. split from parent)
     void setup_dispersal(const SpeciesParameters &sp);
     void load_initial(const SpeciesParameters &sp, const Environment &env);
-    std::shared_ptr <Species> add_child();
+    std::shared_ptr <Species> add_child(const int species_id);
     std::vector <DemeMapEntryVec> get_clusters(DemeMap &dm,
 					       float distance);
   };

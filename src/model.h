@@ -26,6 +26,7 @@ namespace DreadDs {
   public:
     const Config conf; // must be first (initialisation order)
     int step = 0;
+    int species_id_counter = 0;
     Environment env;
     Species::Vec roots; // Initial species
     Species::Vec tips; // Extant leaf species

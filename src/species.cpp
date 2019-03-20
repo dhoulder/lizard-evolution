@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <iostream>
 #include <cassert>
-#include <atomic>
 #include <vector>
 #include <forward_list>
 #include <memory>
@@ -28,15 +27,13 @@
 using namespace DreadDs;
 namespace ba = boost::accumulators;
 
-static std::atomic_int id_hwm(0);
 
-Species::Species(const Config &c):
+Species::Species(const Config &c, const int species_id):
   conf(c),
   step(0), // step=0 indicates before first time step
+  id(species_id),
   demes(std::make_shared<DemeMap>())
 {
-  ++id_hwm;
-  id = id_hwm;
   if (conf.verbosity > 1)
     std::cout << "Creating species " << id << std::endl;
 }
@@ -45,9 +42,10 @@ Species::Species(const Config &c):
  * Load initial species values, locations and abundance.
  */
 Species::Species(const Config &c,
+		 const int species_id,
 		 const SpeciesParameters &sp,
 		 const Environment &env):
-  Species(c)
+  Species(c, species_id)
 {
   setup_dispersal(sp);
   load_initial(sp, env);
@@ -308,8 +306,8 @@ std::vector <DemeMapEntryVec> Species::get_clusters(DemeMap &dm,
 /**
  * Create a sub species with no demes
  */
-std::shared_ptr <Species> Species::add_child() {
-  auto s = std::make_shared <Species>(conf);
+std::shared_ptr <Species> Species::add_child(const int species_id) {
+  auto s = std::make_shared <Species>(conf, species_id);
   s->dk = dk;
   s->step = step;
   s->parent = this;
@@ -323,7 +321,7 @@ std::shared_ptr <Species> Species::add_child() {
  * only one is found, leave the species alone, otherwise split the
  * current species into distinct sub-species.
  */
-void Species::speciate() {
+void Species::speciate(int *id_counter) {
   std::vector<DemeMapEntryVec> clusters = get_clusters(
     *demes,
     conf.gene_flow_zero_distance);
@@ -336,7 +334,7 @@ void Species::speciate() {
   split = step;
 
   for (auto &&dv: clusters) {
-    auto s = add_child();
+    auto s = add_child(++(*id_counter));
     // move demes into sub species
     for (auto &&d: dv) {
       (*(s->demes))[d->first] = std::move(d->second);

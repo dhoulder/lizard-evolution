@@ -75,6 +75,7 @@ namespace DreadDs {
 Model::Model(const Config &c):
   conf(c),
   step(0),
+  species_id_counter(0),
   env(Environment(conf)), // must use conf member, not arg
 
   // Generate random values between [gene_flow_clip,
@@ -89,7 +90,9 @@ Model::Model(const Config &c):
   gene_drift_random(rng, gene_drift_distr)
 {
   for (auto &&sp: conf.get_initial_species(env)) {
-    const auto &&s = std::make_shared <Species>(conf, sp, env);
+    const auto &&s = std::make_shared<Species>(conf,
+					       ++species_id_counter,
+					       sp, env);
     roots.push_back(s);
     if (s->extinction < 0)
       tips.push_back(s);
@@ -381,7 +384,7 @@ int Model::do_step() {
 
     if (n_cells > 0) {
       if (conf.check_speciation && (step % conf.check_speciation == 0))
-	species->speciate();
+	species->speciate(&species_id_counter);
       if (species->sub_species.empty()) {
 	// No speciation.
 	// We have to update_stats() after every step as we may
