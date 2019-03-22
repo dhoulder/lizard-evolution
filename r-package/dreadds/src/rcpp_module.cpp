@@ -18,12 +18,9 @@
 
 using namespace Rcpp;
 
-static DreadDs::Model *model_factory(String config_file,
-                                     CharacterVector args) {
+static DreadDs::Model *model_factory(CharacterVector args) {
   std::vector<const char *> av;
   av.push_back("dreadds");
-  av.push_back("-c");
-  av.push_back(config_file.get_cstring());
   for (String s: args)
     av.push_back(s.get_cstring());
   DreadDs::Config conf(av.size(), av.data());
@@ -290,7 +287,7 @@ RCPP_MODULE(dreadds){
     // see http://www2.uaem.mx/r-mirror/web/packages/Rcpp/news.html
     // https://github.com/RcppCore/Rcpp/pull/938
     // https://stackoverflow.com/questions/23599043/expose-class-in-rcpp-factory-instead-of-constructor
-    .factory<String, CharacterVector>(model_factory)
+    .factory<CharacterVector>(model_factory)
     .method("runSteps", &run_steps)
     .method("runAll", &run_all)
     .method("save", &DreadDs::Model::save)

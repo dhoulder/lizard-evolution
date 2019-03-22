@@ -6,17 +6,34 @@
 }
 
 \usage{
- m <- createDreadDS(config_file, args = character(0))
+ m <- createDreadDS(config.file = NULL,
+                    genetic.dims = NULL,
+                    gene.flow.max.distance = NULL,
+                    niche.evolution.rate = NULL,
+                    dispersal.min = NULL,
+                    output.dir = NULL,
+                    output.file.prefix = NULL,
+                    iterations = NULL,
+                    check.speciation = NULL
+                    args = character(0))
 }
 
 \arguments{
-  \item{config_file}{
+  \item{config.file}{
     Pathname of DREaD_ds model configuration file. See examples/*.conf in the source
-    repository}
-
+    repository.
+  }
+  \item{genetic.dims}{Overrides value from configuration file}
+  \item{gene.flow.max.distance}{Overrides value from configuration file}
+  \item{niche.evolution.rate}{Overrides value from configuration file}
+  \item{dispersal.min}{Overrides value from configuration file}
+  \item{output.dir}{Overrides value from configuration file}
+  \item{output.file.prefix}{Overrides value from configuration file}
+  \item{iterations}{Overrides value from configuration file}
+  \item{check.speciation}{Overrides value from configuration file}
   \item{args}{
-    Character vector of additional configuration options. e.g. c('-o', 'out-dir')
-    Run "dreadds --help" for a complete list
+    Character vector of additional configuration options. e.g. c(' --csv-precision', 4)
+    Run the standalone model executable as "dreadds --help" for a complete list
   }
 }
 
@@ -86,7 +103,7 @@
 
 \examples{
 \dontrun{
-  m <- createDreadDS('test.conf', c('-o', 'out', '--niche-evolution-rate', 0.02))
+  m <- createDreadDS('test.conf',  output.dir = 'out', niche.evolution.rate =  0.02)
   > m$runSteps(1)
   [1] 14
   > m$runSteps(1)

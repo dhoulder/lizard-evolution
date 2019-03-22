@@ -38,7 +38,7 @@ Dynamic Range Evolution and Diversification simulation with dynamic speciation
   \dontrun{
   > require(dreadds)
   Loading required package: dreadds
-  > m <- createDreadDS('test.conf', c('-o', 'out'))
+  > m <- createDreadDS('test.conf', output.dir = 'out')
   # See help(createDreadDS) for details
 }
 }
