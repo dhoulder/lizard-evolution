@@ -4,6 +4,6 @@
 loadModule("dreadds", TRUE)
 
 #' @return A dreaddsModel instance.
-dreadds_model <- function(config_file, args = character(0)) {
-  return (new(dreaddsModel, config_file, args))
+createDreadDS <- function(config_file, args = character(0)) {
+    return (new(dreaddsModel, config_file, args))
 }

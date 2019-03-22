@@ -16,14 +16,21 @@ Dynamic Range Evolution and Diversification simulation with dynamic speciation
   endemism.
 }
 \details{
-  The package provides the dreadds_model() constructor. See the
-  examples below and the documentation for dreadds_model().
+  The package provides the createDreadDS() constructor. See the
+  examples below and the documentation for createDreadDS().
 }
 \author{
-David Houlder, david@davidhoulder.com, david.houlder@anu.edu.au
+  Model design and original work by Dan Rosauer <dan.rosauer@anu.edu.au>
+
+  C++ and R implementation by David Houlder <david@davidhoulder.com>
 }
+
+\seealso{
+  \code{\link{createDreadDS}}
+  }
+
 \references{
-  https://github.com/DanRosauer/DREaD_ds
+  \url{https://github.com/DanRosauer/DREaD_ds}
 }
 \keyword{ package }
 
@@ -31,7 +38,7 @@ David Houlder, david@davidhoulder.com, david.houlder@anu.edu.au
   \dontrun{
   > require(dreadds)
   Loading required package: dreadds
-  > m <- dreadds_model('test.conf', c('-o', 'out'))
-  # See help(dreadds_model) for details
+  > m <- createDreadDS('test.conf', c('-o', 'out'))
+  # See help(createDreadDS) for details
 }
 }

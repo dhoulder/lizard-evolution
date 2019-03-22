@@ -5,6 +5,7 @@
 
 #include <string>
 #include <cmath>
+#include <vector>
 
 #define BOOST_DISABLE_ASSERTS
 #include "boost/multi_array.hpp"
@@ -86,17 +87,26 @@ namespace DreadDs {
       return  long((ns - geo_transform[3]) / geo_transform[5]);
     }
 
-    inline double to_ns(long row) const {
-      // return coordinate of cell centre
-      return geo_transform[3] + ((0.5 + (double)row) * geo_transform[5]);
+    inline double to_ns(double row) const {
+      // return Ycoordinate of cell centre
+      return geo_transform[3] + ((0.5 + row) * geo_transform[5]);
     }
 
     inline long col(double ew) const {
       return long((ew - geo_transform[0]) / geo_transform[1]);
     }
 
-    inline double to_ew(long col) const {
-      return  geo_transform[0] + ((0.5 + (double)col) * geo_transform[1]);
+    inline double to_ew(double col) const {
+      // return X coordinate of cell centre
+      return  geo_transform[0] + ((0.5 + col) * geo_transform[1]);
+    }
+
+    // Return bounding box of cell edges as xmin, xmax, ymin, ymax
+    inline std::vector<double> get_extent() const {
+      return {to_ew(-0.5),
+          to_ew(double(values.shape()[1]) - 0.5),
+          to_ns(double(values.shape()[0]) - 0.5),
+          to_ns(-0.5)};
     }
 
     inline void get(const Location &loc, EnvCell ec, bool *no_data) const {

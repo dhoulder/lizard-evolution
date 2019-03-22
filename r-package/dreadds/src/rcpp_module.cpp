@@ -24,16 +24,17 @@ static DreadDs::Model *model_factory(String config_file,
   av.push_back("dreadds");
   av.push_back("-c");
   av.push_back(config_file.get_cstring());
-  // --iterations is only relevant to the dreadds binary, so provide
-  // a dummy value
-  av.push_back("--iterations");
-  av.push_back("1");
   for (String s: args)
     av.push_back(s.get_cstring());
   DreadDs::Config conf(av.size(), av.data());
   conf.verbosity = 0; // keep std::cerr quiet
   return new DreadDs::Model(conf);
 }
+
+static NumericVector get_extent(DreadDs::Model *m) {
+  return wrap((m->env).get_extent());
+}
+
 
 /**
  * Return a list of NumericMatrix() representing the environment
@@ -184,7 +185,9 @@ static DataFrame get_species(DreadDs::Model *m) {
   const DreadDs::Config &conf = m->conf;
   auto all_species =  m->get_all_species();
   int n = all_species.size();
-  IntegerVector ids(n), parents(n), extinctions(n), splits(n), steps(n);
+  IntegerVector ids(n), parents(n), extinctions(n),
+    splits(n), steps(n), cell_counts(n);
+  NumericVector populations(n);
   int n_stats = conf.env_dims * 6;
   int n_gen = conf.genetic_dims * 2;
   NumericVector latest_stats[n_stats];
@@ -197,13 +200,16 @@ static DataFrame get_species(DreadDs::Model *m) {
   auto sp_itr = all_species.begin();
   for (int sp_i=0; sp_i < all_species.size(); ++sp_i, ++sp_itr) {
     auto &species = *(*sp_itr);
+    auto &stats = species.latest_stats;
+
     ids[sp_i] = species.id;
     parents[sp_i] = species.parent? species.parent->id : -1;
     extinctions[sp_i] = species.extinction;
     splits[sp_i] = species.split;
     steps[sp_i] = species.step;
+    cell_counts[sp_i] = stats.cell_count;
+    populations[sp_i] = stats.population;
 
-    auto &stats = species.latest_stats;
     for (int i=0, col=0; i < conf.env_dims; ++i) {
       latest_stats[col++][sp_i] = stats.niche_stats[i].position_mean;
       latest_stats[col++][sp_i] = stats.niche_stats[i].position_sd;
@@ -218,7 +224,7 @@ static DataFrame get_species(DreadDs::Model *m) {
       genetics[col++][sp_i] = stats.genetic_stats[i].sd;
     }
   }
-  int ncol = 5 + n_stats + n_gen;
+  int ncol = 7 + n_stats + n_gen;
   List df_columns(ncol);
   CharacterVector col_names(ncol);
   int cni = 0;
@@ -227,6 +233,9 @@ static DataFrame get_species(DreadDs::Model *m) {
   col_names[cni++] = "extinction";
   col_names[cni++] = "split";
   col_names[cni++] = "step";
+  col_names[cni++] = "cell_count";
+  col_names[cni++] = "population";
+
   for (int i=0; i < conf.env_dims; ++i) {
     std::string si = std::to_string(i);
     col_names[cni++] = "niche_position_mean_" + si;
@@ -242,12 +251,13 @@ static DataFrame get_species(DreadDs::Model *m) {
     col_names[cni++] = "genetic_sd_" + si;
   }
   int dfcol = 0;
-
   df_columns[dfcol++] = ids;
   df_columns[dfcol++] = parents;
   df_columns[dfcol++] = extinctions;
   df_columns[dfcol++] = splits;
   df_columns[dfcol++] = steps;
+  df_columns[dfcol++] = cell_counts;
+  df_columns[dfcol++] = populations;
   for (int i=0; i < n_stats; ++i)
     df_columns[dfcol++] = latest_stats[i];
   for (int i=0; i < n_gen; i++)
@@ -255,6 +265,21 @@ static DataFrame get_species(DreadDs::Model *m) {
   df_columns.names() = col_names;
 
   return DataFrame(df_columns);
+}
+
+/**
+ * Run model for a specified number of steps or until it finishes or
+ * reached defined iteration limit.
+ */
+static int run_steps(DreadDs::Model *m, int n) {
+  int r = -1;
+  for (int i=0; r!=0 && i<n; ++i)
+    r = m->do_step();
+  return r;
+}
+
+static int run_all(DreadDs::Model *m) {
+  return run_steps(m, m->conf.n_iterations - m->step);
 }
 
 
@@ -266,11 +291,14 @@ RCPP_MODULE(dreadds){
     // https://github.com/RcppCore/Rcpp/pull/938
     // https://stackoverflow.com/questions/23599043/expose-class-in-rcpp-factory-instead-of-constructor
     .factory<String, CharacterVector>(model_factory)
-    .method("do_step", &DreadDs::Model::do_step)
+    .method("runSteps", &run_steps)
+    .method("runAll", &run_all)
     .method("save", &DreadDs::Model::save)
-    .method("get_env", &get_env)
-    .method("get_demes", &get_demes)
-    .method("get_phylogeny", &get_phylogeny)
-    .method("get_species", &get_species)
+    .method("getEnv", &get_env)
+    .method("getExtent", &get_extent)
+    .method("getDemes", &get_demes)
+    .method("getPhylogeny", &get_phylogeny)
+    .method("getSpecies", &get_species)
+    .field_readonly("step", &DreadDs::Model::step)
     ;
 }
