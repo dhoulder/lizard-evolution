@@ -58,7 +58,7 @@ display.initialise.colours <- function() {
 
 display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_genome_map=T) {
   # elements is a list of named components to include in the display
-
+browser()
   # this function relies on the data to be plotted, being in scope, rather than passed as argument
   # this can be revised if it is a problem
   dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
@@ -77,10 +77,10 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
       main.header <- ""
     }
 
-    if (length(plotItems[["niche.params"]]) > 0) {
-      main.header <- paste(main.header, "\nNiche breadth:", plotItems[["niche.params"]][[1]],
-                           "\tNiche evol rate:", plotItems[["niche.params"]][[2]],
-                           "\tDispersal:", plotItems[["niche.params"]][[3]])
+    if (length(plotItems[["model.params"]]) > 0) {
+      main.header <- paste(main.header, "\nNiche breadth:", plotItems[["model.params"]][[1]],
+                           "\tNiche evol rate:", plotItems[["model.params"]][[2]],
+                           "\tDispersal:", plotItems[["model.params"]][[3]])
     }
 
     if ( (length(plotItems[["demes_genecolour"]]) > 0) | (!plot_env) ) {
@@ -119,7 +119,7 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
 
     # replace the row and column values with x, y if needed
 		if (env.has.rowcol.coords) {
-			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+			demetable.species$row <- environment.rows - demetable.species$row  # where row numbers are used for the y value, this converts
 																																							# to standard y values where y=0 as at the bottom, not top
 		} else  {
 		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
@@ -145,7 +145,7 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
 		
     # replace the row and column values with x, y if needed
 		if (env.has.rowcol.coords) {
-			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+			demetable.species$row <- environment.rows - demetable.species$row  # where row numbers are used for the y value, this converts
 																																							# to standard y values where y=0 as at the bottom, not top
 		} else  {
 		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
@@ -170,7 +170,7 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
     if (plot_genome_map) {
       # replace the row and column values with x, y if needed
   		if (env.has.rowcol.coords) {
-  			demetable.species$row <- environment.dimension - demetable.species$row  # where row numbers are used for the y value, this converts
+  			demetable.species$row <- environment.rows - demetable.species$row  # where row numbers are used for the y value, this converts
   																																							# to standard y values where y=0 as at the bottom, not top
   		} else  {
   		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
@@ -219,7 +219,7 @@ text.update <- function(textItems) {
       geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance)
     }
 
-    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$current.speciesID,
+    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$speciesID,
         "\nRange:", sp.summary$range,
         "\tTotal amount:", sp.summary$total_amount,
         "\n\n\tNiche",
