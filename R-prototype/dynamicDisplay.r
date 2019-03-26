@@ -1,5 +1,7 @@
 # functions for displaying information in runtime such as a map and summary stats
 
+library(data.table)
+
 display.initialise <- function() {
   if (!image_to_file) {
     x11(15,11)
@@ -58,7 +60,7 @@ display.initialise.colours <- function() {
 
 display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_genome_map=T) {
   # elements is a list of named components to include in the display
-browser()
+
   # this function relies on the data to be plotted, being in scope, rather than passed as argument
   # this can be revised if it is a problem
   dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
@@ -111,9 +113,9 @@ browser()
   if (length(plotItems[["demes_amount_position"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position"]]
 		
-		# assign colours to niche1.position, based on the 250 colours defined above in display.initialise.2by2()
+		# assign colours to niche0.position, based on the 250 colours defined above in display.initialise.2by2()
 		colour.count   <- 250
-    colour.indices <- round((demetable.species$niche1.position - min.env) * colour.count / range.env)
+    colour.indices <- round((demetable.species$niche0.position - min.env) * colour.count / range.env)
 		these.colours  <- my.colours[colour.indices]
     these.sizes    <- sqrt(demetable.species$amount) * 2 * dot.size.scaler
 
@@ -133,10 +135,10 @@ browser()
   if (length(plotItems[["demes_amount_position_diff"]]) > 0) {
     demetable.species <- plotItems[["demes_amount_position_diff"]]
 
-    env <- plotItems[["env"]]
-    set(demetable.species, j="env", value=env[demetable.species$cellID])
-    demetable.species[, diff:=niche1.position-env]
-    breadth.max <- demetable.species[, max(niche1.breadth)]
+    #env.ras <- plotItems[["env"]]
+    #demetable.species[, env:= env.ras[cellFromRowCol(env.ras, demetable.species$row, demetable.species$col)]]
+    demetable.species[, diff:=niche_centre_0 - env_0]
+    breadth.max <- demetable.species[, max(niche_breadth_0)]
 
     colour.nums <- round(demetable.species$diff * (248 / breadth.max)) + 124
     colour.nums[colour.nums < 1] <- 1
@@ -181,14 +183,15 @@ browser()
     }
     ########################################################################################
     if (plot_genome_scatter) {
-      
       these.sizes   <- sqrt(demetable.species$amount) * 1.5
-  
+
       # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
-      plot.limit  <- speciation.gene.distance * 0.6
-      plot.limits <- as.numeric(demetable.species[, .(min(gene.pos1, (plot.limit * -1)), max(gene.pos1, plot.limit), min(gene.pos2, (plot.limit * -1)), max(gene.pos2, plot.limit))])
+      plot.limit  <- gene.flow.max.distance * 0.6
+      plot.limits <- as.numeric(demetable.species[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
   
-      plot(demetable.species$gene.pos1, demetable.species$gene.pos2, col=these.colours, cex=these.sizes,
+      genome_scatter_x <- demetable.species[, genetic_position_0]
+      genome_scatter_y <- demetable.species[, genetic_position_1]
+      plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes,
            pch=20, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
   
       # add a weighted genome mean for the species, to the plot
@@ -216,17 +219,17 @@ text.update <- function(textItems) {
     gen.distance.available <- (length(sp.summary$gen.distance.max) > 0)
 
     if (gen.distance.available) {
-      geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=speciation.gene.distance)
+      geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=gene.flow.max.distance)
     }
 
-    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$speciesID,
+    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$speciesID, "of", sp.summary$speciesCount, "extant species",
         "\nRange:", sp.summary$range,
         "\tTotal amount:", sp.summary$total_amount,
         "\n\n\tNiche",
-        "\nNiche1 position\tMean:", sp.summary$niche1.position.mean, "\tSD:", sp.summary$niche1.position.sd,
-        "\nNiche1 breadth\tMean:", sp.summary$niche1.breadth.mean, "\tSD:", sp.summary$niche1.breadth.sd,
-        "\nNiche1 species\tMin: ", sp.summary$niche1.sp.min, "\tMax:", sp.summary$niche1.sp.max,
-        "\nTotal niche breadth:", (sp.summary$niche1.sp.max - sp.summary$niche1.sp.min))
+        "\nNiche0 position\tMean:", sp.summary$niche0.position.mean, "\tSD:", sp.summary$niche0.position.sd,
+        "\nNiche0 breadth\tMean:", sp.summary$niche0.breadth.mean, "\tSD:", sp.summary$niche0.breadth.sd,
+        "\nNiche0 species\tMin: ", sp.summary$niche0.sp.min, "\tMax:", sp.summary$niche0.sp.max,
+        "\nTotal niche breadth:", (sp.summary$niche0.sp.max - sp.summary$niche0.sp.min))
 
     if (gen.distance.available) {
       cat("\n\n\tGenetic divergence",
@@ -264,7 +267,6 @@ genome.colour <- function(demetable.species, genome.columns) {
     # if the range of values in a dimesion is greater than max.dist, expand max.dist so that all values
     # fit within the range of colours intensities
     max.dist <- (max(max.dist, col.span))
-
     max.range <- mid.range + (max.dist/2)
     min.range <- mid.range - (max.dist/2)
     new.col.name <- paste("genome.colour", col, sep = '')
