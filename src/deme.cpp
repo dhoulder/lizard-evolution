@@ -32,7 +32,6 @@ float Deme::niche_suitability(const Config &conf, const EnvCell env) {
 
 
 Deme::Genetics::Genetics(const SpeciesParameters &sp) {
-  // FIXME: DRY ???
   int i = 0;
   for (auto &&n: sp.niche) {
     niche_centre[i] = n.centre;

@@ -28,8 +28,6 @@ using boost::algorithm::replace_all_copy;
 
 namespace DreadDs {
 
-  static rng_eng_t rng;
-
   class DemeMixer {
     /**
      * For computing weighted average of genetic and niche positions
@@ -99,9 +97,6 @@ Model::Model(const Config &c):
   }
 }
 
-// MT TODO mutex around RNG stuff http://www.bnikolic.co.uk/blog/cpp-boost-rand-normal.html
-// FIXME make rng stuff configurable so it can be deterministic for testing
-
 static inline float dispersal_abundance(float source_abundance,
 					float suitability,
 					float distance_weight) {
@@ -145,7 +140,6 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
     // Iterate over all demes in the cell
     for (auto &&deme: deme_cell.second) {
       evolve_towards_niche(deme, source_env);
-      // FIXME MAYBE: update abundance?
       do_genetc_drift(deme);
 
       // "disperse" into the same cell. This becomes a primary deme
@@ -169,7 +163,6 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
 	env.get(new_loc, target_env, &no_target);
 	if (no_target)
 	  continue;
-	// FIXME CHECK check target_abundance for extinction?? (<=0.0). check against spec
 	(*target)[new_loc].emplace_back(
 		deme,
 		dispersal_abundance(
@@ -224,7 +217,7 @@ void Model::merge(DemeMap &dm) {
 
     auto &&deme_list = cell_itr->second;
     if (deme_list.size() < 1) {
-      // no demes, so get rid of the cell // FIXME can this actually happen??
+      // no demes, so get rid of the cell // TODO? can this actually happen??
       cell_itr = dm.erase(cell_itr);
       continue;
     }
@@ -242,8 +235,6 @@ void Model::merge(DemeMap &dm) {
       // NOTE: we assume there is at most one primary deme. In the
       // current model, all demes of a species in a cell mix down into
       // one final primary deme, so this assumption holds.
-      // FIXME CHECK: max 1 primary deme after gene flow?
-
       Deme *primary = first_deme->is_primary?
 	first_deme:
 	choose_primary(deme_list);
@@ -373,11 +364,6 @@ int Model::do_step() {
     merge(*target);
     int n_cells = target->size();
     n_occupied += n_cells;
-
-    // TODO? can do this row-lagged in the dispersal loop, providing we
-    // stay far enough behind the dispersal area
-    // TODO?? do this in another thread?
-
     // Finished with source demes now - replace with target;
     species->update(target, step);
     // TODO competition/co-occurrence. (see 3.5)

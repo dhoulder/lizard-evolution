@@ -38,8 +38,8 @@ static vector<float> comma_split(string csv) {
   return v;
 }
 
-static std::random_device rd;
-static std::mt19937 rng(rd());
+static random_device rd;
+static mt19937 rng(rd());
 static mutex rng_mutex;
 
 Config::Config(int ac, const char *av[]) {
@@ -331,8 +331,6 @@ Config::Config(int ac, const char *av[]) {
 	if (sp.niche.size() < env_dims)
 	  throw ConfigError("Not enough niche values. Need one for each environment "
 			    "dimension. (Separate values with a comma)");
-
-	// FIXME set genetics? (currently all 0.0)
 	initial_species.push_back(sp);
       }
     }
@@ -409,7 +407,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
   // rectangle or entire landscape.
 
   // Find the non-NAN locations within nsew
-  std::deque<Location> locations;
+  deque<Location> locations;
   Location loc;
   for (loc.y = n; loc.y <= s; ++loc.y)
     for (loc.x = w; loc.x <= e; ++loc.x) {
@@ -422,7 +420,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
 		      "species.niche-centre = random-cell");
 
   // choose cell and set niche centre to match
-  std::uniform_int_distribution<> distr(0, locations.size()-1);
+  uniform_int_distribution<> distr(0, locations.size()-1);
   int random_loc;
   {
     lock_guard<mutex> lock(rng_mutex);
@@ -448,7 +446,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
     float min_offset = env.geo_transform[1] * sp.random_rect_min * 0.5f;
     float max_offset = env.geo_transform[1] * sp.random_rect_max * 0.5f;
     // Choose random area around cell within specified limits.
-    std::uniform_real_distribution<float> distr(min_offset, max_offset);
+    uniform_real_distribution<float> distr(min_offset, max_offset);
     auto random_offset = [&]() {
       // uniform_real_distribution<>(x, x)() has undefined behaviour
       return (max_offset > min_offset)? distr(rng) : min_offset;
@@ -472,11 +470,11 @@ void Config::set_params_from_env(SpeciesParameters &sp,
 }
 
 
-std::vector<SpeciesParameters> Config::get_initial_species(
+vector<SpeciesParameters> Config::get_initial_species(
   const Environment &env) const {
   // Some parts of initial_species depend on the environment, so we
   // make a copy of initial_species and finish configuring it.
-  std::vector<SpeciesParameters> spv = initial_species;
+  vector<SpeciesParameters> spv = initial_species;
   for (auto &sp: spv)
     set_params_from_env(sp, env);
   return spv;

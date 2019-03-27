@@ -185,6 +185,8 @@ static DataFrame get_species(DreadDs::Model *m) {
   IntegerVector ids(n), parents(n), extinctions(n),
     splits(n), steps(n), cell_counts(n);
   NumericVector populations(n);
+  CharacterVector species_names(n);
+
   int n_stats = conf.env_dims * 6;
   int n_gen = conf.genetic_dims * 2;
   NumericVector latest_stats[n_stats];
@@ -198,8 +200,8 @@ static DataFrame get_species(DreadDs::Model *m) {
   for (int sp_i=0; sp_i < all_species.size(); ++sp_i, ++sp_itr) {
     auto &species = *(*sp_itr);
     auto &stats = species.latest_stats;
-
     ids[sp_i] = species.id;
+    species_names[sp_i] = species.get_name();
     parents[sp_i] = species.parent? species.parent->id : -1;
     extinctions[sp_i] = species.extinction;
     splits[sp_i] = species.split;
@@ -260,8 +262,9 @@ static DataFrame get_species(DreadDs::Model *m) {
   for (int i=0; i < n_gen; i++)
     df_columns[dfcol++] = genetics[i];
   df_columns.names() = col_names;
-
-  return DataFrame(df_columns);
+  DataFrame df(df_columns);
+  df.attr("row.names") = species_names;
+  return df;
 }
 
 /**

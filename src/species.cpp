@@ -176,7 +176,7 @@ int Species::update_stats(Characteristics &ch) {
   for (auto &&kv: *demes)
     for (auto &&d: kv.second) {
       if (d.amount <= 0.0f)
-	continue; // FIXME flag these cases???
+	continue;
       ++ch.cell_count;
       ch.population += d.amount;
 
@@ -193,7 +193,7 @@ int Species::update_stats(Characteristics &ch) {
     }
 
   if (ch.cell_count == 0) {
-    // leave other stats as they were on previous step TODO think about this
+    // leave other stats as they were on previous step. TODO? or maybe reset them?
     return 0;
   }
 

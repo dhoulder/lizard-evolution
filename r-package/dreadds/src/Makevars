@@ -1,2 +1,3 @@
+CXX_STD = CXX11
 PKG_CPPFLAGS=-I$(DREAD_DS_SRC)
 PKG_LIBS=-L$(DREAD_DS_SRC) -ldreadds -lboost_program_options -lboost_filesystem  -lgdal

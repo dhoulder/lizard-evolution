@@ -25,7 +25,8 @@ namespace DreadDs {
     public:
       float niche_centre[max_env_dims];
       float niche_tolerance[max_env_dims];
-      float genetic_position[max_genetic_dims]; // genetic position in n-dimensional space. See struct Genetics
+      float genetic_position[max_genetic_dims]; // genetic position in
+      // n-dimensional space.
 
       Genetics():
         // zero everything
@@ -46,8 +47,8 @@ namespace DreadDs {
       genetics(sp) {}
 
     Deme(const Deme &from, float new_amount, bool new_primary):
+      // Delegate to implicit copy constructor to copy genetics
       Deme(from) {
-      // FIXME only need to do env_dims, not max_env_dims. Maybe use float xxxx[nnnn] = {0.0f} just to be sure? or pass in nnnn
       amount = new_amount;
       is_primary = new_primary;
     }
@@ -73,8 +74,19 @@ namespace DreadDs {
 
   // Cells occupied by demes of a species, Several demes can occupy a
   // cell, hence std::list
-  typedef std::list <Deme> DemeList; // FIXME use forward_list with emplace_after(whatever.begin(), …)  and emplace_front() ????? what if more than 1 primary demes??? or maybe struct {Deme primary;  std::forward_list <Deme> others}
+  typedef std::list <Deme> DemeList;
+  // TODO DemeList could probably just be a forward_list and use
+  // emplace_after(whatever.begin(), …)  and emplace_front(). Or maybe
+  // struct {Deme primary; std::forward_list <Deme> others}, or maybe
+  // just use a vector and reserve(worst_case_length). Do we need to
+  // handle more than 1 primary deme?
   typedef std::map <Location, DemeList> DemeMap;
+  // Note that compared to a simple 2D array, DemeMap is faster to
+  // iterate through when the population is sparse, but slower to
+  // index by location. Profiling indicates that around 20% to 30% of
+  // the total model runtime is spent accessing or modifying
+  // DemeMap()s. A 2D array with some kind of adaptive bounding box to
+  // mask out many of the empty cells might be faster.
   typedef std::pair<const Location, DemeList> DemeMapEntry;
 }
 #endif

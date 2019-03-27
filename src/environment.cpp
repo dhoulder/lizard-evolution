@@ -11,6 +11,7 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#include <mutex>
 
 #define BOOST_DISABLE_ASSERTS
 
@@ -27,6 +28,7 @@
 #include "exceptions.h"
 
 static bool gdal_reg = false;
+static std::mutex reg_mutex;
 
 using namespace DreadDs;
 namespace bm = boost::math;
@@ -34,9 +36,12 @@ namespace bm = boost::math;
 EnvReader:: EnvReader(const std::string &filename):
   grid_filename(filename)
 {
-  if (!gdal_reg) {
-    GDALAllRegister();
-    gdal_reg = true;
+  {
+    std::lock_guard<std::mutex> lock(reg_mutex);
+    if (!gdal_reg) {
+      GDALAllRegister();
+      gdal_reg = true;
+    }
   }
   dataset = (GDALDataset *) GDALOpen(filename.c_str(), GA_ReadOnly);
   if (dataset == NULL)

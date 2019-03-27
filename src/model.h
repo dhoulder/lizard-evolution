@@ -50,6 +50,7 @@ namespace DreadDs {
     Species::Vec get_all_species();
 
   private:
+    rng_eng_t rng;
     uniform_real_distr_t gene_flow_distr;
     uniform_vg_t gene_flow_random;
     uniform_real_distr_t deme_choice_distr;
