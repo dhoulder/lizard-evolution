@@ -1,48 +1,63 @@
 # Dynamic Range Evolution and Diversification simulation with dynamic speciation (DREaD_ds)
 
 This directory contains source code and documentation for the DREaD_ds
-evolution model. See `README-*.md` for site- and platform-specific
-information.
+evolution model. It implements a spatially explicit dynamic
+intraspecific macroevolutionary model to simulate expected spatial
+patterns of species and phylogenetic diversity. The primary purpose is
+to select appropriate models which generate expected spatial patterns
+best matching observed diversity. It is used to determine the processes
+responsible for the spatial distribution of biological diversity and
+phylogenetic endemism.
 
-`./src` contains source code for the C++ implementation of the model
-and several utility programs. The model implemented in C++ is
-intended to closely match the model implemented by
-`./R-prototype/DREaD_ds.R`, but in a language that allows for greater
-computational performance.
+* See `./README-*.md` for site- and platform-specific information.
 
-`./examples/` contains sample configuration and input files.
+* `./src` contains source code for the C++ implementation of the model
+  and several utility programs. The model implemented in C++ is
+  intended to closely match the model implemented by
+  `./R-prototype/DREaD_ds.R`, but in a language that allows for
+  greater computational performance.
 
-`./scripts/` contains shell scripts to assist in running the model and
-pre-processing input data. Run these without arguments for usage
-information.
+* `./examples/` contains sample configuration and input files.
 
-`./r-package/` contains files that provide an R API that allows the
-model to be called from the R interpreter.
+* `./r-package/` contains files that provide an API for the R
+  statistical computing language that allows the model to be run within
+  the R interpreter.
 
-`./R-prototype/` contains background information and support files for
-the original model prototype written in R.
+* `./scripts/` contains shell scripts to assist in running the model
+  and pre-processing input data. Run these without arguments for usage
+  information.
+
+* `./R-prototype/` contains background information and support files
+  for the original model prototype written in R.
 
 
 ## Building and running he model
 
-`./src/README.md` contains instructions for building both the library
-that implements the model, and a standalone executable (`dreadds`)
-that provides a command-line interface to it.
+The model can be run using either the `dreadds` standalone executable,
+or the R API.
 
-To see the usage information and a description of all configuration
-options for the `dreadds` executable, run
-```
-src/dreadds -h
-```
+Both the command-line interface and the R-language interface require
+input files of gridded environment values to specify the simulation
+environment.
 
-Configuration options are usually supplied to `dreadds` by means of a
-a configuration file. Command-line options override options in the
-configuration file. See `examples/example.conf` for the configuration
-file format and comments that explain how the configuration options
-are used.
+Model parameters are usually specified by means of a configuration
+file, but they can also be specified directly, either through
+command-line arguments, or function arguments when using the R
+API. See `examples/example.conf` for the configuration file format and
+comments that explain how the configuration options are used. In R,
+see the package help pages for details.
 
-The build procedure will also generate `src/grids2tsv` which can be
-used to convert rasters of climate values to vector form.
+* `./src/README.md` contains instructions for building both the library
+  that implements the model, and the command-line interface.
 
+  To see the usage information and a description of all configuration
+  options for the `dreadds` executable, run
+  ```
+  src/dreadds -h
+  ```
 
-`./r-package/README.md` contains instructions for building the R API.
+  The build procedure will also generate `src/grids2tsv` which can be
+  used to convert rasters of climate values to vector form.
+
+* `./r-package/README.md` contains instructions for building and
+  using the R API.

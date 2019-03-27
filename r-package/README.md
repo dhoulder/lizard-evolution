@@ -37,6 +37,9 @@
   The build process needs to be able to find the libraries that the DREaD_ds
   library depends on.
 
+* Make sure you've built the latest version of the underlying C++
+  librray first. See `../src/README.md`
+
 * Change your working directory to the one containing this `README.md`
   if you're not already here. e.g.
   ```
@@ -77,15 +80,15 @@ R
 
 ### Modifying the R package
 
-* If you have changed the API in `rcpp_*.cpp`, do…
-  ```
-  mv -i dreadds/src/RcppExports.cpp ~/
+If you have changed the API in `rcpp_*.cpp`, do…
+```
+mv -i dreadds/src/RcppExports.cpp ~/
 
-  R
-  ...
-  > require(Rcpp)
-  > compileAttributes("dreadds")
-  > q()
-  ```
-  …to update the package skeleton first. Note that those files are under
-  version control
+R
+...
+> require(Rcpp)
+> compileAttributes("dreadds")
+> q()
+```
+…to update the package skeleton first. Note that those files are under
+version control
