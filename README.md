@@ -38,14 +38,16 @@ or the R API.
 
 Both the command-line interface and the R-language interface require
 input files of gridded environment values to specify the simulation
-environment.
+environment. See https://www.gdal.org/formats_list.html for a list of
+acceptable file formats.
 
 Model parameters are usually specified by means of a configuration
 file, but they can also be specified directly, either through
 command-line arguments, or function arguments when using the R
-API. See `examples/example.conf` for the configuration file format and
-comments that explain how the configuration options are used. In R,
-see the package help pages for details.
+API.
+
+See below for details about the configuration options and file format.
+
 
 * `./src/README.md` contains instructions for building both the library
   that implements the model, and the command-line interface.
@@ -61,3 +63,80 @@ see the package help pages for details.
 
 * `./r-package/README.md` contains instructions for building and
   using the R API.
+
+### Configuration options and file format
+
+The definitive list of configuration options and their meanings can be
+obtained by running
+
+```
+src/dreadds -h
+```
+
+See `examples/example.conf` for an example configuration file and
+comments that explain how the configuration options are used. In R,
+see the package help pages for details. The R API provides a more
+R-like syntax for many of the configuration options by means of
+function arguments.
+
+Options can be specified in any order. This includes those options
+that are used to specify repeatable sets of values in a section, such
+as `[env]` or `[species]`. For these cases, ordinal correspondence of
+the repeatable options is used to form each set.
+
+In other words, the first set is constructed from the first
+occurrences of its constituent options, the second set from the second
+occurrences and so on. In order to maintain readability, it's
+probably best to group each set together.
+
+For example, the following two snippets are equivalent, although the
+first one is easier to read and maintain
+
+```
+[species]
+# Recommended layout
+# First species
+niche-centre = 12, 34
+niche-breadth = 1.2, 3.4
+# other options for first species…
+
+# Second species
+niche-centre = 13, 35
+niche-breadth = 1.3, 3.5
+# other options for second species…
+
+```
+
+```
+[species]
+# This works but is not recommended
+niche-centre = 12, 34 # for first species
+niche-centre = 13, 35 # for second species
+niche-breadth = 1.2, 3.4 # for first species
+niche-breadth = 1.3, 3.5 # for second species
+# remaining options for both species…
+```
+
+Options on the command line override those in the config file. For
+options that can be repeated (for example `--species.niche-centre`),
+the entire list of those options is overridden, effectively overriding
+all of those options that were specified in the config file.
+
+This config file is parsed by the Boost program_options library. See
+https://www.boost.org/doc/libs/1_68_0/doc/html/program_options/overview.html#id-1.3.31.5.10.2
+
+Comments are prefixed with a `#` character and can be inserted anywhere.
+
+`key=value` specifies a value for an option, equivalent to the
+command-line argument `--key=value`
+
+`[something]` starts a section.
+
+Below a `[section]`, `key=value` is equivalent to the command line
+syntax `--section.key=value`.
+
+Leading and trailing whitespace is stripped from both keys and values.
+**Note that there is no quoting syntax, thus no way to specify a
+literal `#` character, nor explicit leading or trailing spaces.** Also
+note that shell metacharacters such as `~` and `$` are also
+interpreted literally.
