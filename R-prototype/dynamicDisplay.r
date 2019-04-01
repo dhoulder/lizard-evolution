@@ -59,10 +59,8 @@ display.initialise.colours <- function() {
 }
 
 display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_genome_map=T) {
-  # elements is a list of named components to include in the display
+  # plotItems is a list of named components to include in the display
 
-  # this function relies on the data to be plotted, being in scope, rather than passed as argument
-  # this can be revised if it is a problem
   dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   if (length(plotItems[["env"]]) > 0) {
@@ -96,7 +94,6 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
 	
 	# convert row / column coordinates to continuous coordinates, if they don't match the environment raster
 	# for example, if the raster is in degrees, then row and column numbers won't plot correctly
-	
 	if (length(plotItems[["demes_amount_position"]]) > 0 | 
 			length(plotItems[["demes_amount_position_diff"]]) > 0 |
 			length(plotItems[["demes_genecolour"]]) > 0){
@@ -308,3 +305,125 @@ display.to.file.stop <- function() {
   dev.off()
 }
 
+display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_demes_amount_position=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F) {
+  # plotItems is a list of named components to include in the display
+
+  dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
+
+  # to maintain a consistent scale of environment colours, fix two pixels to the extremes of the range
+  # currently this is the initial range of values (0 to 100) plus the amplitude of cyclical variation
+  # 10, so the range should be -10 to 110
+  plotItems[["env"]][1] <- -10
+  plotItems[["env"]][2] <- 110
+  
+  if (length(plotItems[["current.time"]]) > 0) {
+    main.header <- paste("Time:", plotItems[["current.time"]])
+  } else {
+    main.header <- ""
+  }
+  
+  if (length(plotItems[["model.params"]]) > 0) {
+    main.header <- paste(main.header, "\nNiche breadth:", plotItems[["model.params"]][[1]],
+                         "\tNiche evol rate:", plotItems[["model.params"]][[2]],
+                         "\tDispersal:", plotItems[["model.params"]][[3]])
+  }
+  # convert row / column coordinates to continuous coordinates, if they don't match the environment raster
+  # for example, if the raster is in degrees, then row and column numbers won't plot correctly
+
+  # check if the environment layer has coordinates matching the row and column numbers
+  env_temp <- plotItems[["env"]]
+  env.has.rowcol.coords <- (env_temp@ncols == env_temp@extent@xmax)
+  
+  # check the range of environment raster values
+  min.env 	<- min(env_temp[], na.rm=T)
+  range.env <- max(env_temp[], na.rm=T) - min.env
+  
+  # replace the row and column values with x, y if needed
+  if (env.has.rowcol.coords) {
+    allDemes$row <- environment.rows - allDemes$row  # where row numbers are used for the y value, this converts
+    # to standard y values where y=0 as at the bottom, not top
+  } else  {
+    allDemes$col <- xFromCol(env_temp, col=allDemes$col)		# replace row and column with x and y values
+    allDemes$row <- yFromRow(env_temp, row=allDemes$row)
+  }
+  
+  these.symbols  <- getDiscreteSymbols(allDemes$species_name)
+
+  if (plot_demes_amount_position) {
+
+    # assign colours to niche0.position, based on the 250 colours defined above in display.initialise.2by2()
+    colour.count   <- 250
+    colour.indices <- round((allDemes$niche_centre_0 - min.env) * colour.count / range.env)
+    these.colours  <- my.colours[colour.indices]
+    these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
+    
+    plot(plotItems[["env"]], main=main.header, col="white")  
+    points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=these.sizes)
+  }
+  
+  if (plot_richness) {
+    richness.dt <- allDemes[, .(cellRichness=length(species_name)), by=.(row, column)]
+    
+    # create a richness raster of the same size as env
+    env.extent   <- extent(plotItems[["env"]])
+    richness.ras <- raster(env.extent, nrows=plotItems[["env"]]@nrows, ncols=plotItems[["env"]]@ncols)
+    richness.ras[] <- 0
+    richness.dt[, cellIndex:=cellFromRowCol(richness.ras,(environment.rows - row), column)]
+    richness.ras[richness.dt$cellIndex] <- richness.dt$cellRichness
+  
+    plot(richness.ras)
+  }
+
+  if (plot_genome_scatter | plot_genome_map) {
+    plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight gene colours
+    
+    env <- plotItems[["env"]]
+    genome.columns <- plotItems[["genome.columns"]]
+    
+    # call genome.colours function to turn gene positions into R, G & B
+    deme.colours <- genome.colour(allDemes, genome.columns)
+    
+    these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
+    
+    if (plot_genome_map) {
+
+      points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=dot.size.scaler)
+    }
+    ########################################################################################
+    if (plot_genome_scatter) {
+
+      these.sizes   <- sqrt(allDemes$amount) * 1.5
+      
+      # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
+      plot.limit  <- gene.flow.max.distance * 0.8
+      plot.limits <- as.numeric(allDemes[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
+      
+      genome_scatter_x <- allDemes$genetic_position_0
+      genome_scatter_y <- allDemes$genetic_position_1
+      plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes,
+           pch=these.symbols, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
+      
+      # add a weighted genome mean for each species, to the plot
+browser()
+      means <- genome.mean(allDemes, genome.columns)
+      points(means[1], means[2], pch=3, cex=1.5)
+    }
+    ########################################################################################
+    
+  }
+
+  return(1)
+}
+
+getDiscreteSymbols <- function(pointValues) {
+  # pointValues should be a vector of class integer or factor, consecutively from 1
+  
+  if (! (class(pointValues) %in% c("factor", "integer"))) {exit}
+  
+  if (class(pointValues) == "factor") {
+    pointValues <- as.integer(pointValues)
+  }
+  
+  symbols <- 20 - pointValues
+  return(symbols)
+}
