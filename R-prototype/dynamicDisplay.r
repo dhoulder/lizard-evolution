@@ -292,8 +292,8 @@ genome.mean <- function(demetable.species, genome.columns) {
 }
 
 display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=2) {
-  image.width = 960
-  image.height = 960
+  image.width	<- 1200
+  image.height	<- 1200
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
   png(output.filename, width = image.width, height=image.height)
@@ -308,7 +308,7 @@ display.to.file.stop <- function() {
 display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_demes_amount_position=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F) {
   # plotItems is a list of named components to include in the display
 
-  dot.size.scaler <- 0.8  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
+  dot.size.scaler <- 0.9  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
 
   # to maintain a consistent scale of environment colours, fix two pixels to the extremes of the range
   # currently this is the initial range of values (0 to 100) plus the amplitude of cyclical variation
@@ -371,7 +371,8 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
     richness.dt[, cellIndex:=cellFromRowCol(richness.ras,(environment.rows - row), column)]
     richness.ras[richness.dt$cellIndex] <- richness.dt$cellRichness
   
-    plot(richness.ras)
+	main.txt <- paste("Species richness\t\tTotal species:", plotItems[["speciesCount"]])
+    plot(richness.ras, main=main.txt)
   }
 
   if (plot_genome_scatter | plot_genome_map) {
@@ -386,12 +387,10 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
     
     if (plot_genome_map) {
-
       points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=dot.size.scaler)
     }
-    ########################################################################################
-    if (plot_genome_scatter) {
 
+    if (plot_genome_scatter) {
       these.sizes   <- sqrt(allDemes$amount) * 1.5
       
       # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
@@ -404,12 +403,9 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
            pch=these.symbols, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
       
       # add a weighted genome mean for each species, to the plot
-browser()
       means <- genome.mean(allDemes, genome.columns)
       points(means[1], means[2], pch=3, cex=1.5)
-    }
-    ########################################################################################
-    
+    }  
   }
 
   return(1)

@@ -25,7 +25,7 @@ getAllDemes   <- function(sp.df, model) {
   return(allDemes)
 }
 
-envOrig <- raster("/home/danr/code/DREaD_extras/habitat_sizes.asc")
+envOrig <- raster("~/code/DREaD_extras/habitat_sizes.asc")
 environment.rows <- nrow(envOrig)
 
 niche.evolution.rate    <- 0  # this should be extracted from the model arguments, but not yet possible
@@ -41,12 +41,14 @@ do.display.genome     <- TRUE
 do.text.output        <- TRUE
 image_to_file         <- TRUE
 raster_to_file        <- FALSE
-image_frequency       <- 20
+image_counter		  <- 1  # give images consecutive integer names to work with ffmpeg movies
+image_frequency       <- 50
 
-run_interval          <- 5  # this is the number of steps to run before returning to R
+run_interval          <- 50  # this is the number of steps to run before returning to R
+nSteps 				  <- 50000
 
 # define and create the directory structure
-base.dir              <- "~/simulations/multisize_test/"
+base.dir              <- "~/simulation/multisize_test/"
 output.dir            <- paste(base.dir, "output/", sep='')
 image.dir             <- paste(output.dir, "images/", sep='')
 
@@ -71,13 +73,10 @@ if (do.display) {
   }
 }
 
-# set up and start running the model here
-nSteps <- 1000
-
 starttime_global <- Sys.time()
 
 m <- createDreadDS(
-        config.file = "/home/danr/simulations/multisize_test/multisize.conf",
+        config.file = "/short/ka2/simulation/multisize_test/multisize.conf",
         output.dir = output.dir,
         iterations = nSteps
       )
@@ -148,14 +147,15 @@ while (currentStep <= nSteps) {
       env.ras <- rasterFromEnv(m, envOrig, 1)
       
       if (image_to_file) {
-        display.to.file.start(image.dir, currentStep, image_filename = paste("animation_multisp_", sep=""))
+        display.to.file.start(image_dir=image.dir, time=image_counter, image_filename = paste("animation_multisp_", sep=""))
+		# use time=image_counter for consecutively numbered images (eg for ffmpeg) or time=currentStep to number by the model time
       }
 
       model.params <- list(niche.breadth=round(sp.df$niche_breadth_mean_0[1]), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
 
       display.update.multispecies(list(env = env.ras, current.time=currentStep, model.params = model.params), allDemes = all.demes, plot_demes_amount_position = TRUE)
 
-      display.update.multispecies(list(env = env.ras, current.time=currentStep, model.params = model.params), allDemes = all.demes, plot_richness = TRUE)
+      display.update.multispecies(list(env = env.ras, current.time = currentStep, model.params = model.params, speciesCount = sp_count), allDemes = all.demes, plot_richness = TRUE)
 
       if (do.display.genome) {
         display.update.multispecies(list(env = env.ras, current.time=currentStep, model.params = model.params, genome.columns=genome.columns),
@@ -166,6 +166,7 @@ while (currentStep <= nSteps) {
  
       if (image_to_file) {
         display.to.file.stop()
+		image_counter <- image_counter + 1
       }
     }
   }
