@@ -293,7 +293,7 @@ genome.mean <- function(demetable.species, genome.columns) {
 
 display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=2) {
   image.width	<- 1200
-  image.height	<- 1200
+  image.height	<- 1600
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
   png(output.filename, width = image.width, height=image.height)

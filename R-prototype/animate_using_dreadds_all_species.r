@@ -6,6 +6,13 @@ library(data.table)
 
 source("~/code/DREaD_ds/R-prototype/dynamicDisplay.r")
 
+# turn the input arguments into local variables with relevant names
+input.args	<- commandArgs(trailingOnly = TRUE)
+output.dir	<- input.args[1]
+config.file <- input.args[2]
+#dispersal	 <- as.numeric(input.args[2])
+cat("\nExternal arguments received in R\n\toutput.dir\t", output.dir, "\n\tconfig.file\t", config.file, "\n")
+
 rasterFromEnv <- function(dreadModel, envTemplate, envNumber=1) {
   env         <- dreadModel$getEnv()[[envNumber]]
   env.extent  <- extent(envTemplate)
@@ -17,7 +24,7 @@ rasterFromEnv <- function(dreadModel, envTemplate, envNumber=1) {
 getAllDemes   <- function(sp.df, model) {
   # first add a species name to each species' deme table
   demesDataFrames <- model$getDemes()
-  for (species_name in  rownames(sp.df)) {
+  for (species_name in rownames(sp.df)) {
     species_name_column <- rep(species_name, nrow(demesDataFrames[[species_name]]))
     demesDataFrames[[species_name]] <- cbind(species_name=species_name_column, demesDataFrames[[species_name]])
   }
@@ -25,12 +32,21 @@ getAllDemes   <- function(sp.df, model) {
   return(allDemes)
 }
 
-envOrig <- raster("~/code/DREaD_extras/habitat_sizes.asc")
+randomTime   <- function(max) {
+  # this function aims to introduce a random number of steps to ensure that each run is different
+  x <- round(runif(1, 0, max))
+  for (i in 0:x) {
+	y <- i * 2
+  }
+  cat("\n", x, "random steps completed\n")
+}
+
+envOrig <- raster("~/simulation/input_data/AMT2.5min-grids/T5000/Dan AMT2.5min_bio PaleoClimDat - MinTemp.txt.tif")
 environment.rows <- nrow(envOrig)
 
-niche.evolution.rate    <- 0  # this should be extracted from the model arguments, but not yet possible
-dispersal               <- 2  # this should be extracted from the model arguments, but not yet possible
-gene.flow.max.distance  <- 20  # this should be extracted from the model arguments, but not yet possible
+niche.evolution.rate    <- 0.02  # this should be extracted from the model arguments, but not yet possible
+dispersal               <- 2     # this should be extracted from the model arguments, but not yet possible
+gene.flow.max.distance  <- 15    # this should be extracted from the model arguments, but not yet possible
 genome.column.name.format   <- "genetic_position_"
 
 # set up the plotting environment
@@ -42,14 +58,14 @@ do.text.output        <- TRUE
 image_to_file         <- TRUE
 raster_to_file        <- FALSE
 image_counter		  <- 1  # give images consecutive integer names to work with ffmpeg movies
-image_frequency       <- 50
+image_frequency       <- 4
 
-run_interval          <- 50  # this is the number of steps to run before returning to R
-nSteps 				  <- 50000
+run_interval          <- 4  # this is the number of steps to run before returning to R
+nSteps 				  <- 2000
 
 # define and create the directory structure
 base.dir              <- "~/simulation/multisize_test/"
-output.dir            <- paste(base.dir, "output/", sep='')
+#output.dir            <- paste(base.dir, "output1/", sep='')
 image.dir             <- paste(output.dir, "images/", sep='')
 
 if (dir.exists(image.dir) == FALSE) {
@@ -76,11 +92,15 @@ if (do.display) {
 starttime_global <- Sys.time()
 
 m <- createDreadDS(
-        config.file = "/short/ka2/simulation/multisize_test/multisize.conf",
+        config.file = config.file,
         output.dir = output.dir,
         iterations = nSteps
       )
 
+# run a process of variable length here to (hopefully) introduce randomness
+  set.seed(Sys.time())
+  randomTime(100000)
+	  
 # step through the model 
 currentStep <- 0
 while (currentStep <= nSteps) {
