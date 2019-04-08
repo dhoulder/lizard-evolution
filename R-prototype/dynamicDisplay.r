@@ -292,8 +292,8 @@ genome.mean <- function(demetable.species, genome.columns) {
 }
 
 display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=2) {
-  image.width	<- 1200
-  image.height	<- 1600
+  image.width	<- 1600
+  image.height	<- 1200
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
   png(output.filename, width = image.width, height=image.height)
@@ -305,7 +305,7 @@ display.to.file.stop <- function() {
   dev.off()
 }
 
-display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_demes_amount_position=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F) {
+display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, plot_demes_amount_position=F, plot_species_ranges=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F) {
   # plotItems is a list of named components to include in the display
 
   dot.size.scaler <- 0.9  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
@@ -313,8 +313,8 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
   # to maintain a consistent scale of environment colours, fix two pixels to the extremes of the range
   # currently this is the initial range of values (0 to 100) plus the amplitude of cyclical variation
   # 10, so the range should be -10 to 110
-  plotItems[["env"]][1] <- -10
-  plotItems[["env"]][2] <- 110
+  #plotItems[["env"]][1] <- -10
+  #plotItems[["env"]][2] <- 110
   
   if (length(plotItems[["current.time"]]) > 0) {
     main.header <- paste("Time:", plotItems[["current.time"]])
@@ -331,22 +331,21 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
   # for example, if the raster is in degrees, then row and column numbers won't plot correctly
 
   # check if the environment layer has coordinates matching the row and column numbers
-  env_temp <- plotItems[["env"]]
-  env.has.rowcol.coords <- (env_temp@ncols == env_temp@extent@xmax)
+  env.has.rowcol.coords <- (env@ncols == env@extent@xmax)
   
   # check the range of environment raster values
-  min.env 	<- min(env_temp[], na.rm=T)
-  range.env <- max(env_temp[], na.rm=T) - min.env
-  
+  min.env 	<- min(env[], na.rm=T)
+  range.env <- max(env[], na.rm=T) - min.env
+
   # replace the row and column values with x, y if needed
   if (env.has.rowcol.coords) {
     allDemes$row <- environment.rows - allDemes$row  # where row numbers are used for the y value, this converts
     # to standard y values where y=0 as at the bottom, not top
   } else  {
-    allDemes$col <- xFromCol(env_temp, col=allDemes$col)		# replace row and column with x and y values
-    allDemes$row <- yFromRow(env_temp, row=allDemes$row)
+    allDemes$column <- xFromCol(env, col=allDemes$col)		# replace row and column with x and y values
+    allDemes$row <- yFromRow(env, row=allDemes$row)
   }
-  
+
   these.symbols  <- getDiscreteSymbols(allDemes$species_name)
 
   if (plot_demes_amount_position) {
@@ -357,28 +356,41 @@ display.update.multispecies <- function(plotItems, allDemes, plot_env=T, plot_de
     these.colours  <- my.colours[colour.indices]
     these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
     
-    plot(plotItems[["env"]], main=main.header, col="white")  
+    plot(env, main=main.header, col="white")  
     points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=these.sizes)
   }
   
+  if (plot_species_ranges) {
+    these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
+      
+	plot(env, main=main.header, col="white", legend=FALSE)
+	points(allDemes$col, allDemes$row, col=allDemes$species, pch=19, cex=these.sizes)
+  }
+  
   if (plot_richness) {
-    richness.dt <- allDemes[, .(cellRichness=length(species_name)), by=.(row, column)]
+
+    #richness.dt <- allDemes[, .(cellRichness=length(species_name)), by=.(row, column)]
+    richness.dt <- allDemes[, .(spRichness=.N), by=.(column, row)]
     
     # create a richness raster of the same size as env
-    env.extent   <- extent(plotItems[["env"]])
-    richness.ras <- raster(env.extent, nrows=plotItems[["env"]]@nrows, ncols=plotItems[["env"]]@ncols)
+    env.extent   <- extent(env)
+    richness.ras <- env
     richness.ras[] <- 0
-    richness.dt[, cellIndex:=cellFromRowCol(richness.ras,(environment.rows - row), column)]
-    richness.ras[richness.dt$cellIndex] <- richness.dt$cellRichness
+    if (env.has.rowcol.coords) {
+      richness.dt[, cellIndex:=cellFromRowCol(richness.ras,(environment.rows - row), column)]
+    } else {
+      richness.dt[, cellIndex:=cellFromXY(richness.ras, cbind(column, row))]
+    }
+
+    richness.ras[richness.dt$cellIndex] <- richness.dt$spRichness
   
 	main.txt <- paste("Species richness\t\tTotal species:", plotItems[["speciesCount"]])
     plot(richness.ras, main=main.txt)
   }
 
   if (plot_genome_scatter | plot_genome_map) {
-    plot(plotItems[["env"]], main=main.header, col="white")   # trying a blank environment map to highlight gene colours
+    plot(env, main=main.header, col="white", legend=FALSE)   # a blank environment map to highlight gene colours
     
-    env <- plotItems[["env"]]
     genome.columns <- plotItems[["genome.columns"]]
     
     # call genome.colours function to turn gene positions into R, G & B
@@ -422,4 +434,12 @@ getDiscreteSymbols <- function(pointValues) {
   
   symbols <- 20 - pointValues
   return(symbols)
+}
+
+add.alpha <- function(col, alpha=1){
+  # add an alpha value to a colour
+  if(missing(col)) {stop("Please provide a vector of colours.")}
+  apply(sapply(col, col2rgb)/255, 2, 
+                     function(x) 
+                       rgb(x[1], x[2], x[3], alpha=alpha))  
 }

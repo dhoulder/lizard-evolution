@@ -46,8 +46,10 @@ environment.rows <- nrow(envOrig)
 
 niche.evolution.rate    <- 0.02  # this should be extracted from the model arguments, but not yet possible
 dispersal               <- 2     # this should be extracted from the model arguments, but not yet possible
-gene.flow.max.distance  <- 15    # this should be extracted from the model arguments, but not yet possible
+gene.flow.max.distance  <- 20    # this should be extracted from the model arguments, but not yet possible
 genome.column.name.format   <- "genetic_position_"
+paleoTime.start         <- 5000
+paleoTime.step          <- 2.5
 
 # set up the plotting environment
 # display settings
@@ -58,9 +60,9 @@ do.text.output        <- TRUE
 image_to_file         <- TRUE
 raster_to_file        <- FALSE
 image_counter		  <- 1  # give images consecutive integer names to work with ffmpeg movies
-image_frequency       <- 4
+image_frequency   <- 1
 
-run_interval          <- 4  # this is the number of steps to run before returning to R
+run_interval      <- 1  # this is the number of steps to run before returning to R
 nSteps 				  <- 2000
 
 # define and create the directory structure
@@ -122,16 +124,15 @@ while (currentStep <= nSteps) {
   
   # get all demes
   all.demes <- getAllDemes(sp.df, model=m)
-
-  #species_name <- paste("species_", sp_current$id, sep="")
-  #sp_current_demes <- m$getDemes()[[species_name]]
-  #setDT(sp_current_demes) #make sp_current_demes into a data.table for compatibility with existing code in dynamicDisplay.r
-  
+ 
   # on first step, identify the genome position columns
   if (exists("genome.columns")==FALSE) {
     genome.columns <- grep(genome.column.name.format, names(all.demes), value=FALSE)
-  }    
+  }  
   
+  # record the time before present for map and text outputs
+  paleoTime <- paleoTime.start - (paleoTime.step * currentStep)
+
   for (sp_idx in 1:sp_count) {
     sp_current <- sp.df[sp_idx,]
       
@@ -150,7 +151,7 @@ while (currentStep <= nSteps) {
     
       sp.summary <- round(sp.summary, 4)
 
-      list.for.text <- c(list(current.time=currentStep,
+      list.for.text <- c(list(current.time=paleoTime,
                               elapsed.time.total = difftime(Sys.time(), starttime_global),
                               elapsed.time.step = difftime(Sys.time(), starttime_timestep)),
                               as.list(sp.summary[1,]))
@@ -173,12 +174,15 @@ while (currentStep <= nSteps) {
 
       model.params <- list(niche.breadth=round(sp.df$niche_breadth_mean_0[1]), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
 
-      display.update.multispecies(list(env = env.ras, current.time=currentStep, model.params = model.params), allDemes = all.demes, plot_demes_amount_position = TRUE)
+      # display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_demes_amount_position = TRUE)
+	  
+      display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_species_ranges = TRUE)	  
 
-      display.update.multispecies(list(env = env.ras, current.time = currentStep, model.params = model.params, speciesCount = sp_count), allDemes = all.demes, plot_richness = TRUE)
+      display.update.multispecies(list(current.time = paleoTime, model.params = model.params, speciesCount = sp_count), env = env.ras, allDemes = all.demes, plot_richness = TRUE)
 
       if (do.display.genome) {
-        display.update.multispecies(list(env = env.ras, current.time=currentStep, model.params = model.params, genome.columns=genome.columns),
+        display.update.multispecies(list(current.time = paleoTime, model.params = model.params, genome.columns=genome.columns),
+                                    env = env.ras, 
                                     allDemes = all.demes,
                                     plot_genome_scatter = TRUE,
                                     plot_genome_map = TRUE)
