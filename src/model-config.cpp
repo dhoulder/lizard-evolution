@@ -13,12 +13,12 @@
 #include <mutex>
 #include <cmath>
 #include <algorithm>
-#include <random>
 
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
 
 #include "model-config.h"
+#include "random.h"
 #include "exceptions.h"
 #include "env-params.h"
 #include "environment.h"
@@ -39,7 +39,7 @@ static vector<float> comma_split(string csv) {
 }
 
 static random_device rd;
-static mt19937 rng(rd());
+static rng_eng_t rng(rd());
 static mutex rng_mutex;
 
 Config::Config(int ac, const char *av[]) {
@@ -420,7 +420,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
 		      "species.niche-centre = random-cell");
 
   // choose cell and set niche centre to match
-  uniform_int_distribution<> distr(0, locations.size()-1);
+  uniform_int_distr_t distr(0, locations.size()-1);
   int random_loc;
   {
     lock_guard<mutex> lock(rng_mutex);
@@ -446,7 +446,7 @@ void Config::set_params_from_env(SpeciesParameters &sp,
     float min_offset = env.geo_transform[1] * sp.random_rect_min * 0.5f;
     float max_offset = env.geo_transform[1] * sp.random_rect_max * 0.5f;
     // Choose random area around cell within specified limits.
-    uniform_real_distribution<float> distr(min_offset, max_offset);
+    uniform_real_distr_t distr(min_offset, max_offset);
     auto random_offset = [&]() {
       // uniform_real_distribution<>(x, x)() has undefined behaviour
       return (max_offset > min_offset)? distr(rng) : min_offset;

@@ -52,10 +52,8 @@ namespace DreadDs {
   private:
     rng_eng_t rng;
     uniform_real_distr_t gene_flow_distr;
-    uniform_vg_t gene_flow_random;
     uniform_real_distr_t deme_choice_distr;
     normal_distr_t gene_drift_distr;
-    normal_vg_t gene_drift_random;
 
     void evolve_towards_niche(Deme &deme, const EnvCell env);
     void do_genetc_drift(Deme &deme);

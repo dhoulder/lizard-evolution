@@ -82,10 +82,8 @@ Model::Model(const Config &c):
   gene_flow_distr(
 		  conf.gene_flow_clip,
 		  1.0f - conf.gene_flow_clip),
-  gene_flow_random(rng, gene_flow_distr),
   deme_choice_distr(0.0f, 1.0f),
-  gene_drift_distr(0.0f, gene_drift_sd),
-  gene_drift_random(rng, gene_drift_distr)
+  gene_drift_distr(0.0f, gene_drift_sd)
 {
   for (auto &&sp: conf.get_initial_species(env)) {
     const auto &&s = std::make_shared<Species>(conf,
@@ -115,7 +113,7 @@ void Model::evolve_towards_niche(Deme &deme, const EnvCell ec) {
 void Model::do_genetc_drift(Deme &deme) {
   float * gp = deme.genetics.genetic_position;
   for (int i=0; i < conf.genetic_dims; gp++, i++)
-    *gp += gene_drift_random();
+    *gp += gene_drift_distr(rng);
 }
 
 
@@ -206,7 +204,7 @@ float Model::gene_flow_probability(float distance) {
 bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
   // see 3.4.1 "Does gene flow occur?"
   return (gene_flow_probability(d1.genetic_distance(conf, d2)) >
-	  gene_flow_random());
+	  gene_flow_distr(rng));
 }
 
 
