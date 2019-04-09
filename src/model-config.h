@@ -7,9 +7,12 @@
 #include <memory>
 #include <string>
 #include <cmath>
+#include <mutex>
+#include <random>
 
 #include "constants.h"
 #include "env-params.h"
+#include "random.h"
 
 namespace DreadDs {
 
@@ -42,6 +45,11 @@ namespace DreadDs {
     std::vector<SpeciesParameters> initial_species;
     void set_params_from_env(SpeciesParameters &sp,
 			     const Environment &env) const;
+    /* We want to avoid thrashing random_device in case it runs out of
+       entropy, so all the random number stuff in Config() is static
+       and we mutex around its (infrequent) use */
+    static std::random_device rd;
+
   public:
     // Parameters for a simulation run.
     int verbosity = 1;
@@ -63,6 +71,9 @@ namespace DreadDs {
     Config(int argc, const char *argv[]);
     std::vector<SpeciesParameters> get_initial_species(
       const Environment &env) const;
+
+    static rng_eng_t rng;
+    static std::mutex rng_mutex;
   };
 }
 

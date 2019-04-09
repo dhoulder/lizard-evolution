@@ -38,9 +38,10 @@ static vector<float> comma_split(string csv) {
   return v;
 }
 
-static random_device rd;
-static rng_eng_t rng(rd());
-static mutex rng_mutex;
+
+random_device Config::rd;
+rng_eng_t Config::rng(Config::rd());
+mutex Config::rng_mutex;
 
 Config::Config(int ac, const char *av[]) {
   /**

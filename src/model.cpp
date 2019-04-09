@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <mutex>
 
 #include <boost/algorithm/string.hpp>
 
@@ -85,6 +86,10 @@ Model::Model(const Config &c):
   deme_choice_distr(0.0f, 1.0f),
   gene_drift_distr(0.0f, gene_drift_sd)
 {
+  { // Seed our RNG from the already randomly seeded Config::rng
+    std::lock_guard<std::mutex> lock(Config::rng_mutex);
+    rng.seed(Config::rng());
+  }
   for (auto &&sp: conf.get_initial_species(env)) {
     const auto &&s = std::make_shared<Species>(conf,
 					       ++species_id_counter,
