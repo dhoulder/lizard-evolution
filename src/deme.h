@@ -17,8 +17,8 @@ namespace DreadDs {
 
   class Deme {
     /**
-       Describes a genetically homogeneous population in a cell.
-    */
+     *  Describes a genetically homogeneous population in a cell.
+     */
   public:
 
     class Genetics {
@@ -72,8 +72,8 @@ namespace DreadDs {
 
   };
 
-  // Cells occupied by demes of a species, Several demes can occupy a
-  // cell, hence std::list
+  // Cells are occupied by demes of a species, Several demes can
+  // occupy a cell, hence std::list
   typedef std::list <Deme> DemeList;
   // TODO DemeList could probably just be a forward_list and use
   // emplace_after(whatever.begin(), …)  and emplace_front(). Or maybe
