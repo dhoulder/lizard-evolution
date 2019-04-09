@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
     c.gene_flow_zero_distance = 0.9 * sqrt(3.0f);
     Species s(c, species_id);
     setup3(s);
+    s.step = 123;
     s.speciate(&species_id);
     if (s.demes->size() != 0 || s.sub_species.size() != 3) {
       printf("three-cluster test failed: %lu %lu\n",
@@ -59,7 +60,7 @@ int main(int argc, char *argv[]) {
     }
     s.phylogeny_as_yaml(stdout, "");
     std::string n = s.phylogeny_as_newick();
-    if (n != "(species_2:0,species_3:0,species_4:0)species_1;") {
+    if (n != "((species_2:0,species_3:0,species_4:0)species_1:123);") {
       printf("phylogeny_as_newick() failed: Got %s\n",
              n.c_str());
       exit(3);

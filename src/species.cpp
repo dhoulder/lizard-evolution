@@ -435,14 +435,12 @@ static void traverse_newick(std::ostringstream &sstr, Species &s) {
     }
     sstr << ")";
   }
-  sstr << s.get_name();
-  if (s.parent)
-    // branch length if not root
-    sstr << ":" << (s.step - s.parent->step);
+  sstr << s.get_name() << ":" <<
+    (s.step - (s.parent? s.parent->step : 0));
 }
 
 std::string Species::phylogeny_as_newick() {
   std::ostringstream sstr;
   traverse_newick(sstr, *this);
-  return sstr.str() + ";";
+  return "(" + sstr.str() + ");";
 }
