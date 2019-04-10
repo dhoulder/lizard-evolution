@@ -10,8 +10,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
-#include <mutex>
 #include <cmath>
+#include <random>
 #include <algorithm>
 
 #include <boost/program_options.hpp>
@@ -37,11 +37,6 @@ static vector<float> comma_split(string csv) {
     v.push_back(stof(t));
   return v;
 }
-
-
-random_device Config::rd;
-rng_eng_t Config::rng(Config::rd());
-mutex Config::rng_mutex;
 
 Config::Config(int ac, const char *av[]) {
   /**
@@ -116,6 +111,11 @@ Config::Config(int ac, const char *av[]) {
        po::value<int>(&check_speciation)->default_value(1),
        "Number of timesteps between speciation checks. "
        "Use 0 to disable speciation, 1 to check after every step")
+
+      ("random-seed",
+       po::value<int>(),
+       "Seed for random number generator. Allows reproducible simulations. "
+       "Default is a random seed")
       ;
 
     po::options_description env_options("Input environment (one or more sets)");
@@ -207,6 +207,13 @@ Config::Config(int ac, const char *av[]) {
       }
     }
     po::notify(vm);
+
+    if (vm.count("random-seed")) {
+      rng.seed(vm["random-seed"].as<int>());
+    } else {
+      random_device rd;
+      rng.seed(rd());
+    }
 
     if (csv_precision < 0 || csv_precision > 8)
       throw ConfigError("csv-precision must be between 0 and 8");
@@ -423,10 +430,8 @@ void Config::set_params_from_env(SpeciesParameters &sp,
   // choose cell and set niche centre to match
   uniform_int_distr_t distr(0, locations.size()-1);
   int random_loc;
-  {
-    lock_guard<mutex> lock(rng_mutex);
-    random_loc = distr(rng);
-  }
+  random_loc = distr(rng);
+
   const auto &cell_loc = locations[random_loc];
   if (verbosity > 0)
     cout << "Chose random starting cell x=" <<
@@ -454,19 +459,17 @@ void Config::set_params_from_env(SpeciesParameters &sp,
     };
     float lx = env.to_ew(cell_loc.x);
     float ly = env.to_ns(cell_loc.y);
-    {
-      lock_guard<mutex> lock(rng_mutex);
-      // add random NSEW padding around chosen cell, clamped to
-      // centres of boundary cells.
-      sp.north = min((float)env.to_ns(n),
-		     ly +  random_offset());
-      sp.south = max((float)env.to_ns(s),
-		     ly - random_offset());
-      sp.east = min((float)env.to_ew(e),
-		    lx +  random_offset());
-      sp.west = max((float)env.to_ew(w),
-		    lx - random_offset());
-    }
+
+    // add random NSEW padding around chosen cell, clamped to
+    // centres of boundary cells.
+    sp.north = min((float)env.to_ns(n),
+		   ly +  random_offset());
+    sp.south = max((float)env.to_ns(s),
+		   ly - random_offset());
+    sp.east = min((float)env.to_ew(e),
+		  lx +  random_offset());
+    sp.west = max((float)env.to_ew(w),
+		  lx - random_offset());
   }
 }
 
