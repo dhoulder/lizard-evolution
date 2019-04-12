@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <vector>
 
 #define BOOST_DISABLE_ASSERTS
 
@@ -57,7 +58,7 @@ namespace DreadDs {
 
     void evolve_towards_niche(Deme &deme, const EnvCell env);
     void do_genetc_drift(Deme &deme);
-    Deme *choose_primary(DemeList &deme_list);
+    Deme &choose_primary(std::vector<Deme> &immigrants);
     float gene_flow_probability(float distance);
     bool gene_flow_occurs(const Deme &d1, const Deme &d2);
     std::shared_ptr<DemeMap> evolve_and_disperse(Species &species);

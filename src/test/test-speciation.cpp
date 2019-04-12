@@ -17,7 +17,7 @@ static void setup3(Species &s) {
     loc.x = loc.y = i;
     for (int j=0; j < s.conf.genetic_dims; j++)
       d.genetics.genetic_position[j] = (float)(i %3);
-    (*s.demes)[loc].push_front(d);
+    (*s.demes)[loc].incumbent = d;
   }
 }
 
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
       loc.x = loc.y = i;
       for (int j=0; j < c.genetic_dims; j++)
         d.genetics.genetic_position[j] = (float)i;
-      (*s.demes)[loc].push_front(d);
+      (*s.demes)[loc].incumbent = d;
     }
     s.speciate(&species_id);
 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
       loc.x = loc.y = i;
       for (int j=0; j < c.genetic_dims; j++)
         d.genetics.genetic_position[j] = x;
-      (*s.demes)[loc].push_front(d);
+      (*s.demes)[loc].incumbent = d;
     }
     s.speciate(&species_id);
     if (s.demes->size() != 102 || s.sub_species.size() != 0) {

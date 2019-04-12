@@ -139,7 +139,7 @@ void Species::load_initial(const SpeciesParameters &sp,
         continue;
       d.amount = d.niche_suitability(conf, ec);
       if (d.amount > 0.0f)
-        (*demes)[loc] = DemeList(1, d);
+        (*demes)[loc] = SpeciesPresence(d);
     }
 }
 
@@ -173,24 +173,24 @@ int Species::update_stats(Characteristics &ch) {
   ch.population = 0.0f;
 
   // TODO? do this in merge() instead of separate loops here?
-  for (auto &&kv: *demes)
-    for (auto &&d: kv.second) {
-      if (d.amount <= 0.0f)
-	continue;
-      ++ch.cell_count;
-      ch.population += d.amount;
+  for (auto &&kv: *demes) {
+    auto &&d =  kv.second.incumbent;
+    if (d.amount <= 0.0f)
+      continue;
+    ++ch.cell_count;
+    ch.population += d.amount;
 
-      for (int i=0; i < conf.env_dims; i++) {
-	float nc = d.genetics.niche_centre[i];
-	float nt = d.genetics.niche_tolerance[i];
-	niche_min[i](nc - nt);
-	niche_max[i](nc + nt);
-	niche_pos_acc[i](nc);
-	niche_tol_acc[i](nt);
-      }
-      for (int i=0; i < conf.genetic_dims; i++)
-	genetic_acc[i](d.genetics.genetic_position[i]);
+    for (int i=0; i < conf.env_dims; i++) {
+      float nc = d.genetics.niche_centre[i];
+      float nt = d.genetics.niche_tolerance[i];
+      niche_min[i](nc - nt);
+      niche_max[i](nc + nt);
+      niche_pos_acc[i](nc);
+      niche_tol_acc[i](nt);
     }
+    for (int i=0; i < conf.genetic_dims; i++)
+      genetic_acc[i](d.genetics.genetic_position[i]);
+  }
 
   if (ch.cell_count == 0) {
     // leave other stats as they were on previous step. TODO? or maybe reset them?
@@ -272,11 +272,11 @@ std::vector <DemeMapEntryVec> Species::get_clusters(DemeMap &dm,
 
       auto p = source.begin();
       auto prev = source.end();
-      // We're doing this after Model::merge(), so we'll have a single
-      // entry in DemeList in each cell.
-      Deme &d1 = d->second.front();
+      // We're doing this after Model::merge(), so we have one deme in
+      // SpeciesPresence::incumbent in each cell.
+      Deme &d1 = d->second.incumbent;
       while (p != source.end()) {
-	Deme &d2 = (*p)->second.front();
+	Deme &d2 = (*p)->second.incumbent;
 	if (d1.genetic_distance_sq(conf, d2) <= dsq) {
 	  // Within range.
 	  edge.push_back(*p);

@@ -10,6 +10,7 @@
 #include <memory>
 #include <iostream>
 #include <string>
+#include <vector>
 #include <cmath>
 
 #include <boost/algorithm/string.hpp>
@@ -64,7 +65,6 @@ namespace DreadDs {
 	d->genetics.niche_centre[i] = g.niche_centre[i] / total_abundance;
 	d->genetics.niche_tolerance[i] = g.niche_tolerance[i] / total_abundance;
       }
-      d->is_primary = true;
       return true;
     }
   };
@@ -138,60 +138,60 @@ std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
     if (no_source)
       continue;
 
-    // Iterate over all demes in the cell
-    for (auto &&deme: deme_cell.second) {
-      evolve_towards_niche(deme, source_env);
-      do_genetc_drift(deme);
+    auto &&deme = deme_cell.second.incumbent;
+    evolve_towards_niche(deme, source_env);
+    do_genetc_drift(deme);
 
-      // "disperse" into the same cell. This becomes a primary deme
-      // after dispersal due to incumbency. Note that this inserts at
-      // the front of the list. Any primary demes will be at the front.
-      (*target)[loc].emplace_front(
-	      deme,
-	      dispersal_abundance(
+    // "disperse" into the same cell. This becomes a primary deme
+    // after dispersal due to incumbency.
+
+    Deme &incumbent = (*target)[loc].incumbent;
+    incumbent = deme;
+    incumbent.amount = dispersal_abundance(
 		      deme.amount,
 		      deme.niche_suitability(conf, source_env),
-		      1.0), // same cell, no travel cost
-	      true);
-      // Disperse into the area around this cell
-      Location new_loc;
-      for (auto &&k: species.dk) {
-	new_loc.x = loc.x + k.x;
-	new_loc.y = loc.y + k.y;
-	if (new_loc.x < 0 || new_loc.y < 0 ||
-	    new_loc.x >= env_shape[1] || new_loc.y >= env_shape[0])
-	  continue;
-	env.get(new_loc, target_env, &no_target);
-	if (no_target)
-	  continue;
-	(*target)[new_loc].emplace_back(
+		      1.0); // same cell, no travel cost
+
+    // Disperse into the area around this cell
+    Location new_loc;
+    for (auto &&k: species.dk) {
+      new_loc.x = loc.x + k.x;
+      new_loc.y = loc.y + k.y;
+      if (new_loc.x < 0 || new_loc.y < 0 ||
+	  new_loc.x >= env_shape[1] || new_loc.y >= env_shape[0])
+	continue;
+      env.get(new_loc, target_env, &no_target);
+      if (no_target)
+	continue;
+      auto &immigrants = (*target)[new_loc].immigrants;
+      if (immigrants.size() == 0)
+	immigrants.reserve(species.dk.size());
+      immigrants.emplace_back(
 		deme,
 		dispersal_abundance(
 			deme.amount,
 			deme.niche_suitability(conf, target_env),
-			k.weight),
-		false);
-      }
+			k.weight));
     }
   }
   return target;
 }
 
 
-Deme *Model::choose_primary(DemeList &deme_list) {
-  // Find "primary" deme at random by abundance-weighted probability
-  // Do not call on empty list
+Deme &Model::choose_primary(std::vector<Deme> &immigrants) {
+  // Choose a "primary" deme at random from immigrant demes in a cell using
+  // abundance-weighted probability. Do not call with an empty vector.
   float sum = 0.0f;;
-  for (auto &&d: deme_list)
+  for (auto &&d: immigrants)
     sum += d.amount;
   float rv = deme_choice_distr(rng) * sum;
-  for (auto &&d: deme_list) {
+  for (auto &&d: immigrants) {
     if (rv <= d.amount )
-      return &d;
+      return d;
     rv -= d.amount;
   }
-  // fp precision effects may leave us here
-  return &deme_list.back();
+  // Very occasionally fp precision effects may leave us here
+  return immigrants.back();
 }
 
 
@@ -216,48 +216,39 @@ void Model::merge(DemeMap &dm) {
   EnvCell ec;
   for (auto cell_itr = dm.begin(); cell_itr != dm.end(); ) {
 
-    auto &&deme_list = cell_itr->second;
-    if (deme_list.size() < 1) {
-      // no demes, so get rid of the cell // TODO? can this actually happen??
-      cell_itr = dm.erase(cell_itr);
-      continue;
-    }
-
+    SpeciesPresence &sp = cell_itr->second;
     const Location &loc = cell_itr->first;
-    Deme *first_deme = &deme_list.front();
+    Deme &incumbent = sp.incumbent;
 
-    if (deme_list.size() >1) {
+    if (!sp.immigrants.empty()) {
       // Have at least two demes in this cell, so check for gene flow
       // and merge if required.
 
-      // Any incumbent primary deme will be at the front, otherwise
+      // Any incumbent population will be the primary deme, otherwise
       // we have to choose one
-
-      // NOTE: we assume there is at most one primary deme. In the
-      // current model, all demes of a species in a cell mix down into
-      // one final primary deme, so this assumption holds.
-      Deme *primary = first_deme->is_primary?
-	first_deme:
-	choose_primary(deme_list);
+      Deme &primary = (incumbent.amount < 0.0f) ?
+        choose_primary(sp.immigrants):
+        incumbent;
 
       DemeMixer mixer(conf);
-      for (auto &&deme: deme_list)
-	if ((&deme == primary) || gene_flow_occurs(deme, *primary))
+      mixer.contribute(primary);
+      for (auto &&deme: sp.immigrants)
+	if ((&deme != &primary) && gene_flow_occurs(deme, primary))
 	  mixer.contribute(deme);
-	// otherwise "excluded by competition
+        // otherwise excluded by competition
 
-      // mix down to first deme
-      if (!mixer.mix_to(first_deme)) {
+      // mix down to primary deme
+      if (!mixer.mix_to(&incumbent)) {
 	// extinct in this cell, so drop it
-	  cell_itr = dm.erase(cell_itr);
-	  continue;
+	cell_itr = dm.erase(cell_itr);
+	continue;
       }
-      deme_list.resize(1);
+      sp.immigrants.clear();
     }
     // update abundance according to current environment
     env.get(loc, ec); // known location so no need to check for no_data
-    first_deme->amount = first_deme->niche_suitability(conf, ec);
-    if (first_deme->amount <= 0.0f)
+    incumbent.amount = incumbent.niche_suitability(conf, ec);
+    if (incumbent.amount <= 0.0f)
       // another extinction case
       cell_itr = dm.erase(cell_itr);
     else
@@ -291,22 +282,21 @@ void Model::save() {
     for (auto &&deme_cell: *(species->demes)) {
       const Location &loc = deme_cell.first;
       env.get(loc, ec, &no_data);
-      for (auto &&deme: deme_cell.second) {
-	auto &&g = deme.genetics;
-	fprintf(of,
-		"%d,%d,%d",
-		species->id, loc.y, loc.x);
-	write_f(deme.amount);
-	for (int i=0; i < conf.env_dims; ++i) {
-	  write_f(no_data? NAN : ec[i]);
-	  write_f(g.niche_centre[i]);
-	  write_f(g.niche_tolerance[i] *2.0f);
-	}
-	for (int i=0; i < conf.genetic_dims; i++)
-	  write_f(g.genetic_position[i]);
-	if (fprintf(of, "\n") < 1)
-	  throw ApplicationException("Error writing " + ofn);
+      auto &&deme = deme_cell.second.incumbent;
+      auto &&g = deme.genetics;
+      fprintf(of,
+	      "%d,%d,%d",
+	      species->id, loc.y, loc.x);
+      write_f(deme.amount);
+      for (int i=0; i < conf.env_dims; ++i) {
+	write_f(no_data? NAN : ec[i]);
+	write_f(g.niche_centre[i]);
+	write_f(g.niche_tolerance[i] *2.0f);
       }
+      for (int i=0; i < conf.genetic_dims; i++)
+	write_f(g.genetic_position[i]);
+      if (fprintf(of, "\n") < 1)
+	throw ApplicationException("Error writing " + ofn);
     }
   }
   if (fclose(of) != 0)
@@ -376,7 +366,7 @@ int Model::do_step() {
 	// No speciation.
 	// We have to update_stats() after every step as we may
 	// speciate on the next iteration and we want to leave the
-	// parent specaies with accurate stats.
+	// parent species with accurate stats.
 	species->update_stats(species->latest_stats);
         new_tips.push_back(species);
       } else {

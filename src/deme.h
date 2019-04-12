@@ -6,7 +6,7 @@
  * A "deme" is a population in a cell
  */
 #include <cmath>
-#include <list>
+#include <vector>
 #include <map>
 
 #include "constants.h"
@@ -38,19 +38,17 @@ namespace DreadDs {
 
     Genetics genetics;
     float amount; // population per cell
-    bool is_primary; // indicates incumbency in a cell during dispersal
 
-    Deme(): amount(0.0f), is_primary(false) {}
+    Deme(float _amount = 0.0f): amount(_amount) {}
 
     Deme(const SpeciesParameters &sp):
-      amount(0.0f), is_primary(false),
+      amount(0.0f),
       genetics(sp) {}
 
-    Deme(const Deme &from, float new_amount, bool new_primary):
+    Deme(const Deme &from, float new_amount):
       // Delegate to implicit copy constructor to copy genetics
       Deme(from) {
       amount = new_amount;
-      is_primary = new_primary;
     }
 
     float niche_suitability(const Config &conf, const EnvCell env);
@@ -72,21 +70,27 @@ namespace DreadDs {
 
   };
 
-  // Cells are occupied by demes of a species, Several demes can
-  // occupy a cell, hence std::list
-  typedef std::list <Deme> DemeList;
-  // TODO DemeList could probably just be a forward_list and use
-  // emplace_after(whatever.begin(), …)  and emplace_front(). Or maybe
-  // struct {Deme primary; std::forward_list <Deme> others}, or maybe
-  // just use a vector and reserve(worst_case_length). Do we need to
-  // handle more than 1 primary deme?
-  typedef std::map <Location, DemeList> DemeMap;
+  /**
+   * Describes the presence of a species in a cell
+   */
+  class SpeciesPresence {
+  public:
+    Deme incumbent; // holds the population that exists due to prior occupation
+    std::vector<Deme> immigrants; // During dispersal, several demes
+				  // can occupy a cell
+
+    SpeciesPresence(): incumbent(-1.0f) {}
+
+    SpeciesPresence(const Deme &d): incumbent(d) {}
+  };
+
+  typedef std::map <Location, SpeciesPresence> DemeMap;
   // Note that compared to a simple 2D array, DemeMap is faster to
   // iterate through when the population is sparse, but slower to
   // index by location. Profiling indicates that around 20% to 30% of
   // the total model runtime is spent accessing or modifying
   // DemeMap()s. A 2D array with some kind of adaptive bounding box to
   // mask out many of the empty cells might be faster.
-  typedef std::pair<const Location, DemeList> DemeMapEntry;
+  typedef std::pair<const Location, SpeciesPresence> DemeMapEntry;
 }
 #endif
