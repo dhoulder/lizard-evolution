@@ -3,15 +3,23 @@ rm(list=ls())
 library(dreadds)
 library(raster)
 library(data.table)
+library(ape)
 
 source("~/code/DREaD_ds/R-prototype/dynamicDisplay.r")
 
 # turn the input arguments into local variables with relevant names
 input.args	<- commandArgs(trailingOnly = TRUE)
-output.dir	<- input.args[1]
-config.file <- input.args[2]
-#dispersal	 <- as.numeric(input.args[2])
-cat("\nExternal arguments received in R\n\toutput.dir\t", output.dir, "\n\tconfig.file\t", config.file, "\n")
+
+if (length(input.args) > 0) {
+  output.dir	<- input.args[1]
+  config.file <- input.args[2]
+  #dispersal	 <- as.numeric(input.args[2])
+  cat("\nExternal arguments received in R\n\toutput.dir\t", output.dir, "\n\tconfig.file\t", config.file, "\n")
+} else {
+  output.dir	<- "/home/danr/simulation/AMT_paleoclim/movie_5my_d2_e2_2000/output3/"
+  config.file <- "/home/danr/simulation/AMT_paleoclim/scripts/AMT_paleoclim_test.conf"
+  cat("\nNo external arguments received in R. Hard coded arguments used instead.\n\toutput.dir\t", output.dir, "\n\tconfig.file\t", config.file, "\n")
+}
 
 rasterFromEnv <- function(dreadModel, envTemplate, envNumber=1) {
   env         <- dreadModel$getEnv()[[envNumber]]
@@ -32,15 +40,6 @@ getAllDemes   <- function(sp.df, model) {
   return(allDemes)
 }
 
-randomTime   <- function(max) {
-  # this function aims to introduce a random number of steps to ensure that each run is different
-  x <- round(runif(1, 0, max))
-  for (i in 0:x) {
-	y <- i * 2
-  }
-  cat("\n", x, "random steps completed\n")
-}
-
 envOrig <- raster("~/simulation/input_data/AMT2.5min-grids/T5000/Dan AMT2.5min_bio PaleoClimDat - MinTemp.txt.tif")
 environment.rows <- nrow(envOrig)
 
@@ -57,17 +56,17 @@ do.display            <- TRUE
 do.display.diff       <- TRUE
 do.display.genome     <- TRUE
 do.text.output        <- TRUE
-image_to_file         <- TRUE
+image_to_file         <- TRUE  ################
 raster_to_file        <- FALSE
 image_counter		  <- 1  # give images consecutive integer names to work with ffmpeg movies
-image_frequency   <- 1
+image_frequency   <- 10
 
-run_interval      <- 1  # this is the number of steps to run before returning to R
+runInterval      <- 10  # this is the number of steps to run before returning to R
 nSteps 				  <- 2000
 
 # define and create the directory structure
-base.dir              <- "~/simulation/multisize_test/"
-#output.dir            <- paste(base.dir, "output1/", sep='')
+base.dir              <- "~/simulation/AMT_paleoclim/movie_5my_d2_e2_2000/"
+#output.dir            <- paste(base.dir, "output3/", sep='')
 image.dir             <- paste(output.dir, "images/", sep='')
 
 if (dir.exists(image.dir) == FALSE) {
@@ -96,27 +95,28 @@ starttime_global <- Sys.time()
 m <- createDreadDS(
         config.file = config.file,
         output.dir = output.dir,
-        iterations = nSteps
-      )
+        iterations = nSteps)
 
-# run a process of variable length here to (hopefully) introduce randomness
-  set.seed(Sys.time())
-  randomTime(100000)
-	  
 # step through the model 
-currentStep <- 0
+currentStep     <- 0
+currentInterval <- 1  # start plotting with a single step
+
 while (currentStep <= nSteps) {
   
   starttime_timestep <- Sys.time()
   
-  m$runSteps(run_interval)
-  currentStep <- currentStep + run_interval
+  # run the next model step(s)
+  m$runSteps(currentInterval)
+  currentStep <- currentStep + currentInterval  
 
   ##### species summary and plots ######
   
   # get the species data frame and number of species
   sp.df <- m$getSpecies()
   sp_all_count <- nrow(sp.df)  # all species ever (ie count of branches)
+  
+  # write the species data frame to file (keeping only the latest version)
+  write.csv(sp.df, "species.csv")  
 
   # subset sp.df to only extant species
   sp.df <- sp.df[which(sp.df$extinction == -1 & sp.df$split == -1), ]
@@ -158,40 +158,77 @@ while (currentStep <= nSteps) {
       text.update(list(species_range_niche=list.for.text))
     }
   }
+ 
+###########################################################
+  # experimenting with the phylogeny
+  plot.tree.now <- FALSE
+
+  if (sp_count > 1) {
+    browser()
+    tree.text <- m$getPhylogeny()
+    tree      <- read.tree(text = tree.text)
+    plot.tree.now <- TRUE
+  }
+###########################################################
 
   # update the dynamic plot FOR ALL SPECIES at specified frequency
   if (do.display) {
-    if (currentStep %% image_frequency == 0) {  # only do the image at the specified frequency
+    if (currentStep==1 | currentStep %% image_frequency == 0) {  # only do the image at the specified frequency
       
       # get the data needed for plots
 
       env.ras <- rasterFromEnv(m, envOrig, 1)
       
       if (image_to_file) {
-        display.to.file.start(image_dir=image.dir, time=image_counter, image_filename = paste("animation_multisp_", sep=""))
+        display.to.file.start(image_dir=image.dir, time=image_counter, image_filename = paste("animation_multisp_", sep=""), plot_rows=2, plot_cols=3)
 		# use time=image_counter for consecutively numbered images (eg for ffmpeg) or time=currentStep to number by the model time
+      } else {
+        display.to.screen.start(window_name = paste("plot_", image_counter, sep=""), plot_rows=2, plot_cols=2)
       }
 
       model.params <- list(niche.breadth=round(sp.df$niche_breadth_mean_0[1]), niche.evolution.rate=niche.evolution.rate, dispersal = dispersal)
 
-      # display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_demes_amount_position = TRUE)
-	  
-      display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_species_ranges = TRUE)	  
-
-      display.update.multispecies(list(current.time = paleoTime, model.params = model.params, speciesCount = sp_count), env = env.ras, allDemes = all.demes, plot_richness = TRUE)
-
+	    if (plot.tree.now) {
+        display.update.multispecies(list(current.time = paleoTime, model.params = model.params, tree = tree), env = env.ras, allDemes = all.demes, plot_tree = TRUE, plot_mainheader = TRUE)	  
+	    } else {
+	      display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_demes_amount_position = TRUE, plot_mainheader = TRUE)
+	    }
+      #display.update.multispecies(list(current.time = paleoTime, model.params = model.params), env = env.ras, allDemes = all.demes, plot_species_ranges = TRUE)	  
+      
+      display.update.multispecies(list(current.time = paleoTime, model.params = model.params, speciesCount = sp_count), 
+                                  env = env.ras, 
+                                  allDemes = all.demes, 
+                                  plot_richness = TRUE)
+      
       if (do.display.genome) {
-        display.update.multispecies(list(current.time = paleoTime, model.params = model.params, genome.columns=genome.columns),
+    
+        if (!exists("genome.extremes")) {
+          genome.extremes <- matrix(data=NA, nrow=2, ncol=length(genome.columns))
+        }
+        
+        genome.extremes <- get.genome.extremes(all.demes, genome.columns, genome.extremes)
+        display.update.multispecies(list(current.time = paleoTime, model.params = model.params, genome.columns=genome.columns, gene.flow.max.distance=gene.flow.max.distance, genome.extremes=genome.extremes),
                                     env = env.ras, 
                                     allDemes = all.demes,
                                     plot_genome_scatter = TRUE,
                                     plot_genome_map = TRUE)
       }
- 
+
+
       if (image_to_file) {
         display.to.file.stop()
-		image_counter <- image_counter + 1
+      } else {
+        display.to.screen.stop()
       }
+      image_counter <- image_counter + 1
     }
   }
+  
+  # allow the plot to begin at step one, then adjust to the requested stepping schedule
+  if (runInterval==1 | currentStep >= runInterval) {
+    currentInterval <- runInterval
+  } else {
+    currentInterval <- runInterval - currentStep # this allows the first two steps to be 1, runInterval - 1
+  }
+  
 }
