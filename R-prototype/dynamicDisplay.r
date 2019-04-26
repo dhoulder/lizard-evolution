@@ -160,9 +160,10 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
     demetable.species <- plotItems[["demes_genecolour"]]
     env <- plotItems[["env"]]
     genome.columns <- plotItems[["genome.columns"]]
+    gene.flow.max.distance <- plotItems[["gene.flow.max.distance"]]
 
     # call genome.colours function to turn gene positions into R, G & B
-    deme.colours <- genome.colour(demetable.species, genome.columns)
+    deme.colours <- genome.colour(demetable.species, genome.columns, gene.flow.max.distance)
 
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
 		
@@ -242,25 +243,36 @@ text.update <- function(textItems) {
   return()
 }
 
-genome.colour <- function(demetable.species, genome.columns) {
+genome.colour <- function(demetable, genome.columns, gene.flow.max.distance, genome.extremes=NA) {
 
-  # this function uses the gene.pos columns to generate red, green, blue colours (from 0 to 1)
+  # this function uses the gene.pos columns, or genome.extremes if provided, to generate red, green, blue colours (from 0 to 1)
   #  for each deme based on genetic position.
   # the simplest approach is for 3 gene dismensions to translate to RGB
   # a more general approach uses an ordination
 
   # the no ordination method
-  max.dist <- 25  # this should be the genetic distance for maximum colour intensity in any one dimension
+  max.dist <- gene.flow.max.distance * 1.1  # this should be the genetic distance for maximum colour intensity in any one dimension
   genome.dimensions <- length(genome.columns)
+
+  if (is.matrix(genome.extremes)) {
+    use.extremes.matrix <- TRUE
+  } else {
+    use.extremes.matrix <- FALSE
+  }
   
   # this is an inelegant method, but I can't effectively reference columns in a data.table via a variable
-  genomes.species.df <- as.data.frame(demetable.species[, ..genome.columns])
+  genomes.species.df <- as.data.frame(demetable[, ..genome.columns])
 
   for (col in 1:genome.dimensions) {
-    col.range <- range(genomes.species.df[, col])
-    mid.range <- mean(col.range)
-    col.span  <- col.range[2] - col.range[1]
-
+    if (use.extremes.matrix) {
+      mid.range <- mean(genome.extremes[, col])
+      col.span <- genome.extremes[1, col] - genome.extremes[2, col]
+    } else {
+      col.range <- range(genomes.species.df[, col])
+      mid.range <- mean(col.range)
+      col.span  <- col.range[2] - col.range[1]
+    }
+    
     # if the range of values in a dimesion is greater than max.dist, expand max.dist so that all values
     # fit within the range of colours intensities
     max.dist <- (max(max.dist, col.span))
@@ -276,7 +288,7 @@ genome.colour <- function(demetable.species, genome.columns) {
 
 }
 
-genome.mean <- function(demetable.species, genome.columns) {
+genome.mean <- function(demetable, genome.columns) {
 
   # this function calculates the mean genome position for the species, weighted by deme amount
 
@@ -284,31 +296,77 @@ genome.mean <- function(demetable.species, genome.columns) {
   genome.mean.pos   <- genome.columns # a lazy way to get a vector of the right length
 
   for (col in 1:genome.dimensions) {
-    genome.col <- as.data.frame(demetable.species[, genome.columns[col], with=F])
-    genome.mean.pos[col] <- weighted.mean(genome.col[,1], demetable.species$amount)
+    genome.col <- as.data.frame(demetable[, genome.columns[col], with=F])
+    genome.mean.pos[col] <- weighted.mean(genome.col[,1], demetable$amount)
   }
 
   return(genome.mean.pos)
 }
 
-display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=2) {
-  image.width	<- 1600
-  image.height	<- 1200
+get.genome.extremes <- function(demetable, genome.columns, extremes=NA) {
+  
+  # this function calculates the extreme values for each genome dimension
+  genome.dimensions <- length(genome.columns)  
+  
+  # test if a valid matrix of extreme values has been provided
+  update.extremes <- FALSE
+  if (!is.na(extremes)) {
+    if (is.matrix(extremes)) {
+      if (dim(extremes) == c(2, genome.dimensions)) {update.extremes <- TRUE}
+    }
+  }
+
+  if (!update.extremes) {
+    extremes <- matrix(data=NA, nrow=2, ncol=genome.dimensions)
+  }
+  
+  for (i in 1:genome.dimensions) {
+    k <- genome.columns[i]
+    extremes[1, i] <- max(extremes[1, i], max(demetable[, ..k]), na.rm = TRUE)
+    extremes[2, i] <- min(extremes[2, i], min(demetable[, ..k]), na.rm = TRUE)
+  }
+  
+  return(extremes)
+}
+
+display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=3) {
+  image.width	<- 1800
+  image.height	<- 1080
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
   png(output.filename, width = image.width, height=image.height)
-
-  par(mfcol=c(plot_rows, plot_cols))
+  
+  if (plot_rows==2 & plot_cols==3) {
+    par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
+    layout(mat = matrix(c(1, 2, 3, 4, 5, 6), ncol = plot_cols, byrow = TRUE))   # Widths of the two columns)
+  } else if (plot_rows==2 & plot_cols==2) {
+    par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
+    layout(mat = matrix(c(1, 3, 2, 4), ncol = plot_cols))   # Widths of the two columns)
+  } else {
+    par(mfcol=c(plot_rows, plot_cols))
+  }
 }
 
 display.to.file.stop <- function() {
   dev.off()
 }
 
-display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, plot_demes_amount_position=F, plot_species_ranges=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F) {
+display.to.screen.start <- function(window_name = "plot", plot_rows=2, plot_cols=2) {
+  
+  x11(width=10, height=7, title=window_name)
+  par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
+  layout(mat = matrix(c(1, 3, 2, 4), ncol = plot_cols))   # Widths of the two columns)
+}
+
+display.to.screen.stop <- function() {
+  dev.off()
+}
+
+display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, plot_demes_amount_position=F, plot_species_ranges=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F, plot_tree=F, plot_mainheader=F) {
   # plotItems is a list of named components to include in the display
 
-  dot.size.scaler <- 0.9  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
+  dot.size.scaler   <- 0.9  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
+  pane.header.size  <- 2
 
   # to maintain a consistent scale of environment colours, fix two pixels to the extremes of the range
   # currently this is the initial range of values (0 to 100) plus the amplitude of cyclical variation
@@ -323,10 +381,16 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
   }
   
   if (length(plotItems[["model.params"]]) > 0) {
-    main.header <- paste(main.header, "\nNiche breadth:", plotItems[["model.params"]][[1]],
-                         "\tNiche evol rate:", plotItems[["model.params"]][[2]],
-                         "\tDispersal:", plotItems[["model.params"]][[3]])
+    main.header <- paste(main.header, "\n\nNiche breadth:", plotItems[["model.params"]][[1]],
+                         "\nNiche evol rate:", plotItems[["model.params"]][[2]],
+                         "\nDispersal:", plotItems[["model.params"]][[3]])
   }
+ 
+  if (plot_mainheader) {
+    plot.new()
+    text(0, 0.6, main.header, cex=2, font=2, adj= c(0, 0.5))
+  }
+   
   # convert row / column coordinates to continuous coordinates, if they don't match the environment raster
   # for example, if the raster is in degrees, then row and column numbers won't plot correctly
 
@@ -349,22 +413,60 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
   these.symbols  <- getDiscreteSymbols(allDemes$species_name)
 
   if (plot_demes_amount_position) {
-
     # assign colours to niche0.position, based on the 250 colours defined above in display.initialise.2by2()
     colour.count   <- 250
     colour.indices <- round((allDemes$niche_centre_0 - min.env) * colour.count / range.env)
     these.colours  <- my.colours[colour.indices]
     these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
     
-    plot(env, main=main.header, col="white")  
+    plot(env, main="Demes with environment", cex.main=pane.header.size) # a first plot to ensure the correct legend
+    plot(env, col="white", add=T, legend=F)  
     points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=these.sizes)
   }
   
   if (plot_species_ranges) {
     these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
       
-	plot(env, main=main.header, col="white", legend=FALSE)
+	plot(env, main="species ranges", col="white", legend=FALSE, cex.main=1.3)
 	points(allDemes$col, allDemes$row, col=allDemes$species, pch=19, cex=these.sizes)
+  }
+  
+  if (plot_tree) {
+    plot(plotItems[["tree"]], main="Phylogeny", cex.main=pane.header.size)
+    add.scale.bar(col="blue")
+  }
+  
+  if (plot_genome_scatter | plot_genome_map) {
+    plot(env, main="genomic divergence - map", col="white", legend=FALSE, cex.main=1.3)   # a blank environment map to highlight gene colours
+    
+    genome.columns <- plotItems[["genome.columns"]]
+    gene.flow.max.distance <- plotItems[["gene.flow.max.distance"]]
+    
+    # call genome.colours function to turn gene positions into R, G & B
+    deme.colours <- genome.colour(allDemes, genome.columns, gene.flow.max.distance, genome.extremes)
+    
+    these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
+    
+    if (plot_genome_map) {
+      points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=dot.size.scaler)
+    }
+    
+    if (plot_genome_scatter) {
+      these.sizes   <- sqrt(allDemes$amount) * 1.5
+      
+      # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
+      plot.limit  <- gene.flow.max.distance * 0.8
+      plot.limits <- as.numeric(allDemes[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
+      
+      genome_scatter_x <- allDemes$genetic_position_0
+      genome_scatter_y <- allDemes$genetic_position_1
+      plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes, main="genomic divergence - scatter",
+           pch=these.symbols, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4], cex.main=pane.header.size)
+      
+      # add a weighted genome mean for each species, to the plot
+      means <- genome.mean(allDemes, genome.columns)
+      points(means[1], means[2], pch=3, cex=1.5)
+    }  
   }
   
   if (plot_richness) {
@@ -385,39 +487,7 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
     richness.ras[richness.dt$cellIndex] <- richness.dt$spRichness
   
 	main.txt <- paste("Species richness\t\tTotal species:", plotItems[["speciesCount"]])
-    plot(richness.ras, main=main.txt)
-  }
-
-  if (plot_genome_scatter | plot_genome_map) {
-    plot(env, main=main.header, col="white", legend=FALSE)   # a blank environment map to highlight gene colours
-    
-    genome.columns <- plotItems[["genome.columns"]]
-    
-    # call genome.colours function to turn gene positions into R, G & B
-    deme.colours <- genome.colour(allDemes, genome.columns)
-    
-    these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
-    
-    if (plot_genome_map) {
-      points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=dot.size.scaler)
-    }
-
-    if (plot_genome_scatter) {
-      these.sizes   <- sqrt(allDemes$amount) * 1.5
-      
-      # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
-      plot.limit  <- gene.flow.max.distance * 0.8
-      plot.limits <- as.numeric(allDemes[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
-      
-      genome_scatter_x <- allDemes$genetic_position_0
-      genome_scatter_y <- allDemes$genetic_position_1
-      plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes,
-           pch=these.symbols, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4])
-      
-      # add a weighted genome mean for each species, to the plot
-      means <- genome.mean(allDemes, genome.columns)
-      points(means[1], means[2], pch=3, cex=1.5)
-    }  
+    plot(richness.ras, main=main.txt, cex.main=pane.header.size)
   }
 
   return(1)

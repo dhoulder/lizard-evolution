@@ -4,5 +4,7 @@ PKG_LIBS=-L$(DREAD_DS_SRC) -ldreadds -lboost_program_options -lboost_filesystem 
 
 PHONY: all
 
+rcpp_module.o: rcpp_module.cpp $(DREAD_DS_SRC)/*.h
+
 all: $(SHLIB)
 $(SHLIB): $(DREAD_DS_SRC)/libdreadds.*
