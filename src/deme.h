@@ -6,8 +6,6 @@
  * A "deme" is a population in a cell
  */
 #include <cmath>
-#include <vector>
-#include <map>
 
 #include "constants.h"
 #include "model-config.h"
@@ -69,28 +67,5 @@ namespace DreadDs {
     }
 
   };
-
-  /**
-   * Describes the presence of a species in a cell
-   */
-  class SpeciesPresence {
-  public:
-    Deme incumbent; // holds the population that exists due to prior occupation
-    std::vector<Deme> immigrants; // During dispersal, several demes
-				  // can occupy a cell
-
-    SpeciesPresence(): incumbent(-1.0f) {}
-
-    SpeciesPresence(const Deme &d): incumbent(d) {}
-  };
-
-  typedef std::map <Location, SpeciesPresence> DemeMap;
-  // Note that compared to a simple 2D array, DemeMap is faster to
-  // iterate through when the population is sparse, but slower to
-  // index by location. Profiling indicates that around 20% to 30% of
-  // the total model runtime is spent accessing or modifying
-  // DemeMap()s. A 2D array with some kind of adaptive bounding box to
-  // mask out many of the empty cells might be faster.
-  typedef std::pair<const Location, SpeciesPresence> DemeMapEntry;
 }
 #endif

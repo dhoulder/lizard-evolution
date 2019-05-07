@@ -7,16 +7,35 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <forward_list>
+#include <utility>
+
+#include <boost/serialization/array_wrapper.hpp> // just for boost 1.64. see https://svn.boost.org/trac10/ticket/12982
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
 
 #include "constants.h"
 #include "model-config.h"
 #include "environment.h"
 #include "deme.h"
 
-
 namespace DreadDs {
 
+  namespace ba = boost::accumulators;
+
+  template <class ...Types>
+  using Acc = ba::accumulator_set<
+    float,
+    boost::accumulators::stats<Types...>>;
+
   typedef int Timestep;
+
+  class SpeciesPresence;
+  // SpeciesPresenceList stores entries in descending species id
+  // order. This allows new species from speciation to be pushed on
+  // the front.
+  typedef std::forward_list<SpeciesPresence> SpeciesPresenceList;
 
   struct DispersalWeight {
     // Describes dispersal propensity for (x,y) offset from origin cell
@@ -27,7 +46,21 @@ namespace DreadDs {
   };
 
   typedef std::vector <DispersalWeight> DispersalKernel;
-  typedef std::vector<DemeMapEntry *> DemeMapEntryVec;
+
+
+  typedef std::pair<SpeciesPresenceList &,
+		    SpeciesPresence &> SpeciationItem;
+  typedef std::vector<SpeciationItem> SpeciationItemVector;
+
+  class SpeciationCandidates {
+  private:
+    int count = 0;
+    std::forward_list<SpeciationItem> candidates;
+  public:
+    void add(SpeciesPresenceList &spl, SpeciesPresence &sp);
+    std::vector<SpeciationItemVector> split(float distance);
+  };
+
 
   class Species {
   public:
@@ -68,9 +101,30 @@ namespace DreadDs {
       int step = -1; // time step of last stats update
     };
 
+    class StatsAccumulator {
+    public:
+      int count = 0;
+      double population = 0.0;
+
+      StatsAccumulator(const Config &c):
+	niche_pos_acc(c.env_dims),
+	niche_tol_acc(c.env_dims),
+	genetic_acc(c.genetic_dims),
+	niche_min(c.env_dims),
+	niche_max(c.env_dims)
+      {}
+
+      void accumulate(const SpeciesPresence &sp);
+      int update_stats(Characteristics &ch, int step);
+    private:
+      std::vector <Acc <ba::tag::mean, ba::tag::variance>>
+      niche_pos_acc, niche_tol_acc, genetic_acc;
+      std::vector <Acc <ba::tag::min>> niche_min;
+      std::vector <Acc <ba::tag::max>> niche_max;
+    };
+
     const Config &conf;
     Vec sub_species;
-
     Species *parent = NULL; // no need for smart pointer here as
                             // sub-species will always have a parent
     Timestep extinction = -1; // Time step of extinction, or -1 if extant
@@ -78,34 +132,59 @@ namespace DreadDs {
                          // sub-species. This implies parent->split is
                          // species origin time.
     Characteristics latest_stats;  // Updated after each time step.
-    std::shared_ptr <DemeMap> demes; // Cells occupied by this species.
     DispersalKernel dk;
     int id = 0;
     int step = -1; // time step of most recent dispersal
 
-    Species(const Config &conf, const int species_id);
-    Species(const Config &conf,
-	    const int species_id,
-            const SpeciesParameters &sp,
-            const Environment &env);
-    void set_initial_stats();
-    void update(const std::shared_ptr <DemeMap> &d, int step);
-    void speciate(int *id_counter);
-    int update_stats(Characteristics &ch);
+    Species(const Config &conf, const int species_id, const int creation_step = 0);
+    void setup_dispersal(const SpeciesParameters &sp);
+    void update(int step, StatsAccumulator &acc);
+    void speciate(int *id_counter, SpeciationCandidates &candidates);
+
     void as_yaml(FILE *of,
                  const std::string &first_indent);
     void phylogeny_as_yaml(FILE *of,
                            const std::string &first_indent);
     std::string phylogeny_as_newick(); // See https://en.wikipedia.org/wiki/Newick_format
     std::string get_name();
+    void log_summary_stats(const Characteristics &ch);
+
+    void set_initial_stats(StatsAccumulator &acc) {
+      acc.update_stats(initial_stats, step);
+      latest_stats = initial_stats;
+      if (conf.verbosity > 1)
+	log_summary_stats(initial_stats);
+    }
+    void update_latest_stats(StatsAccumulator &acc) {
+      acc.update_stats(latest_stats, step);
+      if (conf.verbosity > 1)
+	log_summary_stats(latest_stats);
+    }
 
   private:
     Characteristics initial_stats; // At species origin (i.e. split from parent)
-    void setup_dispersal(const SpeciesParameters &sp);
-    void load_initial(const SpeciesParameters &sp, const Environment &env);
     std::shared_ptr <Species> add_child(const int species_id);
-    std::vector <DemeMapEntryVec> get_clusters(DemeMap &dm,
-					       float distance);
+    std::vector <SpeciationItemVector> get_clusters(float distance,
+						    SpeciationCandidates &speciation_candidates);
+  };
+
+
+  /**
+   * Describes the presence of a species in a cell
+   */
+  class SpeciesPresence {
+  public:
+    Species *species;
+    Deme incumbent; // holds the population that exists due to prior occupation
+    std::vector<Deme> immigrants; // During dispersal, several demes
+				  // can occupy a cell
+
+    SpeciesPresence(Species *s):
+      incumbent(-1.0f), species(s) {}
+
+    SpeciesPresence(Species *s, const Deme &d):
+      incumbent(d), species(s) {}
+
   };
 
 }

@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <utility>
+#include <algorithm>
 
 #include <boost/algorithm/string.hpp>
 
@@ -73,6 +75,7 @@ namespace DreadDs {
 Model::Model(const Config &c):
   conf(c),
   step(0),
+  demes(std::make_shared <DemeMap>()),
   species_id_counter(0),
   env(Environment(conf)), // must use conf member, not arg
 
@@ -88,15 +91,72 @@ Model::Model(const Config &c):
   // Seed our RNG from the already randomly seeded Config::rng
   rng.seed(c.rng());
 
-  for (auto &&sp: conf.get_initial_species(env)) {
-    const auto &&s = std::make_shared<Species>(conf,
-					       ++species_id_counter,
-					       sp, env);
-    roots.push_back(s);
-    if (s->extinction < 0)
-      tips.push_back(s);
-  }
+  for (auto &&sp: conf.get_initial_species(env))
+    load_initial_species(sp);
 }
+
+
+/**
+ * Load initial species values, locations and abundance.
+ */
+
+void Model::load_initial_species(const SpeciesParameters &sp) {
+  const auto &&species = std::make_shared<Species>(conf,
+					     // must be loaded in increasing id order
+					     ++species_id_counter);
+  species->setup_dispersal(sp);
+
+  // get initial bounding rectangle row and column limits.
+
+  // sp.north…west have already been bounds checked in sp.get_initial_species()
+  long n = env.row(sp.north);
+  long s = env.row(sp.south);
+  long e = env.col(sp.east);
+  long w = env.col(sp.west);
+
+  if (conf.verbosity > 1)
+    std::cout << " Loading species. "
+      "west=" << sp.west <<
+      ", east=" << sp.east <<
+      ", south=" << sp.south <<
+      ", north=" << sp.north  << std::endl;
+
+  // fill all suitable cells in initial-rectangle
+
+  Deme d(sp);
+  Location loc;
+  EnvCell ec;
+  bool no_data;
+  bool absent = true;;
+  Species::StatsAccumulator acc(conf);
+  // roots and tips must hold species in ascending id order
+  roots.push_back(species);
+
+  for (loc.y = n; loc.y <= s; ++loc.y)
+    for (loc.x = w; loc.x <= e; ++loc.x) {
+      env.get(loc, ec, &no_data);
+      if (no_data)
+	continue;
+      d.amount = d.niche_suitability(conf, ec);
+      if (d.amount > 0.0f) {
+	absent = false;
+	// push_front() so they end up in descending id order. Note
+	// that species is now in roots so we can safely store a plain
+	// pointer to it for the duration of the model.
+	auto &&sp = SpeciesPresence(&(*species), d);
+	acc.accumulate(sp);
+	(*demes)[loc].push_front(std::move(sp)); // these end up in descending id order.
+      }
+    }
+
+  species->set_initial_stats(acc);
+  if (absent)
+    species->extinction = 0; // Dead on arrival
+
+  if (species->extinction < 0)
+    tips.push_back(species);
+}
+
 
 static inline float dispersal_abundance(float source_abundance,
 					float suitability,
@@ -120,61 +180,133 @@ void Model::do_genetc_drift(Deme &deme) {
 }
 
 
-std::shared_ptr<DemeMap> Model::evolve_and_disperse(Species &species) {
+static inline SpeciesPresence &get_target_presence(SpeciesPresenceList &target_cell,
+                                                   SpeciesPresenceList::iterator &target_presence_itr,
+                                                   Species *species) {
+  // Insert or find list element. They're in descending species.id order in target_cell
+  for (;;) {
+    auto itr = target_presence_itr; // note may be before_begin(), so not safe to dereference
+    ++target_presence_itr;
+
+    if (target_presence_itr == target_cell.end() || target_presence_itr->species->id < species->id) {
+      // append to list or insert before next species
+      target_presence_itr = target_cell.emplace_after(itr, species);
+      break;
+    }
+    if (target_presence_itr->species->id == species->id)
+      break; // found existing SpeciesPresence
+  }
+
+  return *target_presence_itr;
+}
+
+
+void Model::evolve_and_disperse() {
   /**
-   * Iterate over all extant demes of a species and disperse to
+   * Iterate over all extant demes of all species and disperse to
    * neighbouring cells, weighted by environmental niche
-   * suitability. This can result in several demes per cell.
+   * suitability.
    */
   EnvCell source_env, target_env;
-  bool no_source, no_target;
+  bool no_data, no_target;
   auto target = std::make_shared <DemeMap>();
   auto &&env_shape = env.values.shape();
 
-  // Iterate over all cells where this species occurs
-  for (auto &&deme_cell: *(species.demes)) {
-    const Location &loc = deme_cell.first;
-    env.get(loc, source_env, &no_source);
-    if (no_source)
+  // Collect all the dispersal kernels into a map so that we can
+  // iterate over the dispersal values for all species at a given
+  // location.
+  std::map<
+    Location,
+    std::vector<SpeciesDispersalWeight> // must be in ascending species id order.
+    >  aggregated_dk;
+  for (const auto &s: tips)
+    for (const auto &dw: s->dk)
+      aggregated_dk[Location(dw.x, dw.y)].emplace_back(s->id,
+						      dw.weight);
+  // TODO? collapse aggregated_dk to vector for faster iteration?
+
+  // Iterate over all cells
+  for (auto &dememap_entry: *demes) {
+    const Location &loc = dememap_entry.first;
+    env.get(loc, source_env, &no_data);
+    if (no_data)
       continue;
 
-    auto &&deme = deme_cell.second.incumbent;
-    evolve_towards_niche(deme, source_env);
-    do_genetc_drift(deme);
+    // "disperse" into the same cell. These become primary demes after
+    // dispersal due to incumbency.
+    SpeciesPresenceList &source_cell = dememap_entry.second;
+    SpeciesPresenceList &target_cell = (*target)[loc];
+    auto target_presence_itr = target_cell.before_begin();
 
-    // "disperse" into the same cell. This becomes a primary deme
-    // after dispersal due to incumbency.
+    for (SpeciesPresence &presence: source_cell) {
+      // evolve and disperse to same location. source_cell holds species in decreasing id order
+      auto &&source_deme = presence.incumbent;
+      evolve_towards_niche(source_deme, source_env);
+      do_genetc_drift(source_deme);
 
-    Deme &incumbent = (*target)[loc].incumbent;
-    incumbent = deme;
-    incumbent.amount = dispersal_abundance(
-		      deme.amount,
-		      deme.niche_suitability(conf, source_env),
-		      1.0); // same cell, no travel cost
+      Deme &target_deme = get_target_presence(target_cell,
+                                              target_presence_itr,
+                                              presence.species).incumbent;
+      target_deme = source_deme;
+      target_deme.amount = dispersal_abundance(
+		    source_deme.amount,
+		    source_deme.niche_suitability(conf, source_env),
+		    1.0); // same cell, no travel cost
+    }
 
-    // Disperse into the area around this cell
-    Location new_loc;
-    for (auto &&k: species.dk) {
-      new_loc.x = loc.x + k.x;
-      new_loc.y = loc.y + k.y;
+    // Loop over locations covered by dispersal kernels and disperse each species
+
+    for (const auto &adk_entry: aggregated_dk) {
+      const Location &offset = adk_entry.first;
+      Location new_loc(loc.x + offset.x, loc.y + offset.y);
       if (new_loc.x < 0 || new_loc.y < 0 ||
 	  new_loc.x >= env_shape[1] || new_loc.y >= env_shape[0])
 	continue;
       env.get(new_loc, target_env, &no_target);
       if (no_target)
 	continue;
-      auto &immigrants = (*target)[new_loc].immigrants;
-      if (immigrants.size() == 0)
-	immigrants.reserve(species.dk.size());
-      immigrants.emplace_back(
-		deme,
-		dispersal_abundance(
-			deme.amount,
-			deme.niche_suitability(conf, target_env),
-			k.weight));
+
+      auto dw_itr = adk_entry.second.crbegin();  // iterating backwards, largest id first
+      SpeciesPresenceList &target_cell = (*target)[new_loc];
+      auto target_presence_itr = target_cell.before_begin();
+      for (SpeciesPresence &presence: source_cell) {
+	// Not every species in adk_entry may be present in this cell,
+	// and not every species in the cell may be present in
+	// adk_entry. Species are ordered by ascending id in adk_entry and by
+	// descending id in source_cell, so skip ahead until we find
+	// the dispersal weight for this species.
+        for (;dw_itr !=  adk_entry.second.crend(); ++dw_itr) {
+          if (dw_itr->species_id == presence.species->id) {
+            // Got a dispersal weight for this species in this
+            // cell. Disperse to this species in the target cell
+            auto &source_deme = presence.incumbent;
+            auto &immigrants = get_target_presence(target_cell,
+                                                   target_presence_itr,
+                                                   presence.species).immigrants;
+            if (immigrants.size() == 0) // first time
+              immigrants.reserve(presence.species->dk.size());
+            immigrants.emplace_back(
+		  source_deme,
+		  dispersal_abundance(
+		       source_deme.amount,
+		       source_deme.niche_suitability(conf, target_env),
+		       dw_itr->weight));
+            ++dw_itr; // to disperse next species
+            break;
+          }
+          if (dw_itr->species_id < presence.species->id)
+	    // No dispersal for this species at this location.
+	    // Skip to next species
+            break;
+	  // Otherwise the species for this dispersal weight isn't
+	  // present in this cell. Loop to next dispersal weight
+        }
+      }
     }
   }
-  return target;
+
+  // Finished dispersing so replace source cells
+  demes = target;
 }
 
 
@@ -211,50 +343,87 @@ bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
 }
 
 
-void Model::merge(DemeMap &dm) {
+/**
+ * Merge immigrant demes into incumbents. Returns total occupied cells.
+ * Note: return value is indexed by species id minus 1
+ */
+MergeResultVector Model::merge(bool do_speciation) {
+
   // Merge demes where gene flow occurs
   EnvCell ec;
-  for (auto cell_itr = dm.begin(); cell_itr != dm.end(); ) {
+  MergeResultVector mrv(get_species_count(), conf);
 
-    SpeciesPresence &sp = cell_itr->second;
+  for (auto cell_itr = demes->begin(); cell_itr != demes->end(); ) {
     const Location &loc = cell_itr->first;
-    Deme &incumbent = sp.incumbent;
+    env.get(loc, ec); // known location so no need to check for no_data
 
-    if (!sp.immigrants.empty()) {
-      // Have at least two demes in this cell, so check for gene flow
-      // and merge if required.
+    SpeciesPresenceList &spl = cell_itr->second;
+    for (auto sp_itr = spl.begin(), prev = spl.before_begin();
+	 sp_itr != spl.end(); ) {
+      Deme &incumbent = sp_itr->incumbent;
 
-      // Any incumbent population will be the primary deme, otherwise
-      // we have to choose one
-      Deme &primary = (incumbent.amount < 0.0f) ?
-        choose_primary(sp.immigrants):
-        incumbent;
+      if (!sp_itr->immigrants.empty()) {
+	// Have at least two demes in this cell, so check for gene flow
+	// and merge if required.
 
-      DemeMixer mixer(conf);
-      mixer.contribute(primary);
-      for (auto &&deme: sp.immigrants)
-	if ((&deme != &primary) && gene_flow_occurs(deme, primary))
-	  mixer.contribute(deme);
+	// Any incumbent population will be the primary deme, otherwise
+	// we have to choose one
+	Deme &primary = (incumbent.amount < 0.0f) ?
+	  choose_primary(sp_itr->immigrants):
+	  incumbent;
+
+	DemeMixer mixer(conf);
+	mixer.contribute(primary);
+	for (auto &&deme: sp_itr->immigrants)
+	  if ((&deme != &primary) && gene_flow_occurs(deme, primary))
+	    mixer.contribute(deme);
         // otherwise excluded by competition
 
-      // mix down to primary deme
-      if (!mixer.mix_to(&incumbent)) {
-	// extinct in this cell, so drop it
-	cell_itr = dm.erase(cell_itr);
-	continue;
+	// mix down to primary deme
+	if (!mixer.mix_to(&incumbent)) {
+	  // extinct in this cell, so drop it
+	  sp_itr = spl.erase_after(prev);
+	  continue;
+	}
+	sp_itr->immigrants.clear();
       }
-      sp.immigrants.clear();
+      // update abundance according to current environment
+      incumbent.amount = incumbent.niche_suitability(conf, ec);
+
+
+      /**
+       * TODO: Implement species competition here. May need to do all
+       * the immigration first and then loop over all the resulting
+       * incumbents in order to simulate competition.  That will
+       * probably involve some refactoring of the enclosing loops and
+       * the code below.
+       */
+
+
+      if (incumbent.amount > 0.0f) {
+	// Present.
+	Species &species = *sp_itr->species;
+	MergeResult &mr = mrv[species.id - 1];
+	mr.acc.accumulate(*sp_itr); // contribute to statistics
+	if (do_speciation)
+	  mr.sp_candidates.add(spl, *sp_itr);
+	// Advance to next species in cell
+	prev = sp_itr;
+	++sp_itr;
+      } else
+	// Species extinct here. drop from list
+	sp_itr = spl.erase_after(prev);
     }
-    // update abundance according to current environment
-    env.get(loc, ec); // known location so no need to check for no_data
-    incumbent.amount = incumbent.niche_suitability(conf, ec);
-    if (incumbent.amount <= 0.0f)
-      // another extinction case
-      cell_itr = dm.erase(cell_itr);
+
+    if (spl.empty())
+      // all species extinct in this cell, so get rid of it
+      cell_itr = demes->erase(cell_itr);
     else
       ++cell_itr;
   }
+  return mrv;
 }
+
 
 void Model::save() {
   std::string ofn = std::to_string(step) + ".csv";
@@ -278,16 +447,17 @@ void Model::save() {
     return fprintf(of, ",%s",  n1 < n2? s1: s2);
   };
 
-  for (auto &&species: tips) {
-    for (auto &&deme_cell: *(species->demes)) {
-      const Location &loc = deme_cell.first;
-      env.get(loc, ec, &no_data);
-      auto &&deme = deme_cell.second.incumbent;
-      auto &&g = deme.genetics;
+  for (const auto &entry: *demes) {
+    const Location &loc = entry.first;
+    const SpeciesPresenceList &spl = entry.second;
+    env.get(loc, ec, &no_data);
+    for (const SpeciesPresence &presence: spl) {
+      auto &&d = presence.incumbent;
+      auto &&g = d.genetics;
       fprintf(of,
 	      "%d,%d,%d",
-	      species->id, loc.y, loc.x);
-      write_f(deme.amount);
+	      presence.species->id, loc.y, loc.x);
+      write_f(d.amount);
       for (int i=0; i < conf.env_dims; ++i) {
 	write_f(no_data? NAN : ec[i]);
 	write_f(g.niche_centre[i]);
@@ -345,45 +515,52 @@ int Model::do_step() {
       step << " at " << tstr << std::endl;
   }
 
+  bool do_speciation = conf.check_speciation && (step % conf.check_speciation == 0);
+
+  evolve_and_disperse();
+  // merge demes in each cell that are within genetic tolerance.
+  MergeResultVector &&mrv = merge(do_speciation);
+
+  // compute statistics. do speciation if required
   int n_occupied = 0;
   Species::Vec new_tips;
-  for (auto && species: tips) {
-    auto target = evolve_and_disperse(*species);
-    // TODO handle range contraction (extinction) here ???? see "3.3.2 Range contraction"
+  for (auto &species: tips) {
+    MergeResult &mr = mrv[species->id -1];
+    species->update(step, mr.acc);
+    if (species->extinction > -1)
+      // Just went extinct in this step
+      continue;
 
-    // merge demes in each cell that are within genetic tolerance.
-    merge(*target);
-    int n_cells = target->size();
-    n_occupied += n_cells;
-    // Finished with source demes now - replace with target;
-    species->update(target, step);
-    // TODO competition/co-occurrence. (see 3.5)
+    n_occupied += mr.acc.count;
+    if (do_speciation)
+      species->speciate(&species_id_counter,
+			mr.sp_candidates);
+    if (species->sub_species.empty()) {
+      // No speciation.
+      // We have to update_stats() after every step as we may
+      // speciate on the next iteration and we want to leave the
+      // parent species with accurate stats.
+      species->update_latest_stats(mr.acc);
+      new_tips.push_back(species);
+    } else {
+      // species has split into sub_species
 
-    if (n_cells > 0) {
-      if (conf.check_speciation && (step % conf.check_speciation == 0))
-	species->speciate(&species_id_counter);
-      if (species->sub_species.empty()) {
-	// No speciation.
-	// We have to update_stats() after every step as we may
-	// speciate on the next iteration and we want to leave the
-	// parent species with accurate stats.
-	species->update_stats(species->latest_stats);
-        new_tips.push_back(species);
-      } else {
-	// species has split into sub_species
-	if (conf.verbosity > 0)
-	  std::cout << "Speciation occurred" << std::endl;
-	for (auto &&s: species->sub_species) {
-	  s->set_initial_stats();
-	  new_tips.push_back(s);
-	}
-      }
+      if (conf.verbosity > 0)
+	std::cout << "Speciation occurred" << std::endl;
+      for (auto &&s: species->sub_species)
+	new_tips.push_back(s);
     }
   }
-
+  // tips must be in ascending id order so that aggregated_dk gets built properly
+  std::sort(new_tips.begin(), new_tips.end(),
+	    [] (std::shared_ptr <Species> a,
+		std::shared_ptr <Species> b) {
+	      return a->id < b->id;
+	    });
   tips = new_tips;
   return n_occupied;
 }
+
 
 static void traverse_species(Species::Vec &flat,
                              std::shared_ptr <Species> &s) {

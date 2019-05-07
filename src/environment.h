@@ -21,6 +21,10 @@ namespace DreadDs {
   struct Location {
     int x;
     int y;
+
+    Location(int x_, int y_): x(x_), y(y_) {}
+    Location() = default;
+
     // Used as key in a map, so needs an ordering
     friend bool operator< (const Location &a, const Location &b) {
       return (a.x < b.x) || (a.x == b.x && a.y < b.y);
@@ -88,7 +92,7 @@ namespace DreadDs {
     }
 
     inline double to_ns(double row) const {
-      // return Ycoordinate of cell centre
+      // return Y coordinate of cell centre
       return geo_transform[3] + ((0.5 + row) * geo_transform[5]);
     }
 

@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <string>
+#include <utility>
 
 #include <model-config.h>
 #include <model.h>
@@ -18,17 +19,24 @@
 
 using namespace Rcpp;
 
-static DreadDs::Model *model_factory(CharacterVector args) {
+using DreadDs::Model;
+using DreadDs::max_env_dims;
+using DreadDs::max_genetic_dims;
+using DreadDs::Config;
+using std::move;
+
+
+static Model *model_factory(CharacterVector args) {
   std::vector<const char *> av;
   av.push_back("dreadds");
   for (String s: args)
     av.push_back(s.get_cstring());
-  DreadDs::Config conf(av.size(), av.data());
+  Config conf(av.size(), av.data());
   conf.verbosity = 0; // keep std::cerr quiet
-  return new DreadDs::Model(conf);
+  return new Model(conf);
 }
 
-static NumericVector get_extent(DreadDs::Model *m) {
+static NumericVector get_extent(Model *m) {
   return wrap((m->env).get_extent());
 }
 
@@ -37,8 +45,8 @@ static NumericVector get_extent(DreadDs::Model *m) {
  * Return a list of NumericMatrix() representing the environment
  * values at the current step
  */
-static List get_env(DreadDs::Model *m) {
-  const DreadDs::Config &conf = m->conf;
+static List get_env(Model *m) {
+  const Config &conf = m->conf;
   const auto &&s = m->env.values.shape();
   DreadDs::EnvCell ec;
   bool no_data;
@@ -69,9 +77,9 @@ static List get_env(DreadDs::Model *m) {
  * the environment values for each environment variable, followed by
  * columns describing the genetic position.
  */
-static List get_demes(DreadDs::Model *m) {
+static List get_demes(Model *m) {
   bool no_data;
-  const DreadDs::Config &conf = m->conf;
+  const Config &conf = m->conf;
   int ncol = 3 + conf.env_dims*3 + conf.genetic_dims;
   CharacterVector col_names(ncol);
   int cni = 0;
@@ -89,63 +97,76 @@ static List get_demes(DreadDs::Model *m) {
 
   CharacterVector species_names;
   List df_list(m->tips.size());
-  int dfli = 0;
+
+  struct DemeData {
+    std::vector<int> row, column;
+    std::vector<float> amount,
+      env[max_env_dims],
+      nc[max_env_dims],
+      nb[max_env_dims],
+      gp[max_genetic_dims];
+  };
+
+  std::vector<DemeData> deme_data(m->get_species_count());
+
   for (auto &&species: m->tips) {
-    int n_demes = species->demes->size();
-
-    IntegerVector row(n_demes), column(n_demes);
-    NumericVector amount(n_demes);
-
-    NumericVector env[conf.env_dims],
-      nc[conf.env_dims],
-      nb[conf.env_dims];
-    for (int i=0; i < conf.env_dims; ++i) {
-      env[i] = NumericVector(n_demes);
-      nc[i] = NumericVector(n_demes);
-      nb[i] = NumericVector(n_demes);
-    }
-    NumericVector gp[conf.genetic_dims];
-    for (int i=0; i < conf.genetic_dims; i++)
-      gp[i] = NumericVector(n_demes);
     species_names.push_back(species->get_name());
+    DemeData &d = deme_data[species->id-1];
+    int n = species->latest_stats.cell_count;
+    d.row.reserve(n);
+    d.column.reserve(n);
+    d.amount.reserve(n);
+    for (int i=0; i < conf.env_dims; ++i) {
+      d.env[i].reserve(n);
+      d.nc[i].reserve(n);
+      d.nb[i].reserve(n);
+    }
+    for (int i=0; i < conf.genetic_dims; i++)
+      d.gp[i].reserve(n);
+  }
 
-    DreadDs::EnvCell ec;
-    auto cell_itr = species->demes->begin();
-    for (int di = 0; di < n_demes; ++di, ++cell_itr) {
-      const DreadDs::Location &loc = cell_itr->first;
-      m->env.get(loc, ec, &no_data);
-      for (auto &&deme: cell_itr->second) {
-	auto &&g = deme.genetics;
-        row[di] = loc.y + 1; // Indexes start at 1 in R
-        column[di] = loc.x + 1;
-        amount[di] = deme.amount;
-	for (int i=0; i < conf.env_dims; ++i) {
-          env[i][di] = (no_data? NA_REAL : ec[i]);
-          nc[i][di] = g.niche_centre[i];
-          nb[i][di] = g.niche_tolerance[i] *2.0f; // *2 to convert to breadth
+  DreadDs::EnvCell ec;
+  for (const auto &cell: *m->demes) {
+    const auto &loc = cell.first;
+    const auto &presence_list = cell.second;
+    m->env.get(loc, ec, &no_data);
+    for (const auto &presence: presence_list) {
+      DemeData &d = deme_data[presence.species->id-1];
+      auto &deme = presence.incumbent;
+      auto &&g = deme.genetics;
+      d.row.push_back(loc.y + 1); // Indexes start at 1 in R
+      d.column.push_back(loc.x + 1);
+      d.amount.push_back(deme.amount);
+      for (int i=0; i < conf.env_dims; ++i) {
+        d.env[i].push_back(no_data? NA_REAL : ec[i]);
+        d.nc[i].push_back(g.niche_centre[i]);
+        d.nb[i].push_back(g.niche_tolerance[i] *2.0f); // *2 to convert to breadth
         }
-	for (int i=0; i < conf.genetic_dims; i++) {
-	  gp[i][di] = g.genetic_position[i];
-        }
+      for (int i=0; i < conf.genetic_dims; i++) {
+        d.gp[i].push_back(g.genetic_position[i]);
       }
     }
+  }
+
+  int dfli = 0;
+  for (auto &&species: m->tips) {
+    DemeData &d = deme_data[species->id-1];
 
     // The recommended way to create a DataFrame with a variable
     // number of columns is to build a List() and then convert it. See
     // https://stackoverflow.com/a/8631853 https://stackoverflow.com/a/8648201
     List df_columns(ncol);
     int dfcol = 0;
-    df_columns[dfcol++] = row;
-    df_columns[dfcol++] = column;
-    df_columns[dfcol++] = amount;
+    df_columns[dfcol++] = move(d.row);
+    df_columns[dfcol++] = move(d.column);
+    df_columns[dfcol++] = move(d.amount);
     for (int i=0; i < conf.env_dims; ++i) {
-      std::string si = std::to_string(i);
-      df_columns[dfcol++] = env[i];
-      df_columns[dfcol++] = nc[i];
-      df_columns[dfcol++] = nb[i];
+      df_columns[dfcol++] = move(d.env[i]);
+      df_columns[dfcol++] = move(d.nc[i]);
+      df_columns[dfcol++] = move(d.nb[i]);
     }
     for (int i=0; i < conf.genetic_dims; i++) {
-      df_columns[dfcol++] = gp[i];
+      df_columns[dfcol++] = move(d.gp[i]);
     }
     df_columns.names() = col_names;
     df_list[dfli++] = DataFrame(df_columns);
@@ -164,7 +185,7 @@ static List get_demes(DreadDs::Model *m) {
  * https://www.r-phylo.org/wiki/HowTo/InputtingData
  * https://www.r-phylo.org/wiki/HowTo/InputtingTrees
  */
-static CharacterVector get_phylogeny(DreadDs::Model *m) {
+static CharacterVector get_phylogeny(Model *m) {
   CharacterVector ret(m->roots.size());
   auto sp_itr = m->roots.begin();
   for (int i=0; i < m->roots.size(); ++i, ++sp_itr) {
@@ -178,8 +199,8 @@ static CharacterVector get_phylogeny(DreadDs::Model *m) {
  * Return a DataFrame describing the current characteristics of all
  * species. Each row corresponds to a species
  */
-static DataFrame get_species(DreadDs::Model *m) {
-  const DreadDs::Config &conf = m->conf;
+static DataFrame get_species(Model *m) {
+  const Config &conf = m->conf;
   auto all_species =  m->get_all_species();
   int n = all_species.size();
   IntegerVector ids(n), parents(n), extinctions(n),
@@ -271,14 +292,14 @@ static DataFrame get_species(DreadDs::Model *m) {
  * Run model for a specified number of steps or until it finishes or
  * reached defined iteration limit.
  */
-static int run_steps(DreadDs::Model *m, int n) {
+static int run_steps(Model *m, int n) {
   int r = -1;
   for (int i=0; r!=0 && i<n; ++i)
     r = m->do_step();
   return r;
 }
 
-static int run_all(DreadDs::Model *m) {
+static int run_all(Model *m) {
   return run_steps(m, m->conf.n_iterations - m->step);
 }
 
@@ -286,19 +307,19 @@ static int run_all(DreadDs::Model *m) {
 RCPP_MODULE(dreadds){
   using namespace Rcpp ;
 
-  class_<DreadDs::Model>("dreaddsModel")
+  class_<Model>("dreaddsModel")
     // see http://www2.uaem.mx/r-mirror/web/packages/Rcpp/news.html
     // https://github.com/RcppCore/Rcpp/pull/938
     // https://stackoverflow.com/questions/23599043/expose-class-in-rcpp-factory-instead-of-constructor
     .factory<CharacterVector>(model_factory)
     .method("runSteps", &run_steps)
     .method("runAll", &run_all)
-    .method("save", &DreadDs::Model::save)
+    .method("save", &Model::save)
     .method("getEnv", &get_env)
     .method("getExtent", &get_extent)
     .method("getDemes", &get_demes)
     .method("getPhylogeny", &get_phylogeny)
     .method("getSpecies", &get_species)
-    .field_readonly("step", &DreadDs::Model::step)
+    .field_readonly("step", &Model::step)
     ;
 }
