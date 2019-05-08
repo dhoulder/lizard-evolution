@@ -5,6 +5,11 @@ evolution model and provides an API in the form of a runtime library.
 
 The API is defined in ./model.h
 
+### Development notes
+
+* Remember to to keep the version string in `constants.h` up to date
+
+
 ### Prerequisites
 
 * C++11 compiler. For gcc, version 4.8 or later

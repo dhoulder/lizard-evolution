@@ -18,6 +18,9 @@ using namespace DreadDs;
 int main(int argc, const char *argv[]) {
   try {
     Config conf(argc, argv);
+    if (conf.verbosity > 0)
+      std::cout << "Version " << version << std::endl;
+
     Model model(conf);
     for (int i =0; i < conf.n_iterations; ++i) {
       int n = model.do_step();

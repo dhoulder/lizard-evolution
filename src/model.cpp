@@ -185,7 +185,7 @@ static inline SpeciesPresence &get_target_presence(SpeciesPresenceList &target_c
                                                    Species *species) {
   // Insert or find list element. They're in descending species.id order in target_cell
   for (;;) {
-    auto itr = target_presence_itr; // note may be before_begin(), so not safe to dereference
+    auto itr = target_presence_itr; // note: may be before_begin(), so not safe to dereference
     ++target_presence_itr;
 
     if (target_presence_itr == target_cell.end() || target_presence_itr->species->id < species->id) {
@@ -344,8 +344,7 @@ bool Model::gene_flow_occurs(const Deme &d1, const Deme &d2) {
 
 
 /**
- * Merge immigrant demes into incumbents. Returns total occupied cells.
- * Note: return value is indexed by species id minus 1
+ * Merge immigrant demes into incumbents.
  */
 MergeResultVector Model::merge(bool do_speciation) {
 

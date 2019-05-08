@@ -16,6 +16,7 @@
 #include <species.h>
 #include <deme.h>
 #include "environment.h"
+#include "constants.h"
 
 using namespace Rcpp;
 
@@ -24,7 +25,6 @@ using DreadDs::max_env_dims;
 using DreadDs::max_genetic_dims;
 using DreadDs::Config;
 using std::move;
-
 
 static Model *model_factory(CharacterVector args) {
   std::vector<const char *> av;
@@ -304,6 +304,10 @@ static int run_all(Model *m) {
 }
 
 
+static CharacterVector get_version(Model *m) {
+  return DreadDs::version;
+}
+
 RCPP_MODULE(dreadds){
   using namespace Rcpp ;
 
@@ -321,5 +325,6 @@ RCPP_MODULE(dreadds){
     .method("getPhylogeny", &get_phylogeny)
     .method("getSpecies", &get_species)
     .field_readonly("step", &Model::step)
+    .method("version", &get_version)
     ;
 }

@@ -53,7 +53,7 @@
       Returns -1 if no steps could be performed due to the configured
       iteration limit being reached.  In all other circumstances, the
       total cell count after the final step is returned.}
-    
+
     \item{$runSteps(iterations)}{
       Perform one or more steps of the simulation.
 
@@ -90,6 +90,10 @@
     \item{$getSpecies()}{
       Returns a data frame describing the characteristics of all species
       in the model.}
+
+    \item{$version()}{
+      Returns the model version string.}
+
   }
 }
 
