@@ -133,10 +133,13 @@ namespace DreadDs {
                          // species origin time.
     Characteristics latest_stats;  // Updated after each time step.
     DispersalKernel dk;
-    int id = -1;
+    int id = -1; // unique id starting at 0
+    int family_id = -1; // species id of top level ancestor
     int step = -1; // time step of most recent dispersal
 
-    Species(const Config &conf, const int species_id, const int creation_step = 0);
+    Species(const Config &conf, const int species_id);
+    Species(Species *parent, const int species_id);
+
     void setup_dispersal(const SpeciesParameters &sp);
     void update(int step, StatsAccumulator &acc);
     void speciate(int *id_counter, SpeciationCandidates &candidates);

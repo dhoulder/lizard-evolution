@@ -22,11 +22,26 @@
 using namespace DreadDs;
 namespace ba = boost::accumulators;
 
-
-Species::Species(const Config &c, const int species_id, const int creation_step):
+/**
+ * Crreate a top-level ancestor species
+ */
+Species::Species(const Config &c, const int species_id):
   conf(c),
-  step(creation_step), // step=0 indicates before first time step
-  id(species_id)
+  step(0), // step=0 indicates before first time step
+  id(species_id),
+  family_id(species_id)
+{
+  if (conf.verbosity > 1)
+    std::cout << "Creating species " << get_id() << std::endl;
+}
+
+Species::Species(Species *parent_species, const int species_id):
+  conf(parent_species->conf),
+  step(parent_species->step),
+  id(species_id),
+  family_id(parent_species->family_id),
+  dk(parent_species->dk),
+  parent(parent_species)
 {
   if (conf.verbosity > 1)
     std::cout << "Creating species " << get_id() << std::endl;
@@ -224,9 +239,7 @@ std::vector<SpeciationItemVector> SpeciationCandidates::split(float distance) {
  * Create a child species
  */
 std::shared_ptr <Species> Species::add_child(const int species_id) {
-  auto s = std::make_shared <Species>(conf, species_id, step);
-  s->dk = dk;
-  s->parent = this;
+  auto s = std::make_shared <Species>(this, species_id);
   sub_species.push_back(s);
   return s;
 }
