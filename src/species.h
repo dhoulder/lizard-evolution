@@ -133,7 +133,7 @@ namespace DreadDs {
                          // species origin time.
     Characteristics latest_stats;  // Updated after each time step.
     DispersalKernel dk;
-    int id = 0;
+    int id = -1;
     int step = -1; // time step of most recent dispersal
 
     Species(const Config &conf, const int species_id, const int creation_step = 0);
@@ -148,6 +148,10 @@ namespace DreadDs {
     std::string phylogeny_as_newick(); // See https://en.wikipedia.org/wiki/Newick_format
     std::string get_name();
     void log_summary_stats(const Characteristics &ch);
+
+    inline int get_id() {
+      return id +1; // For 1-based indexing in output files and R API
+    }
 
     void set_initial_stats(StatsAccumulator &acc) {
       acc.update_stats(initial_stats, step);

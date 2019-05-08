@@ -4,7 +4,7 @@
 #define DREADDS_MODEL_LIMITS_H
 
 namespace DreadDs {
-  static const char *version = "species-comp 0.1"; // NOTE: keep this up to date
+  static const char *version = "species-comp 0.2"; // NOTE: keep this up to date
   static const float gene_drift_sd = 1.0f; //Standard deviation of
   // Brownian motion gene drift per time-step
   static const float default_gene_flow_clip = 0.001;

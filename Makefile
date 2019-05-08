@@ -7,7 +7,7 @@ SHELL=/bin/bash
 R_PKG_TGZ=dreadds_1.0.tar.gz # Must match version in r-package/dreadds/DESCRIPTION
 
 # Emacs TAGS file
-CPP_SOURCES=src/*.cpp src/*.h r-package/dreadds/src/*.cpp
+CPP_SOURCES=src/*.cpp src/*.h src/test/*.cpp r-package/dreadds/src/*.cpp
 TAGS: $(CPP_SOURCES)
 	etags $(CPP_SOURCES)
 

@@ -76,7 +76,7 @@ Model::Model(const Config &c):
   conf(c),
   step(0),
   demes(std::make_shared <DemeMap>()),
-  species_id_counter(0),
+  species_counter(0),
   env(Environment(conf)), // must use conf member, not arg
 
   // Generate random values between [gene_flow_clip,
@@ -103,7 +103,7 @@ Model::Model(const Config &c):
 void Model::load_initial_species(const SpeciesParameters &sp) {
   const auto &&species = std::make_shared<Species>(conf,
 					     // must be loaded in increasing id order
-					     ++species_id_counter);
+					     species_counter++);
   species->setup_dispersal(sp);
 
   // get initial bounding rectangle row and column limits.
@@ -402,7 +402,7 @@ MergeResultVector Model::merge(bool do_speciation) {
       if (incumbent.amount > 0.0f) {
 	// Present.
 	Species &species = *sp_itr->species;
-	MergeResult &mr = mrv[species.id - 1];
+	MergeResult &mr = mrv[species.id];
 	mr.acc.accumulate(*sp_itr); // contribute to statistics
 	if (do_speciation)
 	  mr.sp_candidates.add(spl, *sp_itr);
@@ -455,7 +455,7 @@ void Model::save() {
       auto &&g = d.genetics;
       fprintf(of,
 	      "%d,%d,%d",
-	      presence.species->id, loc.y, loc.x);
+	      presence.species->get_id(), loc.y, loc.x);
       write_f(d.amount);
       for (int i=0; i < conf.env_dims; ++i) {
 	write_f(no_data? NAN : ec[i]);
@@ -524,7 +524,7 @@ int Model::do_step() {
   int n_occupied = 0;
   Species::Vec new_tips;
   for (auto &species: tips) {
-    MergeResult &mr = mrv[species->id -1];
+    MergeResult &mr = mrv[species->id];
     species->update(step, mr.acc);
     if (species->extinction > -1)
       // Just went extinct in this step
@@ -532,7 +532,7 @@ int Model::do_step() {
 
     n_occupied += mr.acc.count;
     if (do_speciation)
-      species->speciate(&species_id_counter,
+      species->speciate(&species_counter,
 			mr.sp_candidates);
     if (species->sub_species.empty()) {
       // No speciation.

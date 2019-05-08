@@ -29,7 +29,7 @@ Species::Species(const Config &c, const int species_id, const int creation_step)
   id(species_id)
 {
   if (conf.verbosity > 1)
-    std::cout << "Creating species " << id << std::endl;
+    std::cout << "Creating species " << get_id() << std::endl;
 }
 
 
@@ -129,7 +129,7 @@ int Species::StatsAccumulator::update_stats(Characteristics &ch, int step) {
 
 void Species::log_summary_stats(const Characteristics &ch) {
   std::cout <<
-    "Species " << id << " cell count " << ch.cell_count <<
+    "Species " << get_id() << " cell count " << ch.cell_count <<
     ", population = " << ch.population <<
     std::endl;
   for (int i=0; i < conf.env_dims; ++i) {
@@ -152,7 +152,7 @@ void Species::update(int s, StatsAccumulator &acc) {
     update_latest_stats(acc);
     extinction = step;
     if (conf.verbosity > 1)
-      std::cout << "Species " << id << " extinct at step " <<
+      std::cout << "Species " << get_id() << " extinct at step " <<
 	extinction << std::endl;
   }
 }
@@ -246,7 +246,7 @@ void Species::speciate(int *id_counter, SpeciationCandidates &candidates) {
   // The species has split into two or more sub species
   split = step;
   for (auto &&c: clusters) {
-    auto s = add_child(++(*id_counter));
+    auto s = add_child((*id_counter)++);
     StatsAccumulator acc(conf);
     for (SpeciationItem &si: c) {
       SpeciesPresenceList &spl = si.first;
@@ -285,12 +285,12 @@ void Species::as_yaml(FILE *of,
         "%sspeciation_time: %d\n"
         "%sparent_species: %d\n"
         "%sniche:\n",
-        first_indent.c_str(), id,
+        first_indent.c_str(), get_id(),
         ind, latest_stats.cell_count,
         ind, latest_stats.population,
         ind, extinction,
         ind, split,
-        ind, parent? parent->id : -1,
+        ind, parent? parent->get_id() : -1,
         ind) < 1)
     throw ApplicationException("Error writing species YAML file");
 
@@ -347,7 +347,7 @@ std::string Species::get_name() {
   // There's currently no explicit species naming, but to ensure
   // consistent behaviour now and into the future, use this to get
   // a species' name or label.
-  return "species_" + std::to_string(id);
+  return "species_" + std::to_string(get_id());
 }
 
 static void traverse_newick(std::ostringstream &sstr, Species &s) {

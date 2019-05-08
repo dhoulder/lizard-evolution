@@ -111,7 +111,7 @@ static List get_demes(Model *m) {
 
   for (auto &&species: m->tips) {
     species_names.push_back(species->get_name());
-    DemeData &d = deme_data[species->id-1];
+    DemeData &d = deme_data[species->id];
     int n = species->latest_stats.cell_count;
     d.row.reserve(n);
     d.column.reserve(n);
@@ -131,7 +131,7 @@ static List get_demes(Model *m) {
     const auto &presence_list = cell.second;
     m->env.get(loc, ec, &no_data);
     for (const auto &presence: presence_list) {
-      DemeData &d = deme_data[presence.species->id-1];
+      DemeData &d = deme_data[presence.species->id];
       auto &deme = presence.incumbent;
       auto &&g = deme.genetics;
       d.row.push_back(loc.y + 1); // Indexes start at 1 in R
@@ -150,7 +150,7 @@ static List get_demes(Model *m) {
 
   int dfli = 0;
   for (auto &&species: m->tips) {
-    DemeData &d = deme_data[species->id-1];
+    DemeData &d = deme_data[species->id];
 
     // The recommended way to create a DataFrame with a variable
     // number of columns is to build a List() and then convert it. See
@@ -221,9 +221,9 @@ static DataFrame get_species(Model *m) {
   for (int sp_i=0; sp_i < all_species.size(); ++sp_i, ++sp_itr) {
     auto &species = *(*sp_itr);
     auto &stats = species.latest_stats;
-    ids[sp_i] = species.id;
+    ids[sp_i] = species.get_id();
     species_names[sp_i] = species.get_name();
-    parents[sp_i] = species.parent? species.parent->id : -1;
+    parents[sp_i] = species.parent? species.parent->get_id() : -1;
     extinctions[sp_i] = species.extinction;
     splits[sp_i] = species.split;
     steps[sp_i] = species.step;

@@ -79,11 +79,11 @@ namespace DreadDs {
     Species::Vec get_all_species();
 
     inline int get_species_count() const {
-      return species_id_counter;
+      return species_counter;
     }
 
   private:
-    int species_id_counter = 0;
+    int species_counter = 0;
     rng_eng_t rng;
     uniform_real_distr_t gene_flow_distr;
     uniform_real_distr_t deme_choice_distr;
