@@ -2,51 +2,6 @@
 
 library(data.table)
 
-display.initialise <- function() {
-  if (!image_to_file) {
-    x11(15,11)
-  }
-
-  stored_par <- par(mfcol=c(1,1))
-
-  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
-  my.colours    <- my.colours.function(250)
-  return(list(my.colours, stored_par))
-}
-
-display.initialise.double <- function() {
-
-  if (!image_to_file) {
-    x11(18,9) # open on-screen display
-  }
-
-  stored_par <- par(mfcol=c(1,2))
-
-  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
-  my.colours    <- my.colours.function(250)
-
-  my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
-  my.diffcolours    <- my.diffcolours.function(250)
-
-  return(list(my.colours, my.diffcolours, stored_par))
-}
-
-display.initialise.2by2 <- function(image_to_file = F) {
-
-  if (!image_to_file) {
-    x11(10,10) # open on-screen display
-  }
-
-  stored_par <- par(mfcol=c(2,2))
-
-  my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
-  my.colours    <- my.colours.function(250)
-
-  my.diffcolours.function <- colorRampPalette(colors = c("red", "white", "blue"))
-  my.diffcolours    <- my.diffcolours.function(250)
-
-  return(list(my.colours, my.diffcolours, stored_par))
-}
 
 display.initialise.colours <- function() {
   my.colours.function <- colorRampPalette(colors = c("blue", "yellow",  "red"))
@@ -173,13 +128,13 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
   			demetable.species$row <- environment.rows - demetable.species$row  # where row numbers are used for the y value, this converts
   																																							# to standard y values where y=0 as at the bottom, not top
   		} else  {
-  		demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
-  		demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
+				demetable.species$col <- xFromCol(env_temp, col=demetable.species$col)		# replace row and column with x and y values
+				demetable.species$row <- yFromRow(env_temp, row=demetable.species$row)
   		}
   		
       points(demetable.species$col, demetable.species$row, col=these.colours, pch=19, cex=dot.size.scaler)
     }
-    ########################################################################################
+
     if (plot_genome_scatter) {
       these.sizes   <- sqrt(demetable.species$amount) * 1.5
 
@@ -196,7 +151,6 @@ display.update <- function(plotItems, plot_env=T, plot_genome_scatter=T, plot_ge
       means <- genome.mean(demetable.species, genome.columns)
       points(means[1], means[2], pch=3, cex=1.5)
     }
-    ########################################################################################
 
   }
 
@@ -220,7 +174,7 @@ text.update <- function(textItems) {
       geneflow.prob <- prob.geneflow(sp.summary$gen.distance.max, zero_flow_dist=gene.flow.max.distance)
     }
 
-    cat("\nTime:", sp.summary$current.time, "\tSpecies:", sp.summary$speciesID, "of", sp.summary$speciesCount, "extant species",
+    cat("\nCurrent time:", sp.summary$current.time, "\tSpecies:", sp.summary$speciesID, "of", sp.summary$speciesCount, "extant species",
         "\nRange:", sp.summary$range,
         "\tTotal amount:", sp.summary$total_amount,
         "\n\n\tNiche",
@@ -288,19 +242,16 @@ genome.colour <- function(demetable, genome.columns, gene.flow.max.distance, gen
 
 }
 
-genome.mean <- function(demetable, genome.columns) {
+genome.mean <- function(demetable, genome.columns, by.species = FALSE) {
 
   # this function calculates the mean genome position for the species, weighted by deme amount
-
-  genome.dimensions <- length(genome.columns)
-  genome.mean.pos   <- genome.columns # a lazy way to get a vector of the right length
-
-  for (col in 1:genome.dimensions) {
-    genome.col <- as.data.frame(demetable[, genome.columns[col], with=F])
-    genome.mean.pos[col] <- weighted.mean(genome.col[,1], demetable$amount)
+  if (by.species) {
+    sp_means <- demetable[, lapply(.SD, weighted.mean, amount), by=species_name, .SDcols=(genome.columns)]
+  } else {
+    sp_means <- demetable[, lapply(.SD, weighted.mean, amount), .SDcols=(genome.columns)]
   }
 
-  return(genome.mean.pos)
+  return(sp_means)
 }
 
 get.genome.extremes <- function(demetable, genome.columns, extremes=NA) {
@@ -330,14 +281,14 @@ get.genome.extremes <- function(demetable, genome.columns, extremes=NA) {
 }
 
 display.to.file.start <- function(image_dir, time, image_filename = "plot", plot_rows=2, plot_cols=3) {
-  image.width	<- 1800
-  image.height	<- 1080
+  image.width	<- 2000
+  image.height	<- 1200
 
   output.filename <- paste(image_dir, image_filename, time, ".png", sep='')
   png(output.filename, width = image.width, height=image.height)
   
   if (plot_rows==2 & plot_cols==3) {
-    par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
+    par(mar=c(5,5,4,2), cex.main=1.3, cex.lab=2, cex.axis=1.5)
     layout(mat = matrix(c(1, 2, 3, 4, 5, 6), ncol = plot_cols, byrow = TRUE))   # Widths of the two columns)
   } else if (plot_rows==2 & plot_cols==2) {
     par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
@@ -354,7 +305,7 @@ display.to.file.stop <- function() {
 display.to.screen.start <- function(window_name = "plot", plot_rows=2, plot_cols=2) {
   
   x11(width=10, height=7, title=window_name)
-  par(mar=c(2,2,4,1), cex.main=0.8, cex.lab=0.8)
+  par(mar=c(2,2,4,1), cex.lab=1)
   layout(mat = matrix(c(1, 3, 2, 4), ncol = plot_cols))   # Widths of the two columns)
 }
 
@@ -362,8 +313,20 @@ display.to.screen.stop <- function() {
   dev.off()
 }
 
-display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, plot_demes_amount_position=F, plot_species_ranges=F, plot_richness=F, plot_genome_scatter=F, plot_genome_map=F, plot_tree=F, plot_mainheader=F) {
-  # plotItems is a list of named components to include in the display
+display.update.multispecies <- function(plotItems, 
+                                        env=NA, 
+                                        allDemes=NA, 
+																				includes.map=TRUE,
+                                        plot_env=T, 
+                                        plot_demes_amount_position=F, 
+                                        plot_species_ranges=F, 
+                                        plot_richness=F, 
+                                        plot_genome_scatter=F, 
+                                        plot_genome_map=F, 
+                                        plot_tree=F, 
+                                        plot_mainheader=F,
+                                        plot_species_over_time=F) {
+  # plotItems is a list of named components which can be included in the display
 
   dot.size.scaler   <- 0.9  # 1 is good for a 100 x 100 plot (4 x4), smaller for higher resolution
   pane.header.size  <- 2
@@ -374,19 +337,28 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
   #plotItems[["env"]][1] <- -10
   #plotItems[["env"]][2] <- 110
   
-  if (length(plotItems[["current.time"]]) > 0) {
-    main.header <- paste("Time:", plotItems[["current.time"]])
-  } else {
-    main.header <- ""
-  }
-  
-  if (length(plotItems[["model.params"]]) > 0) {
-    main.header <- paste(main.header, "\n\nNiche breadth:", plotItems[["model.params"]][[1]],
-                         "\nNiche evol rate:", plotItems[["model.params"]][[2]],
-                         "\nDispersal:", plotItems[["model.params"]][[3]])
-  }
- 
   if (plot_mainheader) {
+		main.header <- ""
+		
+		if (length(plotItems[["model.params"]]) > 0) {
+			main.header <- paste(main.header, "\n\nNiche breadth (1):", plotItems[["model.params"]][[1]],
+													 "\nNiche evol rate:", plotItems[["model.params"]][[2]],
+													 "\nDispersal:", plotItems[["model.params"]][[3]],
+							 "\nSpeciation distance:", plotItems[["model.params"]][[4]])
+		}		
+		
+		if (length(plotItems[["current.time"]]) > 0) {
+			main.header <- paste(main.header, "\n\n\nCurrent time:", plotItems[["current.time"]])
+		}
+		
+		if (length(plotItems[["diversity_time"]]) > 0) {
+			diversity_time.df <- plotItems[["diversity_time"]]
+			last_row <- nrow(diversity_time.df)
+			main.header <- paste(main.header,
+														"\n\nCurrent species:\t", diversity_time.df[last_row, "current_species"],
+														"\nExtinct species: \t", diversity_time.df[last_row, "extinct_species"])
+		}
+ 
     plot.new()
     text(0, 0.6, main.header, cex=2, font=2, adj= c(0, 0.5))
   }
@@ -394,23 +366,34 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
   # convert row / column coordinates to continuous coordinates, if they don't match the environment raster
   # for example, if the raster is in degrees, then row and column numbers won't plot correctly
 
-  # check if the environment layer has coordinates matching the row and column numbers
-  env.has.rowcol.coords <- (env@ncols == env@extent@xmax)
-  
-  # check the range of environment raster values
-  min.env 	<- min(env[], na.rm=T)
-  range.env <- max(env[], na.rm=T) - min.env
+  if(includes.map) {
+		# check if the environment layer has coordinates matching the row and column numbers
+		env.has.rowcol.coords <- (env@ncols == env@extent@xmax)
+		
+		# check the range of environment raster values
+		min.env 	<- min(env[], na.rm=T)
+		range.env <- max(env[], na.rm=T) - min.env
 
-  # replace the row and column values with x, y if needed
-  if (env.has.rowcol.coords) {
-    allDemes$row <- environment.rows - allDemes$row  # where row numbers are used for the y value, this converts
-    # to standard y values where y=0 as at the bottom, not top
-  } else  {
-    allDemes$column <- xFromCol(env, col=allDemes$col)		# replace row and column with x and y values
-    allDemes$row <- yFromRow(env, row=allDemes$row)
+		# replace the row and column values with x, y if needed
+		if (env.has.rowcol.coords) {
+			allDemes$row <- environment.rows - allDemes$row  # where row numbers are used for the y value, this converts
+			# to standard y values where y=0 as at the bottom, not top
+		} else  {
+			allDemes$column <- xFromCol(env, col=allDemes$col)		# replace row and column with x and y values
+			allDemes$row <- yFromRow(env, row=allDemes$row)
+		}
+		
+		# check if there is a shapefile to plot on the map
+		if (length(plotItems[["shape"]]) > 0) {
+			shape <- plotItems[["shape"]]
+			have.shape <- TRUE
+		} else {
+			have.shape <- FALSE
+		}
+
+		#these.symbols  <- getDiscreteSymbols(allDemes$species_name)  
+		# this WAS used to plot a different symbol per species, but they were hard to distinguish and caused plotting errors - perhaps due to going beyond the range of symbol numbers....
   }
-
-  these.symbols  <- getDiscreteSymbols(allDemes$species_name)
 
   if (plot_demes_amount_position) {
     # assign colours to niche0.position, based on the 250 colours defined above in display.initialise.2by2()
@@ -419,59 +402,107 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
     these.colours  <- my.colours[colour.indices]
     these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
     
-    plot(env, main="Demes with environment", cex.main=pane.header.size) # a first plot to ensure the correct legend
+    plot(env, main="Demes with environment", cex.main=pane.header.size, cex.axis=1.3) # a first plot to ensure the correct legend
     plot(env, col="white", add=T, legend=F)  
-    points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=these.sizes)
+		points(allDemes$col, allDemes$row, col=these.colours, pch=19, cex=these.sizes)
+		if (have.shape) {
+			plot(shape, add=T)
+		}
   }
   
   if (plot_species_ranges) {
     these.sizes    <- sqrt(allDemes$amount) * 2 * dot.size.scaler
       
-	plot(env, main="species ranges", col="white", legend=FALSE, cex.main=1.3)
-	points(allDemes$col, allDemes$row, col=allDemes$species, pch=19, cex=these.sizes)
+		plot(env, main="species ranges", col="white", legend=FALSE, cex.main=pane.header.size)
+		points(allDemes$col, allDemes$row, col=allDemes$species, pch=19, cex=these.sizes)
+		if (have.shape) {
+			plot(shape, add=T)
+		}	
   }
   
   if (plot_tree) {
-    plot(plotItems[["tree"]], main="Phylogeny", cex.main=pane.header.size)
-    add.scale.bar(col="blue")
+    plot(plotItems[["tree"]], type="phylogram", main="Phylogeny", cex.main=pane.header.size, root.edge = TRUE)
+    add.scale.bar(col="blue", lwd=1.25)
+  }
+  
+  if(plot_species_over_time) {
+    diversity_time.df <- plotItems[["diversity_time"]]
+		xrange <- range(diversity_time.df$time)
+    plot(diversity_time.df$time, log2(diversity_time.df$current_species), 
+			xlim = xrange[2:1], ylim=c(0, max(0, log2(max(diversity_time.df$current_species)))), 
+			type="b", 
+			pch=19, 
+			col="blue", 
+			xlab= "Time", 
+			ylab="Current species log2", 
+			main="Species through time (log scale)", cex.main=pane.header.size)
   }
   
   if (plot_genome_scatter | plot_genome_map) {
-    plot(env, main="genomic divergence - map", col="white", legend=FALSE, cex.main=1.3)   # a blank environment map to highlight gene colours
+    	  
+		if (length(plotItems[["genome.extremes"]]) > 0) {
+			genome.extremes <- plotItems[["genome.extremes"]]
+		}
     
     genome.columns <- plotItems[["genome.columns"]]
     gene.flow.max.distance <- plotItems[["gene.flow.max.distance"]]
     
     # call genome.colours function to turn gene positions into R, G & B
     deme.colours <- genome.colour(allDemes, genome.columns, gene.flow.max.distance, genome.extremes)
-    
     these.colours <- rgb(red = deme.colours[,1], green = deme.colours[,2], blue = deme.colours[,3])
     
     if (plot_genome_map) {
-      points(allDemes$col, allDemes$row, col=these.colours, pch=these.symbols, cex=dot.size.scaler)
+      plot(env, main="Genomic divergence - map", col="white", legend=FALSE, cex.main=pane.header.size)   # a blank environment map to highlight gene colours
+			points(allDemes$col, allDemes$row, col=these.colours, pch=19, cex=dot.size.scaler)
+			if (have.shape) {
+				plot(shape, add=T)
+			}
     }
     
     if (plot_genome_scatter) {
       these.sizes   <- sqrt(allDemes$amount) * 1.5
-      
-      # give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
-      plot.limit  <- gene.flow.max.distance * 0.8
-      plot.limits <- as.numeric(allDemes[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
-      
+
+			if (is.matrix(genome.extremes)) {
+				use.extremes.matrix <- TRUE
+			} else {
+				use.extremes.matrix <- FALSE
+			}
+				
+			# give the plots a standard extent, to see the dispersion increasing.  But allow the extent to increase when needed
+			plot.limit  <- gene.flow.max.distance * 0.8
+				
+			if (use.extremes.matrix) {
+				plot.limits <- c(min(genome.extremes[2, 1], (plot.limit * -1)), max(genome.extremes[1, 1], plot.limit), min(genome.extremes[2, 2], (plot.limit * -1)), max(genome.extremes[1, 2], plot.limit))
+			} else {
+				plot.limits <- as.numeric(allDemes[, .(min(genetic_position_0, (plot.limit * -1)), max(genetic_position_0, plot.limit), min(genetic_position_1, (plot.limit * -1)), max(genetic_position_1, plot.limit))])
+			}
+		
       genome_scatter_x <- allDemes$genetic_position_0
       genome_scatter_y <- allDemes$genetic_position_1
-      plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes, main="genomic divergence - scatter",
-           pch=these.symbols, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4], cex.main=pane.header.size)
-      
+			
+			# subsample the points for the genome scatterplot, where the numbers are very large
+			demecount <- length(genome_scatter_x)
+			max_points <- 150000
+			if (demecount > max_points) {
+				sample_indices <- sample(1:demecount, max_points)
+				genome_scatter_x <- genome_scatter_x[sample_indices]
+				genome_scatter_y <- genome_scatter_y[sample_indices]
+				these.colours <- these.colours[sample_indices]
+				these.sizes <- these.sizes[sample_indices]
+				#these.symbols <- these.symbols[sample_indices]
+			}
+			
+			plot(genome_scatter_x, genome_scatter_y, col=these.colours, cex=these.sizes, main="Genomic divergence - scatter",
+           pch=19, xlab="Genome axis 1", ylab="Genome axis 2", xlim=plot.limits[1:2], ylim=plot.limits[3:4], cex.main=pane.header.size)
+     
       # add a weighted genome mean for each species, to the plot
-      means <- genome.mean(allDemes, genome.columns)
-      points(means[1], means[2], pch=3, cex=1.5)
+      means <- genome.mean(allDemes, genome.columns, by.species = TRUE)
+      points(means$genetic_position_0, means$genetic_position_1, pch=3, cex=1.8)
     }  
   }
   
   if (plot_richness) {
 
-    #richness.dt <- allDemes[, .(cellRichness=length(species_name)), by=.(row, column)]
     richness.dt <- allDemes[, .(spRichness=.N), by=.(column, row)]
     
     # create a richness raster of the same size as env
@@ -486,8 +517,11 @@ display.update.multispecies <- function(plotItems, env, allDemes, plot_env=T, pl
 
     richness.ras[richness.dt$cellIndex] <- richness.dt$spRichness
   
-	main.txt <- paste("Species richness\t\tTotal species:", plotItems[["speciesCount"]])
+		main.txt <- paste("Species richness\t\tTotal species:", plotItems[["speciesCount"]])
     plot(richness.ras, main=main.txt, cex.main=pane.header.size)
+		if (have.shape) {
+			plot(shape, add=T)
+		}
   }
 
   return(1)
