@@ -356,6 +356,19 @@ MergeResultVector Model::merge(bool do_speciation) {
     const Location &loc = cell_itr->first;
     env.get(loc, ec); // known location so no need to check for no_data
 
+
+    /**
+     * TODO (species competition): Implement species competition below
+     * in this loop. Probably need to do all the immigration first and
+     * then loop over all the resulting incumbents in order to
+     * simulate competition.
+     *
+     * Note that competition only occurs between species with the same
+     * family_id because the genetic position is not comparable across
+     * families. family_id is the species.id of a species' top-most
+     * ancestor.
+     */
+
     SpeciesPresenceList &spl = cell_itr->second;
     for (auto sp_itr = spl.begin(), prev = spl.before_begin();
 	 sp_itr != spl.end(); ) {
@@ -390,22 +403,32 @@ MergeResultVector Model::merge(bool do_speciation) {
       incumbent.amount = incumbent.niche_suitability(conf, ec);
 
 
-      /**
-       * TODO: Implement species competition here. May need to do all
-       * the immigration first and then loop over all the resulting
-       * incumbents in order to simulate competition.  That will
-       * probably involve some refactoring of the enclosing loops and
-       * the code below.
-       */
-
-
       if (incumbent.amount > 0.0f) {
 	// Present.
+
+	/**
+	 * TODO (species competition): move this block out of this
+	 * loop and build the MeregResult later when species
+	 * competition has been done.
+	 */
 	Species &species = *sp_itr->species;
 	MergeResult &mr = mrv[species.id];
 	mr.acc.accumulate(*sp_itr); // contribute to statistics
 	if (do_speciation)
 	  mr.sp_candidates.add(spl, *sp_itr);
+	/* *** */
+
+	/**
+	 * TODO (species competition): need to collect *sp_itr by
+	 * *sp_itr->species.family_id so that species competition can
+	 * be performed after this loop. family_id will be 0 to
+	 * this->roots.size(), so maybe use something like
+	 *
+	 * std::vector<SpeciesPresence &> by_family[roots.size()];
+	 * or maybe
+	 * std::map<int, std::vector<SpeciesPresence &>> by_family;
+	*/
+
 	// Advance to next species in cell
 	prev = sp_itr;
 	++sp_itr;
@@ -413,6 +436,29 @@ MergeResultVector Model::merge(bool do_speciation) {
 	// Species extinct here. drop from list
 	sp_itr = spl.erase_after(prev);
     }
+
+
+    /**
+     * TODO (species competition): do species competition between
+     * species that have the the same family id. Maybe something like:
+     *
+     *    for (auto &spv: by_family) {
+     *      if (!spv.size())
+     *        continue;
+     *      // TODO: generate genomic distance matrix/array here
+     *      // loop over species within family
+     *      for (SpeciesPresence &sp: spv) {
+     *        // TODO: determine  competition here and set amount
+     *        if (sp.incumbent.amount > 0.0) {
+     *          // TODO build MergeResult (see above)
+     *        } else {
+     *          // TODO: remove from SpeciesPresenceList spl
+     *        }
+     *      }
+     *    }
+     *
+     */
+
 
     if (spl.empty())
       // all species extinct in this cell, so get rid of it
